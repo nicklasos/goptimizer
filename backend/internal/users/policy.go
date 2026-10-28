@@ -4,7 +4,7 @@ import "app/internal/middleware"
 
 // CanManage is the single rule for who may list, create, edit and delete whom:
 // a super admin manages everyone, an admin manages only accounts whose every role is "user".
-// gogo-front mirrors it in features/users/policy.ts.
+// The frontend mirrors it in features/users/policy.ts.
 func CanManage(actor middleware.Actor, targetRoles []string) bool {
 	if actor.IsSuperAdmin() {
 		return true

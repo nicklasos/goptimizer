@@ -24,18 +24,18 @@ describe('applyFormErrors', () => {
 
   it('names a field of a nested block by its path', () => {
     const { form, calls } = fakeForm()
-    const error = new ApiError(400, 'validation.failed', 'invalid', { 's3.bucket': ['validation.s3.bucket.required'] })
+    const error = new ApiError(400, 'validation.failed', 'invalid', { 'address.city': ['validation.address.city.required'] })
 
-    assert.equal(applyFormErrors(form, t, error, ['s3.bucket']), null)
-    assert.deepEqual(calls[0].map((f) => f.name), [['s3', 'bucket']])
+    assert.equal(applyFormErrors(form, t, error, ['address.city']), null)
+    assert.deepEqual(calls[0].map((f) => f.name), [['address', 'city']])
   })
 
   it('names a row of a list by its index', () => {
     const { form, calls } = fakeForm()
-    const error = new ApiError(400, 'validation.failed', 'invalid', { 'schedules.1.time': ['validation.schedules.1.time.invalid'] })
+    const error = new ApiError(400, 'validation.failed', 'invalid', { 'items.1.name': ['validation.items.1.name.invalid'] })
 
-    assert.equal(applyFormErrors(form, t, error, ['schedules.1.time']), null)
-    assert.deepEqual(calls[0].map((f) => f.name), [['schedules', 1, 'time']])
+    assert.equal(applyFormErrors(form, t, error, ['items.1.name']), null)
+    assert.deepEqual(calls[0].map((f) => f.name), [['items', 1, 'name']])
   })
 
   it('returns the errors of fields the form does not have', () => {

@@ -69,7 +69,7 @@ func (r *Response) AssertError(status int, key string) *Response {
 }
 
 // AssertInvalid checks that validation failed, and that each given field has an error.
-// A field in a nested block is named by its path: "s3.bucket".
+// A field in a nested block is named by its path: "address.city".
 func (r *Response) AssertInvalid(fields ...string) *Response {
 	r.t.Helper()
 	r.AssertError(http.StatusBadRequest, errs.ErrKeyValidationFailed)

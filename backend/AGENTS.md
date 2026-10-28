@@ -1,10 +1,10 @@
-# Gogo – Agent Guide
+# Goptimizer backend – Agent Guide
 
 ## Start here
 - **Recipes**: `docs/recipes/` has step-by-step procedures for the common changes: add a module, add an endpoint, change the schema, add a scheduled job. Use the matching one instead of improvising.
 - **Reference module**: `internal/users`. Copy its shape.
 - **Finish every task with `make test`** and fix what fails. Do not start the API; the owner runs it.
-- **The kit**: this repo is the API. [gogo-front](https://github.com/nicklasos/gogo-front) is its admin UI and generates its TypeScript types from `docs/swagger.json`, so run `make swagger` after changing request or response types.
+- **The admin UI** is `../frontend`. It generates its TypeScript types from `docs/swagger.json`, so run `make swagger` after changing request or response types.
 
 ## Architecture
 
@@ -16,7 +16,7 @@
 
 ### Directory Structure
 ```
-gogo/
+backend/
 ├── cmd/api/main.go              # Main application entry (--port, --test-db)
 ├── cmd/cli/main.go              # CLI (migrate, create-user, seed, mail, smoke test); global --test flag
 ├── config/
@@ -99,7 +99,7 @@ When adding new modules:
 - A handler gets the actor with `middleware.CurrentActor(c)` and passes it to the service. The service loads the record, calls the policy, and returns a 403 domain error on a no (404 stays for "does not exist").
 - Look records up by ID alone and let the policy decide; do not hide the rule inside a `WHERE user_id = ...`.
 - `middleware.RequireRole` on a route group is for "this whole area is admins only". A policy is for rules that depend on the record.
-- gogo-front mirrors each policy in `features/<module>/policy.ts` to hide what is not allowed. The API stays the authority.
+- The frontend mirrors each policy in `features/<module>/policy.ts` to hide what is not allowed. The API stays the authority.
 - `internal/users/policy.go` is the reference; `tests/unit/policy_test.go` shows how to test one. A module that only admins reach needs no policy: `RequireRole` on its route group is the rule.
 
 ## Factories and seed data
@@ -174,7 +174,7 @@ A list cached with `cache.Remember` gets a version in its key, changed on every 
 
 ### Rule
 - **All request/response types** go in `types.go` within each module
-- Swagger marks every field required (`--requiredByDefault`), because gogo-front generates its TypeScript types from it. Tag a field that may be absent with `validate:"optional"`, and an enum with `enums:"a,b,c"`.
+- Swagger marks every field required (`--requiredByDefault`), because the frontend generates its TypeScript types from it. Tag a field that may be absent with `validate:"optional"`, and an enum with `enums:"a,b,c"`.
 - **Service types** (e.g., `PaginatedUsers`) are defined in service files
 - **Handlers** use types from `types.go` for requests/responses
 - **Services** use internal types and convert to handler types

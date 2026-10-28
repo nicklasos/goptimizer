@@ -24,8 +24,8 @@ export function applyFormErrors<Values>(
   const keyField = isApiError(error) ? keyFields[error.errorKey] : undefined
   if (keyField) fieldErrors.push({ name: keyField, errors: [errorMessage(t, error)] })
 
-  // "s3.bucket" is the API's path to a field of a nested block; the form names it ['s3', 'bucket'],
-  // and a row of a list by its index: "schedules.1.time" is ['schedules', 1, 'time'].
+  // "address.city" is the API's path to a field of a nested block; the form names it ['address', 'city'],
+  // and a row of a list by its index: "items.1.name" is ['items', 1, 'name'].
   const named = fieldErrors.map(({ name, errors }) => ({ name: name.includes('.') ? fieldPath(name) : name, errors }))
   if (named.length) form.setFields(named as Parameters<typeof form.setFields>[0])
   if (other.length) return other.join(' ')

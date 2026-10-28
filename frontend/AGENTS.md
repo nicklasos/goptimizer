@@ -1,4 +1,4 @@
-# Gogo Front – Agent Guide
+# Goptimizer frontend – Agent Guide
 
 ## Rules
 - No obvious or redundant comments.
@@ -9,10 +9,10 @@
 ## Start here
 - **Recipes**: `docs/recipes/` has step-by-step procedures: build a feature across the API and this UI, add a feature, add a Playwright test. Use the matching one instead of improvising.
 - **Reference feature**: `src/features/users`.
-- **The kit**: this repo is the admin UI. [gogo](https://github.com/nicklasos/gogo) is the API, expected next to it at `../backend`; its OpenAPI file becomes `src/api/schema.ts` through `make api-types`.
+- **The API** is `../backend`. Its OpenAPI file becomes `src/api/schema.ts` through `make api-types`.
 
 ## Role
-Admin UI starter for the **gogo** Go API (`../backend`). A new project is a copy of this one plus feature folders.
+The admin UI of Goptimizer, for the Go API in `../backend`.
 
 ## Stack
 - React 19, Vite, TypeScript (strict), Ant Design 5
@@ -37,7 +37,7 @@ tests/e2e/   specs, pages/ (page objects), helpers/
 Import with the `@/` alias. A feature imports from `api`, `auth`, `layout` and `shared`, never from another feature.
 
 ## Adding a module
-1. Run `make swagger` in gogo and `make api-types` here, then give the generated types short names in `features/<module>/types.ts` (`export type ManagedUser = InternalUsersUserResponse`). Do not hand-write a type the backend already describes, and never edit `src/api/schema.ts`.
+1. Run `make swagger` in `../backend` and `make api-types` here, then give the generated types short names in `features/<module>/types.ts` (`export type ManagedUser = InternalUsersUserResponse`). Do not hand-write a type the backend already describes, and never edit `src/api/schema.ts`.
 2. `features/<module>/api.ts` — an `xApi` object of calls built on `api` from `@/api/client`.
 3. `features/<module>/hooks.ts` — `useX` queries, `useSaveX({ id?, body })`, `useDeleteX`. Mutations invalidate a key prefix from `qk`.
 4. Add the keys to `api/queryKeys.ts`.
@@ -101,7 +101,7 @@ Use AntD components and tokens (`theme.useToken()`); no literal colours or ad-ho
 make typecheck
 make lint         # typecheck + eslint
 make test-unit    # node:test
-make test-e2e     # Playwright: starts gogo --test-db on 8184 and Vite on 5175
+make test-e2e     # Playwright: starts the API with --test-db on 8184 and Vite on 5175
 make test         # all of the above
 make api-types    # regenerate src/api/schema.ts from ../backend/docs/swagger.json
 make build
@@ -117,6 +117,5 @@ make build
 - Requires `TEST_DATABASE_PATH` (a SQLite file whose name ends in `_test.db`, relative to `../backend`) in `../backend/.env`. The helper opens the same file the API writes.
 
 ## Don’t
-- Don’t add project domain modules to this skeleton.
 - Don’t call `fetch` or `api` from a page; go through `features/<module>/hooks.ts`.
 - Don’t start `npm run dev` unless the user asks.

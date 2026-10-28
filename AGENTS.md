@@ -1,7 +1,9 @@
 # Goptimizer – Agent Guide
 
-Goptimizer is built on [Gogokit](https://github.com/nicklasos/gogokit): a Go API, a React admin panel
-and server provisioning in one repository.
+Goptimizer is a self-hosted service that keeps the images in folders on a server optimized.
+[docs/PLAN.md](docs/PLAN.md) is the product plan and lists the phases. It is built on
+[Gogokit](https://github.com/nicklasos/gogokit): a Go API, a React admin panel and server provisioning
+in one repository.
 
 ## Layout
 

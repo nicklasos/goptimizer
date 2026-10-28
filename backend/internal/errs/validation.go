@@ -80,8 +80,8 @@ func FieldError(field, rule string) Fields {
 	return Fields{field: {GetFieldValidationErrorKey(field, rule)}}
 }
 
-// fieldPath is the field's JSON path in the request: "email", or "s3.bucket" inside a nested block.
-// An embedded struct has no JSON name, so the namespace carries its Go name ("SourceRequest");
+// fieldPath is the field's JSON path in the request: "email", or "address.city" inside a nested block.
+// An embedded struct has no JSON name, so the namespace carries its Go name (such as "BaseRequest");
 // JSON flattens it into the outer object, and so does the path.
 func fieldPath(fieldError validator.FieldError) string {
 	segments := strings.Split(fieldError.Namespace(), ".")[1:]

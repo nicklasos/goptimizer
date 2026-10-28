@@ -2,7 +2,7 @@ import { isSuperAdmin, hasAnyRole, ROLE_ADMIN, ROLE_USER } from '@/auth/roles'
 import type { User } from '@/auth/types'
 
 /*
- * Who may manage whom. These mirror gogo's internal/users/policy.go and only decide what
+ * Who may manage whom. These mirror the API's internal/users/policy.go and only decide what
  * the UI offers: the API enforces the same rules and is the one that counts.
  */
 
