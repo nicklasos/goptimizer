@@ -23,7 +23,7 @@ backend/
 │   ├── config.go                # Env → Config
 │   └── testdb.go                # Test-database safety guard
 ├── internal/
-│   ├── app.go                   # App context with DB, Tx, Cache, Logger, Mail, AuthMiddleware
+│   ├── app.go                   # App context with DB, Tx, Cache, Logger, Mail, Tools, AuthMiddleware
 │   ├── server/server.go         # NewEngine (middleware) + RegisterRoutes (the module list)
 │   ├── auth/                    # Authentication module
 │   │   ├── auth_service.go      # Business logic
@@ -31,7 +31,9 @@ backend/
 │   │   ├── routes.go            # Route registration (sets app.AuthMiddleware)
 │   │   └── types.go             # Request/response types
 │   ├── users/                   # User management (super admins, admins, users)
-│   ├── tools/                   # Finds programs on PATH and their versions (System), or pretends to (Fake)
+│   ├── folders/                 # Folders to keep optimized: kind registry (kinds.go), path rules, Profile
+│   ├── settings/                # The settings page: the one settings row, and GET /tools
+│   ├── tools/                   # Finds programs on PATH (System, or Fake in tests) and the image tool registry (images.go)
 │   ├── health/                  # /health and /api/v1/health
 │   ├── db/
 │   │   ├── tx.go                # TxRunner.WithTx transaction helper
@@ -101,6 +103,15 @@ When adding new modules:
 - `middleware.RequireRole` on a route group is for "this whole area is admins only". A policy is for rules that depend on the record.
 - The frontend mirrors each policy in `features/<module>/policy.ts` to hide what is not allowed. The API stays the authority.
 - `internal/users/policy.go` is the reference; `tests/unit/policy_test.go` shows how to test one. A module that only admins reach needs no policy: `RequireRole` on its route group is the rule.
+
+## Folders, settings and tools
+- A folder's `kind` is the `kinds` map in `internal/folders/kinds.go`; `local` is the only entry. A new source (SSH, S3) is a new entry with its own `resolve`.
+- The path rules live in `resolveLocalPath`: absolute, cleaned, existing readable directory, symlinks resolved and the real path stored, `/` and the system roots refused before and after resolving. `folders.Overlaps` is the overlap rule, on whole path segments.
+- `folders.Profile` is stored as JSON in `folders.profile`. Decoding starts from `DefaultProfile()`, so a field missing from a request or an older row gets its default. Validation is `Profile.Validate()`; failures are field errors under `profile.<field>`.
+- Folder rule failures are `errs.Fields` with keys from `internal/errs/keys.go` (`folders.path_overlaps` and the rest), so the admin panel shows them under the field.
+- `settings` has exactly one row (`id = 1`), seeded by the migration. `workers = 0` means auto: `settings.EffectiveWorkers`.
+- The image tools are a table in `internal/tools/images.go`: `Programs` (name, purpose, apt package, brew formula) and `NeedSteps` (what PNG lossy, PNG lossless, JPEG and GIF run, with alternatives such as optipng for oxipng). `tools.Check(ctx, finder)` builds the report; `GET /tools` caches it for 30 s unless `?refresh=1`. It is served from `internal/settings` because `tools` cannot import `internal`.
+- Tests get `app.Tools`, a `tools.Fake` with every image tool installed (`testkit.FakeToolVersions`); `Remove` one to test a missing tool.
 
 ## Factories and seed data
 - `internal/factory` creates records with defaults. In a test it is `app.Create`: `app.Create.User()`, `app.Create.User(factory.Admin(), factory.Unverified())`. Elsewhere: `factory.New(t, conn)`.

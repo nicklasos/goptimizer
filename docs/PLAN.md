@@ -30,9 +30,9 @@ Phase 1 removes storages, plans, runs, restores, archives, self-backup and the s
 
 ## Data model
 
-**Folder.** `id`, `name`, `kind` (`local`), `path` (absolute, must exist and be a directory), `enabled`, `scan_interval_minutes` (quick scan, default 60), `full_scan_interval_hours` (default 24), `profile` (JSON, below), `created_at`, `updated_at`. Two folders cannot overlap: a path inside another folder's path is refused.
+**Folder.** `id`, `name` (unique, case-insensitive), `kind` (`local`), `path` (absolute, must exist and be a readable directory, stored with symlinks resolved), `enabled`, `scan_interval_minutes` (quick scan, default 60, 5 to 10080), `full_scan_interval_hours` (default 24, 1 to 720), `profile` (JSON, below), `created_at`, `updated_at`. Two folders cannot overlap: a path inside another folder's path, or around it, is refused. `/` and the system directories (`/proc`, `/sys`, `/dev`, `/boot`, `/etc`, `/bin`, `/sbin`, `/usr`, `/lib*`, `/var/lib`) and everything inside them are refused too.
 
-**Profile.** `mode` (`lossy` or `lossless`), `jpeg_max_quality` (82), `png_quality` (`65-80`), `gif_lossy` (30), `min_saving_percent` (3: a smaller saving is not worth a rewrite), `min_ssim` (lossy only, calibrated in phase 4), `min_age_minutes` (5: newer files may still be uploading), `excludes` (glob patterns, such as `cache/**`).
+**Profile.** `mode` (`lossy` or `lossless`), `jpeg_max_quality` (82), `png_quality_min` and `png_quality_max` (65 and 80, pngquant's `--quality 65-80`), `gif_lossy` (30), `min_saving_percent` (3: a smaller saving is not worth a rewrite), `min_ssim` (lossy only, 0.98 until phase 4 calibrates it), `min_age_minutes` (5: newer files may still be uploading), `excludes` (glob patterns with `**`, such as `cache/**`). A field left out of a request or of a stored profile takes its default.
 
 **Dir.** `folder_id`, `rel_path`, `mtime_ns`. One row per directory the scanner has listed.
 
@@ -54,7 +54,7 @@ An image that is `optimized` or `kept` and then changes on disk goes back to `pe
 
 **Scan.** `id`, `folder_id`, `kind` (`quick` or `full`), `trigger` (`schedule` or `manual`), `status` (`queued`, `running`, `succeeded`, `failed`), `started_at`, `finished_at`, `dirs_listed`, `files_seen`, `files_new`, `files_changed`, `files_gone`, `error`. A partial unique index on `folder_id` where the status is `queued` or `running` allows one scan per folder at a time, whoever tries to queue a second one.
 
-**Setting.** Key and value: `workers` (optimizations at once, default the CPU count minus one), `scan_workers` (scans at once, default 2), `nice` (tools run under `nice -n 10` and `ionice -c3` by default, so the projects on the server stay fast).
+**Setting.** One row with typed columns, because the set of settings is closed: `workers` (optimizations at once; 0, the default, means the CPU count minus one, at least 1), `scan_workers` (scans at once, default 2), `nice` (tools run under `nice -n 10` and `ionice -c3` by default, so the projects on the server stay fast).
 
 **Daily stat.** `folder_id`, `day`, `optimized`, `bytes_before`, `bytes_after`. One upsert per optimized image, read by the dashboard chart.
 
@@ -126,7 +126,7 @@ Below the table, the global settings: workers, scan workers, nice and ionice.
 
 Same three playbooks as Gogobackup, with these changes:
 
-- `provision.yml` also installs `pngquant`, `jpegoptim`, `optipng`, `gifsicle` and `oxipng` from apt. Whether Ubuntu 22.04 packages `oxipng` is to be checked in phase 6. Without it the lossless PNG step falls back to `optipng`.
+- `provision.yml` also installs `pngquant`, `jpegoptim`, `optipng` and `gifsicle` from apt. No Ubuntu release packages `oxipng` (checked on Launchpad in phase 2), so phase 6 either installs its release binary or leaves the lossless PNG step to `optipng`.
 - Supervisor runs the API as root, and the API listens on `127.0.0.1` only. Today it binds every interface.
 - `install.yml` installs the app on a server that already has Go, Node.js, nginx and supervisor, and installs the image tools too, because the app cannot run without them.
 - `deploy.yml` and `make deploy` pull, build, migrate, restart and wait for `/health`.

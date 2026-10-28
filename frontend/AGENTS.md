@@ -47,8 +47,12 @@ Import with the `@/` alias. A feature imports from `api`, `auth`, `layout` and `
 
 `features/users` is the reference: a paginated table with modal forms.
 
-## Dashboard
-`/` is the dashboard (`features/dashboard/DashboardPage`): a heading and an empty state until folders arrive.
+## Folders and settings
+- `/` is the dashboard: one card per folder (`features/folders/pages/FoldersPage`), with a pause switch and an edit link. It keeps the test id `dashboard-page`.
+- `/folders/new` and `/folders/:id/edit` are `FolderEditorPage`, the long-form pattern: `useUnsavedChangesGuard`, `useGuardedNavigate`, `applyFormErrors`. Form field names are the API's paths (`['profile', 'jpeg_max_quality']`), so server errors land under their fields. Lossy-only fields are not rendered in lossless mode, so the page submits `form.getFieldsValue(true)`.
+- `NEW_FOLDER` in `features/folders/folderForm.ts` mirrors the API's default profile and intervals; change both together.
+- `/settings` (`features/settings/pages/SettingsPage`) lists the image tools from `GET /tools` and saves the global settings. A tool's purpose is translated by `settings.purpose.<name>`, with the API's English text as the fallback.
+- Folders, settings and users are admin pages. A plain user sees no top-bar items and a forbidden page at `/`.
 
 ## API client
 - `api.get/post/put/patch/del<T>()` return the response's `data` field.
@@ -112,6 +116,7 @@ make build
 - `tests/e2e/own-session/`: specs that sign in themselves with `loginAs(page, role)`, or test the signed-out pages.
 - A spec runs in the project of the folder it is in; nothing has to be registered.
 - Users are seeded straight into the test database (`helpers/db-helper.ts`); emails start with `e2e-` so cleanup finds them. Use `uniqueEmail()` for users created through the UI.
+- Folders made through the UI are named `E2E ...` so cleanup finds them, and point at a directory the spec creates under `os.tmpdir()` (the API runs on the same machine). The folders table is shared by every spec, so never assert on the whole list or the empty state.
 - The API is started with `AUTH_RATE_LIMIT=false` and `APP_DEBUG=true` (no throttling, mail only logged).
 - Emailed links cannot be read back (only a hash is stored): plant a token with `dbHelper.createEmailToken(userId, purpose)`.
 - Requires `TEST_DATABASE_PATH` (a SQLite file whose name ends in `_test.db`, relative to `../backend`) in `../backend/.env`. The helper opens the same file the API writes.

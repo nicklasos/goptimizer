@@ -20,8 +20,9 @@
 </p>
 
 > [!WARNING]
-> **Goptimizer is in early development and does not optimize images yet.** Today it has sign-in and user
-> management. Folders, scanning and optimizing are being built in the order of the [roadmap](#roadmap).
+> **Goptimizer is in early development and does not optimize images yet.** Today it has sign-in, user
+> management, folders and the settings page with the image tools. Scanning and optimizing are being built
+> in the order of the [roadmap](#roadmap).
 > Screenshots come with the dashboard.
 
 ## Why
@@ -84,8 +85,8 @@ Still, lossy compression changes pixels by design. Try a folder on a copy first 
 | # | Phase | Status |
 |---|---|---|
 | 1 | Base: sign-in, users, deploy, on [Gogokit](https://github.com/nicklasos/gogokit) | Done |
-| 2 | Folders and the tools page | Next |
-| 3 | Scanner: quick and full scans, measured on a million files | Planned |
+| 2 | Folders and the tools page | Done |
+| 3 | Scanner: quick and full scans, measured on a million files | Next |
 | 4 | Optimizer: pipelines, verification, the shared worker pool | Planned |
 | 5 | Dashboard: folder cards, statistics, screenshots in this README | Planned |
 | 6 | Deploy: image tools installed by the playbooks | Planned |
@@ -96,7 +97,8 @@ The design, the data model and the reasoning behind each decision are in [docs/P
 
 - A Linux server. The playbooks target Ubuntu 22.04 and 24.04.
 - The image tools: `pngquant`, `oxipng` (or `optipng`), `jpegoptim` and `gifsicle`. On Ubuntu:
-  `sudo apt install pngquant oxipng optipng jpegoptim gifsicle`.
+  `sudo apt install pngquant optipng jpegoptim gifsicle`; Ubuntu has no `oxipng` package, and `optipng`
+  does its work. The settings page shows which ones the API finds.
 - Goptimizer runs as root, because it rewrites files that belong to other users and gives each one back its
   owner and mode. nginx serves the admin panel, and phase 6 binds the API to `127.0.0.1` so only nginx
   can reach it.
