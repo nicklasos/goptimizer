@@ -12,12 +12,15 @@
     <circle cx="162" cy="88" r="29" fill="#FFFFFF"/>
     <ellipse cx="128" cy="127" rx="27" ry="18" fill="#F4D7B5"/>
     <path d="M119 141H137V152C137 156 134 158 131 158H125C122 158 119 156 119 152Z" fill="#FFFFFF" stroke-width="5"/>
-    <path d="M62 172H194V230C194 242 165 248 128 248C91 248 62 242 62 230Z" fill="#FDB813"/>
-    <path d="M62 193C62 205 91 211 128 211C165 211 194 205 194 193" fill="none" stroke-width="5"/>
-    <path d="M62 214C62 226 91 232 128 232C165 232 194 226 194 214" fill="none" stroke-width="5"/>
-    <ellipse cx="128" cy="172" rx="66" ry="14" fill="#FFD75E"/>
-    <ellipse cx="62" cy="190" rx="13" ry="17" fill="#5DC9E2"/>
-    <ellipse cx="194" cy="190" rx="13" ry="17" fill="#5DC9E2"/>
+    <rect x="58" y="164" width="140" height="84" rx="10" fill="#FFFFFF"/>
+  </g>
+  <rect x="70" y="176" width="116" height="60" rx="4" fill="#E3F6FB"/>
+  <circle cx="162" cy="193" r="9" fill="#FDB813"/>
+  <path d="M70 236L102 202L122 222L138 208L186 236Z" fill="#00ADD8" stroke="#16313D" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="70" y="176" width="116" height="60" rx="4" fill="none" stroke="#16313D" stroke-width="4"/>
+  <g stroke="#16313D" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <ellipse cx="60" cy="196" rx="13" ry="17" fill="#5DC9E2"/>
+    <ellipse cx="196" cy="196" rx="13" ry="17" fill="#5DC9E2"/>
   </g>
   <circle cx="102" cy="92" r="12" fill="#16313D"/>
   <circle cx="170" cy="92" r="12" fill="#16313D"/>

@@ -23,7 +23,7 @@ It is built from [Gogobackup](https://github.com/nicklasos/gogobackup), which is
 | 2 | Folders and settings | Folders can be added, edited, paused. The settings page lists every tool, installed or not, with how to install it |
 | 3 | Scanner | Quick and full scans fill the image index. A scan of 1,000,000 synthetic files is measured |
 | 4 | Optimizer | Pending images are optimized, verified and swapped in by a worker pool shared fairly by all folders |
-| 5 | Dashboard | Folder cards with stats and a 30-day chart, a folder page with scans and images filtered by status |
+| 5 | Dashboard | Folder cards with stats and a 30-day chart, a folder page with scans and images filtered by status, README screenshots |
 | 6 | Deploy | `make provision`, `make install-remote` and `make deploy-remote` install the tools and the app and release it |
 
 Phase 1 removes storages, plans, runs, restores, archives, self-backup and the secret box from both halves before anything is added, so phases 2 to 5 build on a smaller base.
@@ -127,7 +127,7 @@ Below the table, the global settings: workers, scan workers, nice and ionice.
 Same three playbooks as Gogobackup, with these changes:
 
 - `provision.yml` also installs `pngquant`, `jpegoptim`, `optipng`, `gifsicle` and `oxipng` from apt. Whether Ubuntu 22.04 packages `oxipng` is to be checked in phase 6. Without it the lossless PNG step falls back to `optipng`.
-- Supervisor runs the API as root.
+- Supervisor runs the API as root, and the API listens on `127.0.0.1` only. Today it binds every interface.
 - `install.yml` installs the app on a server that already has Go, Node.js, nginx and supervisor, and installs the image tools too, because the app cannot run without them.
 - `deploy.yml` and `make deploy` pull, build, migrate, restart and wait for `/health`.
 
