@@ -65,6 +65,7 @@ func TestUserService_Update(t *testing.T) {
 - `app.Create` — the factories, below
 - `app.Ctx`, `app.Queries`, `app.DB` (`*sql.DB`, for raw SQL with `?` placeholders), `app.TxRunner`, `app.Config`, `app.Logger`, `app.Cache` — what a service constructor asks for
 - `app.Mail.Sent()` — every email the application sent during the test
+- `app.Tools` — a `tools.Fake` standing in for the image programs on PATH: all five are installed (`testkit.FakeToolVersions`) until `app.Tools.Remove("oxipng")`; `Set(name, version)` puts one back
 - `app.Token(user)`, `testkit.Actor(user)`
 
 ### Requests (`tests/testkit/request.go`)
@@ -97,6 +98,7 @@ Every `Assert` stops the test on failure, prints the response body, and returns 
 | Factory | Options |
 |---|---|
 | `app.Create.User()` | `WithEmail`, `WithName`, `WithPassword`, `WithRoles`, `Admin()`, `SuperAdmin()`, `Unverified()` |
+| `app.Create.Folder()` | `WithFolderName`, `WithFolderPath` (not checked on disk), `WithProfile`, `Paused()` |
 
 A user has the password `factory.DefaultPassword`. Tests never write `INSERT` by hand, and neither
 does a factory: every factory writes through a `Factory*` query in `internal/db/queries/factory.sql`,

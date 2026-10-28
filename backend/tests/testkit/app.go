@@ -31,6 +31,7 @@ import (
 	"app/internal/mail"
 	"app/internal/middleware"
 	"app/internal/server"
+	"app/internal/tools"
 	"app/tests"
 
 	"github.com/gin-gonic/gin"
@@ -38,6 +39,15 @@ import (
 )
 
 const JWTSecret = "test-secret-key"
+
+// FakeToolVersions is what app.Tools reports for `<name> --version` at the start of a test.
+var FakeToolVersions = map[string]string{
+	"pngquant":  "3.0.3",
+	"oxipng":    "oxipng 9.1.2",
+	"optipng":   "OptiPNG version 0.7.8",
+	"jpegoptim": "jpegoptim v1.5.5  x86_64-pc-linux-gnu",
+	"gifsicle":  "LCDF Gifsicle 1.94",
+}
 
 type App struct {
 	// Client sends requests without a token. Use As for an authenticated one.
@@ -57,6 +67,9 @@ type App struct {
 
 	// Mail collects every message the application sent during the test
 	Mail *mail.MemorySender
+
+	// Tools stands in for the image programs on PATH: every one is installed until Remove
+	Tools *tools.Fake
 
 	t      *testing.T
 	server *httptest.Server
@@ -98,6 +111,7 @@ func New(t *testing.T, configure ...func(*config.Config)) *App {
 		Logger:   log,
 		Cache:    cache.NewMemoryCache(),
 		Mail:     mail.NewMemorySender(),
+		Tools:    tools.NewFake(FakeToolVersions),
 		t:        t,
 	}
 	app.Client = &Client{app: app}
@@ -155,6 +169,7 @@ func (a *App) baseURL() string {
 		Cache:   a.Cache,
 		Logger:  a.Logger,
 		Mail:    a.Mail,
+		Tools:   a.Tools,
 		Api:     router.Group("/api/v1"),
 	})
 

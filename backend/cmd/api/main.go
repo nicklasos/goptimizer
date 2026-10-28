@@ -20,6 +20,7 @@ import (
 	"app/internal/mail"
 	"app/internal/scheduler"
 	"app/internal/server"
+	"app/internal/tools"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -113,6 +114,7 @@ func main() {
 		Cache:   cache.NewMemoryCache(),
 		Logger:  logger,
 		Mail:    mail.NewService(cfg, logger),
+		Tools:   tools.System{},
 		Api:     r.Group("/api/v1"),
 	}
 

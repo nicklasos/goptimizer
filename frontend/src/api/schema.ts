@@ -18,6 +18,37 @@ export interface AppInternalErrsErrorResponse {
   timestamp?: string;
 }
 
+export type AppInternalToolsNeed =
+  | "png_lossy"
+  | "png_lossless"
+  | "jpeg"
+  | "gif";
+
+export interface AppInternalToolsNeedStatus {
+  /** Missing is the preferred program of each step nothing installed can do. */
+  missing: string[];
+  need: "png_lossy" | "png_lossless" | "jpeg" | "gif";
+  satisfied: boolean;
+}
+
+export interface AppInternalToolsProgramStatus {
+  /** Alternatives can do this program's work when it is missing. Empty means it is required. */
+  alternatives: string[];
+  apt: string;
+  brew: string;
+  installed: boolean;
+  name: string;
+  path: string;
+  purpose: string;
+  used_for: AppInternalToolsNeed[];
+  version: string;
+}
+
+export interface AppInternalToolsReport {
+  needs: AppInternalToolsNeedStatus[];
+  programs: AppInternalToolsProgramStatus[];
+}
+
 export interface InternalAuthForgotPasswordRequest {
   email: string;
 }
@@ -172,6 +203,38 @@ export interface InternalPaginationMeta {
   last_page: number;
   per_page: number;
   total: number;
+}
+
+export interface InternalSettingsSettingsDataResponse {
+  data: InternalSettingsSettingsResponse;
+}
+
+export interface InternalSettingsSettingsRequest {
+  /** Nice runs the tools under nice and ionice, so the projects on the server stay fast. */
+  nice: boolean;
+  /**
+   * @min 1
+   * @max 16
+   */
+  scan_workers: number;
+  /**
+   * Workers is how many images are optimized at once; 0 means one less than the CPU count.
+   * @min 0
+   * @max 64
+   */
+  workers: number;
+}
+
+export interface InternalSettingsSettingsResponse {
+  effective_workers: number;
+  nice: boolean;
+  scan_workers: number;
+  updated_at: string;
+  workers: number;
+}
+
+export interface InternalSettingsToolsResponse {
+  data: AppInternalToolsReport;
 }
 
 export interface InternalUsersCreateUserRequest {

@@ -922,6 +922,160 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/settings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Get settings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsDataResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "workers 0..64 (0 = one less than the CPU count), scan_workers 1..16, nice.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Update settings",
+                "parameters": [
+                    {
+                        "description": "Settings",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.SettingsDataResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tools": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Every image tool, installed or not, with its path, version and install hints, and which kinds of work the installed ones cover. Cached for 30 seconds; refresh=1 looks again.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "settings"
+                ],
+                "summary": "Image tools",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "1 to skip the cache",
+                        "name": "refresh",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_settings.ToolsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/users": {
             "get": {
                 "security": [
@@ -1304,6 +1458,131 @@ const docTemplate = `{
                 },
                 "timestamp": {
                     "type": "string"
+                }
+            }
+        },
+        "app_internal_tools.Need": {
+            "type": "string",
+            "enum": [
+                "png_lossy",
+                "png_lossless",
+                "jpeg",
+                "gif"
+            ],
+            "x-enum-varnames": [
+                "NeedPNGLossy",
+                "NeedPNGLossless",
+                "NeedJPEG",
+                "NeedGIF"
+            ]
+        },
+        "app_internal_tools.NeedStatus": {
+            "type": "object",
+            "required": [
+                "missing",
+                "need",
+                "satisfied"
+            ],
+            "properties": {
+                "missing": {
+                    "description": "Missing is the preferred program of each step nothing installed can do.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "need": {
+                    "enum": [
+                        "png_lossy",
+                        "png_lossless",
+                        "jpeg",
+                        "gif"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/app_internal_tools.Need"
+                        }
+                    ]
+                },
+                "satisfied": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "app_internal_tools.ProgramStatus": {
+            "type": "object",
+            "required": [
+                "alternatives",
+                "apt",
+                "brew",
+                "installed",
+                "name",
+                "path",
+                "purpose",
+                "used_for",
+                "version"
+            ],
+            "properties": {
+                "alternatives": {
+                    "description": "Alternatives can do this program's work when it is missing. Empty means it is required.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "apt": {
+                    "type": "string"
+                },
+                "brew": {
+                    "type": "string"
+                },
+                "installed": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "purpose": {
+                    "type": "string"
+                },
+                "used_for": {
+                    "type": "array",
+                    "items": {
+                        "enum": [
+                            "png_lossy",
+                            "png_lossless",
+                            "jpeg",
+                            "gif"
+                        ],
+                        "$ref": "#/definitions/app_internal_tools.Need"
+                    }
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "app_internal_tools.Report": {
+            "type": "object",
+            "required": [
+                "needs",
+                "programs"
+            ],
+            "properties": {
+                "needs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/app_internal_tools.NeedStatus"
+                    }
+                },
+                "programs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/app_internal_tools.ProgramStatus"
+                    }
                 }
             }
         },
@@ -1794,6 +2073,80 @@ const docTemplate = `{
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_settings.SettingsDataResponse": {
+            "type": "object",
+            "required": [
+                "data"
+            ],
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_settings.SettingsResponse"
+                }
+            }
+        },
+        "internal_settings.SettingsRequest": {
+            "type": "object",
+            "required": [
+                "nice",
+                "scan_workers",
+                "workers"
+            ],
+            "properties": {
+                "nice": {
+                    "description": "Nice runs the tools under nice and ionice, so the projects on the server stay fast.",
+                    "type": "boolean"
+                },
+                "scan_workers": {
+                    "type": "integer",
+                    "maximum": 16,
+                    "minimum": 1
+                },
+                "workers": {
+                    "description": "Workers is how many images are optimized at once; 0 means one less than the CPU count.",
+                    "type": "integer",
+                    "maximum": 64,
+                    "minimum": 0
+                }
+            }
+        },
+        "internal_settings.SettingsResponse": {
+            "type": "object",
+            "required": [
+                "effective_workers",
+                "nice",
+                "scan_workers",
+                "updated_at",
+                "workers"
+            ],
+            "properties": {
+                "effective_workers": {
+                    "type": "integer"
+                },
+                "nice": {
+                    "type": "boolean"
+                },
+                "scan_workers": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_settings.ToolsResponse": {
+            "type": "object",
+            "required": [
+                "data"
+            ],
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/app_internal_tools.Report"
                 }
             }
         },
