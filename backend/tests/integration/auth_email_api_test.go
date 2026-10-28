@@ -46,7 +46,7 @@ func TestAuthAPI_PasswordReset(t *testing.T) {
 		sent := app.Mail.Sent()
 		require.Len(t, sent, 1)
 		assert.Equal(t, []string{user.Email}, sent[0].To)
-		assert.Contains(t, sent[0].Text, "http://localhost:5173/reset-password?token=")
+		assert.Contains(t, sent[0].Text, "http://localhost:5747/reset-password?token=")
 		token := emailToken(t, sent[0])
 
 		resetBody := fmt.Sprintf(`{"token": %q, "password": "brand-new-password"}`, token)
@@ -132,7 +132,7 @@ func TestAuthAPI_EmailVerification(t *testing.T) {
 
 		sent := app.Mail.Sent()
 		require.Len(t, sent, 1)
-		assert.Contains(t, sent[0].Text, "http://localhost:5173/verify-email?token=")
+		assert.Contains(t, sent[0].Text, "http://localhost:5747/verify-email?token=")
 		body := fmt.Sprintf(`{"token": %q}`, emailToken(t, sent[0]))
 
 		app.POST("/api/v1/auth/verify-email", body).AssertOK()

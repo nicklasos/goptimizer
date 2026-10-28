@@ -6,8 +6,8 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.resolve(__dirname, '.env') })
 
-const TEST_FRONTEND_PORT = process.env.TEST_FRONTEND_PORT || '5175'
-const TEST_BACKEND_PORT = process.env.TEST_BACKEND_PORT || '8184'
+const TEST_FRONTEND_PORT = process.env.TEST_FRONTEND_PORT || '5748'
+const TEST_BACKEND_PORT = process.env.TEST_BACKEND_PORT || '8748'
 
 if (!process.env.VITE_E2E_API_BASE_URL) {
   process.env.VITE_E2E_API_BASE_URL = `http://localhost:${TEST_BACKEND_PORT}/api/v1`

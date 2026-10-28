@@ -576,7 +576,7 @@ definitions:
     - roles
     - updated_at
     type: object
-host: localhost:8181
+host: localhost:8747
 info:
   contact:
     email: support@swagger.io

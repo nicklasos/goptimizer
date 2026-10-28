@@ -39,7 +39,7 @@ go_version: "1.25.4"
 node_major: 22
 
 # --- API --------------------------------------------------------------------
-api_port: 8181
+api_port: 8747
 
 # The API runs the scheduled jobs. false runs them in a separate <app>-cron supervisor program instead.
 scheduler_in_api: true

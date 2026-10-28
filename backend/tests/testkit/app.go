@@ -91,7 +91,7 @@ func New(t *testing.T, configure ...func(*config.Config)) *App {
 	cfg := &config.Config{
 		JWTSecret:   JWTSecret,
 		AppName:     "TestApp",
-		FrontendURL: "http://localhost:5173",
+		FrontendURL: "http://localhost:5747",
 
 		AllowRegistration: true,
 		AuthRateLimit:     true,

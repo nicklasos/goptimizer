@@ -38,7 +38,7 @@ import (
 // @license.name  WTFPL
 // @license.url   http://www.wtfpl.net/
 
-// @host      localhost:8181
+// @host      localhost:8747
 // @BasePath  /
 
 // @securityDefinitions.apikey BearerAuth

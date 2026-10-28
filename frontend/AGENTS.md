@@ -2,7 +2,7 @@
 
 ## Rules
 - No obvious or redundant comments.
-- **Do not start the dev server** — the user runs it at http://localhost:5173.
+- **Do not start the dev server** — the user runs it at http://localhost:5747.
 - Every interactive element gets a `data-testid` (see Test locators).
 - Finish with `make test` (typecheck, lint, unit, E2E) and fix what fails.
 
@@ -105,7 +105,7 @@ Use AntD components and tokens (`theme.useToken()`); no literal colours or ad-ho
 make typecheck
 make lint         # typecheck + eslint
 make test-unit    # node:test
-make test-e2e     # Playwright: starts the API with --test-db on 8184 and Vite on 5175
+make test-e2e     # Playwright: starts the API with --test-db on 8748 and Vite on 5748
 make test         # all of the above
 make api-types    # regenerate src/api/schema.ts from ../backend/docs/swagger.json
 make build

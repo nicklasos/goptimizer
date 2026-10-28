@@ -17,4 +17,4 @@ Rules that apply to every recipe:
 - No narrating comments. A comment says why, not what.
 - Every interactive element gets a `data-testid` (`<entity>-<element>[-<id>]`).
 - Finish with `make test`; fix what fails before calling the work done.
-- Do not start the dev server (`npm run dev`). The owner runs it at http://localhost:5173.
+- Do not start the dev server (`npm run dev`). The owner runs it at http://localhost:5747.

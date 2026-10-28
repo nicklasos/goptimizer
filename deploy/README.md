@@ -28,7 +28,7 @@ A server that already runs other applications gets `install.yml` instead: see [O
 ```
 
 - **Processes**: supervisor runs `<app>-api` as the unprivileged `deploy` user. The API runs the scheduled jobs itself. Set `scheduler_in_api: false` to run them in a separate `<app>-cron` program.
-- **nginx**: `domain` serves the admin panel and proxies `/api/` and `/health` to the API on `127.0.0.1:8181`. An optional `api_domain` proxies everything to the API.
+- **nginx**: `domain` serves the admin panel and proxies `/api/` and `/health` to the API on `127.0.0.1:8747`. An optional `api_domain` proxies everything to the API.
 - **SQLite** is a file the API opens directly; there is no database server. The firewall allows SSH, 80 and 443.
 
 ## Requirements

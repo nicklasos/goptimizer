@@ -126,12 +126,12 @@ cp frontend/.env.example frontend/.env
 make cli migrate up             # creates backend/data/goptimizer.db
 make seed                       # admin@example.com / password123, and a few more accounts
 
-cd backend && make run          # API on http://localhost:8181
-cd frontend && npm install && npm run dev   # in a second terminal: http://localhost:5173
+cd backend && make run          # API on http://localhost:8747
+cd frontend && npm install && npm run dev   # in a second terminal: http://localhost:5747
 ```
 
-Sign in at http://localhost:5173 as `admin@example.com` with the password `password123`. The API
-documentation is at http://localhost:8181/swagger/index.html. With `APP_DEBUG=true`, as in
+Sign in at http://localhost:5747 as `admin@example.com` with the password `password123`. The API
+documentation is at http://localhost:8747/swagger/index.html. With `APP_DEBUG=true`, as in
 `.env.example`, emails go to the API's log.
 
 ## Tests

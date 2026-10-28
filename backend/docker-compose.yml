@@ -20,13 +20,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:-local-development-secret-not-for-production}
       APP_ENV: development
       APP_NAME: ${APP_NAME:-Goptimizer}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5747}
       MAIL_HOST: mailpit
       MAIL_PORT: "1025"
       MAIL_SCHEME: none
       MAIL_FROM_ADDRESS: noreply@example.com
     ports:
-      - "8181:8181"
+      - "8747:8747"
     volumes:
       - db-data:/data/db
 

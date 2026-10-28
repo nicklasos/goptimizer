@@ -67,14 +67,14 @@ func Load() (*Config, error) {
 
 		DatabasePath:     getEnv("DATABASE_PATH", "./data/goptimizer.db"),
 		TestDatabasePath: getEnv("TEST_DATABASE_PATH", "./data/goptimizer_test.db"),
-		Port:             getEnv("PORT", "8181"),
+		Port:             getEnv("PORT", "8747"),
 		Environment:      getEnv("APP_ENV", "development"),
 		Debug:            getEnvBool("APP_DEBUG", false),
 		LogLevel:         getEnv("LOG_LEVEL", "info"),
 		LogFormat:        getEnv("LOG_FORMAT", "json"),
 		LogOutput:        getEnv("LOG_OUTPUT", "both"),
 		JWTSecret:        getEnv("JWT_SECRET", ""),
-		AppURL:           getEnv("APP_URL", "localhost:8181"),
+		AppURL:           getEnv("APP_URL", "localhost:8747"),
 
 		AccessTokenTTL:       getEnvDuration("JWT_ACCESS_TOKEN_TTL", time.Hour),
 		RefreshTokenTTL:      getEnvDuration("JWT_REFRESH_TOKEN_TTL", 30*24*time.Hour),
@@ -82,7 +82,7 @@ func Load() (*Config, error) {
 		EmailVerificationTTL: getEnvDuration("EMAIL_VERIFICATION_TTL", 48*time.Hour),
 		AllowRegistration:    getEnvBool("ALLOW_REGISTRATION", false),
 		AuthRateLimit:        getEnvBool("AUTH_RATE_LIMIT", true),
-		FrontendURL:          strings.TrimRight(getEnv("FRONTEND_URL", "http://localhost:5173"), "/"),
+		FrontendURL:          strings.TrimRight(getEnv("FRONTEND_URL", "http://localhost:5747"), "/"),
 		TrustedProxies:       getEnvListDefault("TRUSTED_PROXIES", []string{"127.0.0.1", "::1"}),
 
 		MailMailer:      getEnv("MAIL_MAILER", "smtp"),

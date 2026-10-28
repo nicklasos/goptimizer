@@ -12,5 +12,5 @@ FROM nginx:1.27-alpine
 COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 # Where nginx forwards /api and /health. Override at run time.
-ENV API_UPSTREAM=http://api:8181
+ENV API_UPSTREAM=http://api:8747
 EXPOSE 80

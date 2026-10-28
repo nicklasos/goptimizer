@@ -33,7 +33,7 @@ cd backend && ./bin/goptimizer-cli create-user --email you@example.com --passwor
 ```
 
 The empty `VITE_API_BASE_URL` makes the panel call its own origin, where nginx forwards `/api` to the API.
-The examples assume the API on port 8181, the user `www-data` and Cloudflare in front; change the port in
+The examples assume the API on port 8747, the user `www-data` and Cloudflare in front; change the port in
 both `backend/.env` and `nginx.conf`.
 
 ## Releasing

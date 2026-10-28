@@ -41,9 +41,9 @@ The [root README](../README.md) covers running and deploying the whole service. 
 ```bash
 git clone git@github.com:nicklasos/gogo-front.git my-admin && cd my-admin
 
-cp .env.example .env    # VITE_API_BASE_URL points at gogo, http://localhost:8181 by default
+cp .env.example .env    # VITE_API_BASE_URL points at gogo, http://localhost:8747 by default
 npm install
-npm run dev             # http://localhost:5173
+npm run dev             # http://localhost:5747
 ```
 
 Create the first super admin in the gogo repo, then sign in with it:
@@ -98,10 +98,10 @@ make playwright-browsers
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_API_BASE_URL` | gogo API origin, e.g. `http://localhost:8181` (the client appends `/api/v1`) |
-| `PORT` | Dev server port (default `5173`) |
-| `TEST_FRONTEND_PORT` | E2E Vite port (default `5175`) |
-| `TEST_BACKEND_PORT` | E2E gogo port (default `8184`) |
+| `VITE_API_BASE_URL` | gogo API origin, e.g. `http://localhost:8747` (the client appends `/api/v1`) |
+| `PORT` | Dev server port (default `5747`) |
+| `TEST_FRONTEND_PORT` | E2E Vite port (default `5748`) |
+| `TEST_BACKEND_PORT` | E2E gogo port (default `8748`) |
 | `VITE_E2E_API_BASE_URL` | API base used by E2E helpers (default `http://localhost:$TEST_BACKEND_PORT/api/v1`) |
 | `TEST_DATABASE_PATH` | gogo's SQLite test database for E2E seeding, relative to `../backend`; the file name must end in `_test.db`. Read from `../backend/.env` unless set here |
 
@@ -135,7 +135,7 @@ Follow [docs/recipes/add-feature.md](docs/recipes/add-feature.md), or [full-stac
 
 ```bash
 docker build -t goptimizer-frontend .
-docker run -p 8080:80 -e API_UPSTREAM=http://host.docker.internal:8181 goptimizer-frontend
+docker run -p 8080:80 -e API_UPSTREAM=http://host.docker.internal:8747 goptimizer-frontend
 ```
 
 The image is the production build behind nginx. With `VITE_API_BASE_URL` left empty at build time the app calls its own origin, and nginx forwards `/api` and `/health` to `API_UPSTREAM`.

@@ -59,10 +59,10 @@ make seed
 make dev
 ```
 
-The API listens on http://localhost:8181 and the Swagger UI is at http://localhost:8181/swagger/index.html.
+The API listens on http://localhost:8747 and the Swagger UI is at http://localhost:8747/swagger/index.html.
 
 ```bash
-curl -s localhost:8181/api/v1/auth/login \
+curl -s localhost:8747/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"admin@example.com","password":"password123"}'
 ```
@@ -180,9 +180,9 @@ JWT_ACCESS_TOKEN_TTL=1h
 JWT_REFRESH_TOKEN_TTL=720h
 ALLOW_REGISTRATION=false          # open POST /auth/register to anyone
 AUTH_RATE_LIMIT=true              # throttle login, refresh and emailed-link endpoints
-FRONTEND_URL=http://localhost:5173   # base of the links in emails
+FRONTEND_URL=http://localhost:5747   # base of the links in emails
 TRUSTED_PROXIES=127.0.0.1,::1     # whose X-Forwarded-For to believe for the client IP
-PORT=8181
+PORT=8747
 APP_ENV=development
 APP_NAME=Goptimizer
 CORS_ALLOWED_ORIGINS=          # comma-separated; empty or * allows any origin

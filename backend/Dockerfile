@@ -21,7 +21,7 @@ USER app
 ENV DATABASE_PATH=/data/db/goptimizer.db \
     LOG_OUTPUT=stdout \
     LOG_FORMAT=json
-EXPOSE 8181
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD curl -fsS http://localhost:${PORT:-8181}/health || exit 1
+EXPOSE 8747
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD curl -fsS http://localhost:${PORT:-8747}/health || exit 1
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["/app/api"]
