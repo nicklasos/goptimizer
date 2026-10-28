@@ -1,4 +1,4 @@
-import { DashboardOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
+import { FolderOutlined, SettingOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
 import { ROLE_ADMIN } from '@/auth/roles'
 import type { NavItem } from './navMatch'
 
@@ -7,10 +7,18 @@ export const TOP_NAV: NavItem[] = [
   {
     key: 'dashboard',
     labelKey: 'navigation.dashboard',
-    icon: <DashboardOutlined />,
+    icon: <FolderOutlined />,
     testId: 'nav-dashboard',
-    roles: 'all',
+    roles: [ROLE_ADMIN],
     path: '/',
+  },
+  {
+    key: 'settings',
+    labelKey: 'navigation.settings',
+    icon: <SettingOutlined />,
+    testId: 'nav-settings',
+    roles: [ROLE_ADMIN],
+    path: '/settings',
   },
 ]
 

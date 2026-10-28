@@ -124,7 +124,7 @@ test.describe('User management as a plain user', () => {
     const users = new UserManagementPage(page)
 
     await shell.goto('/')
-    await expect(shell.navItem('dashboard')).toBeVisible()
+    await expect(shell.navItem('dashboard')).toHaveCount(0)
     await shell.openUserMenu()
     await expect(shell.userMenuItem('users')).toHaveCount(0)
 

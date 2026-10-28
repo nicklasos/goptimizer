@@ -7,11 +7,11 @@ test.describe('Unknown URLs', () => {
 
     await shell.goto('/no-such-page')
     await expect(page.getByTestId('page-not-found')).toBeVisible()
-    await expect(shell.mainMenu).toBeVisible()
+    await expect(page.getByTestId('app-header')).toBeVisible()
     await expect(page).toHaveURL(/no-such-page/)
 
     await page.getByTestId('not-found-home-button').click()
-    await expect(page.getByTestId('dashboard-page')).toBeVisible()
+    await expect(page).toHaveURL(/\/$/)
   })
 
   test('nested unknown paths are not found either', async ({ page }) => {

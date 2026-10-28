@@ -17,7 +17,7 @@
     "search": "Search",
     "notFound": "Not found",
     "retry": "Try again",
-    "backHome": "Back to the dashboard"
+    "backHome": "Back to the folders"
   },
   "auth": {
     "welcome": "Sign in to continue",
@@ -54,20 +54,99 @@
     }
   },
   "navigation": {
-    "dashboard": "Dashboard",
+    "dashboard": "Folders",
     "users": "Users",
-    "profile": "Profile"
+    "profile": "Profile",
+    "settings": "Settings"
   },
   "enums": {
     "role": {
       "super-admin": "Super admin",
       "admin": "Admin",
       "user": "User"
+    },
+    "mode": {
+      "lossy": "Lossy",
+      "lossless": "Lossless"
+    },
+    "need": {
+      "png_lossy": "PNG lossy",
+      "png_lossless": "PNG lossless",
+      "jpeg": "JPEG",
+      "gif": "GIF"
     }
   },
-  "dashboard": {
-    "title": "Dashboard",
-    "empty": "Folders arrive soon."
+  "folders": {
+    "title": "Folders",
+    "subtitle": "Folders on this server whose images are kept optimized.",
+    "add": "Add folder",
+    "edit": "Edit folder",
+    "empty": "No folders yet. Add the folder of a project, such as its uploads.",
+    "active": "Active",
+    "paused": "Paused",
+    "scanSummary": "Quick scan every {{minutes}} min, full scan every {{hours}} h",
+    "name": "Name",
+    "namePlaceholder": "Shop uploads",
+    "path": "Path on this server",
+    "pathHint": "An absolute path to a directory. A symlink is saved as the directory it points to.",
+    "scanInterval": "Quick scan every",
+    "scanIntervalHint": "Finds new and renamed images. 5 minutes to 7 days.",
+    "fullScanInterval": "Full scan every",
+    "fullScanIntervalHint": "Also finds images rewritten in place. 1 hour to 30 days.",
+    "minutes": "min",
+    "hours": "h",
+    "compression": "Compression",
+    "mode": "Mode",
+    "modeHint": {
+      "lossy": "Smaller files, as TinyPNG makes them: a palette for PNG and a quality cap for JPEG. Each result must still look the same by SSIM.",
+      "lossless": "Every pixel stays the same. The saving is smaller."
+    },
+    "jpegMaxQuality": "JPEG maximum quality",
+    "gifLossy": "GIF lossiness",
+    "pngQualityMin": "PNG quality, lowest",
+    "pngQualityMax": "PNG quality, target",
+    "minSsim": "Minimum similarity (SSIM)",
+    "minSavingPercent": "Minimum saving",
+    "minAgeMinutes": "Leave new files alone for",
+    "excludes": "Exclude",
+    "excludesHint": "Patterns relative to the folder, such as cache/** or *.thumb.png. Press Enter after each.",
+    "saved": "Folder saved",
+    "deleted": "Folder deleted",
+    "deleteConfirm": "Delete this folder?",
+    "deleteHint": "Goptimizer forgets it. The files on disk stay as they are."
+  },
+  "settings": {
+    "title": "Settings",
+    "toolsHint": "The programs that compress images, found on the PATH of the API.",
+    "refresh": "Check again",
+    "program": "Program",
+    "usedFor": "Used for",
+    "status": "Status",
+    "version": "Version and path",
+    "install": "Install",
+    "installed": "Installed",
+    "missing": "Missing",
+    "required": "Required",
+    "orAlternative": "Or {{names}} instead",
+    "noApt": "Ubuntu has no package; {{names}} does the same work.",
+    "unmetTitle": "Some images cannot be optimized until a program is installed",
+    "unmetNeed": "{{need}}: install {{programs}}",
+    "purpose": {
+      "pngquant": "Lossy PNG: reduces the colors to a palette",
+      "oxipng": "Lossless PNG recompression",
+      "optipng": "Lossless PNG recompression, when oxipng is missing",
+      "jpegoptim": "JPEG: caps the quality and strips comments",
+      "gifsicle": "GIF optimization, lossy or lossless"
+    },
+    "globalTitle": "Global settings",
+    "workers": "Images optimized at once",
+    "workersHint_one": "0 means one less than the CPU count: {{count}} image on this server.",
+    "workersHint_other": "0 means one less than the CPU count: {{count}} images on this server.",
+    "scanWorkers": "Folders scanned at once",
+    "scanWorkersHint": "From 1 to 16.",
+    "nice": "Run tools at low priority",
+    "niceHint": "Runs them under nice and ionice, so the sites on this server stay fast.",
+    "saved": "Settings saved"
   },
   "userManagement": {
     "byRole": {
@@ -141,6 +220,16 @@
     "users.not_found": "User not found",
     "users.forbidden_role": "You cannot manage users with this role",
     "users.cannot_delete_self": "You cannot delete yourself",
+    "folders.not_found": "Folder not found",
+    "folders.name_taken": "Another folder has this name",
+    "folders.path_not_absolute": "Enter an absolute path, starting with /",
+    "folders.path_not_found": "No such directory on the server",
+    "folders.path_not_directory": "This is a file, not a directory",
+    "folders.path_unreadable": "The service cannot read this directory",
+    "folders.path_system": "System directories cannot be added",
+    "folders.path_overlaps": "This path is inside another folder, or contains one",
+    "folders.png_quality_range": "The lowest quality must not be above the target",
+    "folders.exclude_invalid": "One of the patterns is not valid",
     "validation.failed": "Validation failed",
     "validation.required": "Required field",
     "validation.email": "Invalid email",

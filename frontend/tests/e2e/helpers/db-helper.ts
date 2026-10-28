@@ -99,9 +99,9 @@ export class DatabaseHelper {
     return token
   }
 
-  /** Refresh tokens and emailed tokens go with their user (ON DELETE CASCADE). */
+  /** Refresh tokens and emailed tokens go with their user (ON DELETE CASCADE). Folders made through the UI are named `E2E ...`. */
   async cleanupTestData(): Promise<void> {
-    this.connection().exec(`DELETE FROM users WHERE email LIKE 'e2e-%@example.com'`)
+    this.connection().exec(`DELETE FROM users WHERE email LIKE 'e2e-%@example.com'; DELETE FROM folders WHERE name LIKE 'E2E %'`)
   }
 }
 
