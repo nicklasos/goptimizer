@@ -53,7 +53,7 @@ ansible-playbook provision.yml
 Two things the first run will tell you about:
 
 1. **Repository access.** If the clone fails, the playbook prints a public key. Add it to the repository as a read-only deploy key (GitHub: Settings → Deploy keys) and run the playbook again.
-2. **The first account.** When the application is up and has no users, the playbook prints the command that creates the first super admin.
+2. **The first account.** When the application is up and has no users, the playbook prints the command that creates the first admin (`create-user ... --admin`).
 
 `hosts.yml` and `secrets.yml` are ignored by git. To keep the secrets in the repository anyway, encrypt them with `ansible-vault encrypt group_vars/all/secrets.yml` and add `--ask-vault-pass` to the commands.
 

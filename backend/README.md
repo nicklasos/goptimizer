@@ -6,7 +6,7 @@
 
 <p align="center">
   The Go API behind Goptimizer.<br>
-  Gin, SQLite, sqlc, Goose, JWT auth with roles.
+  Gin, SQLite, sqlc, Goose, JWT auth with admins and users.
 </p>
 
 <p align="center">
@@ -75,8 +75,8 @@ Run the tests with `make test`. They need no database setup: each test gets its 
 - **Password reset and email verification**: single-use emailed links, stored only as hashes
 - **Login rate limiting**: per-IP bursts and an escalating lockout per email, with `Retry-After`
 - **Safe defaults**: registration closed unless `ALLOW_REGISTRATION=true`, and a weak `JWT_SECRET` is refused in production
-- **Roles**: `super-admin`, `admin`, `user` with `RequireRole` middleware; roles are read from the database on every request
-- **User management**: super admins manage super admins and admins, admins manage users
+- **Admins and users**: `users.is_admin`, read from the database on every request; `RequireAdmin` guards the admins-only routes
+- **User management**: admins create, edit, promote, demote and delete any account, and can never remove the last admin
 - **Mail**: SMTP service (`app.Mail`), logged instead of sent in debug mode, with an in-memory sender for tests
 - **Policies**: who may do what to a record, one small `policy.go` per module
 - **Factories and seed data**: `app.Create.User(factory.Admin())` in tests, `make seed` for a development database
@@ -113,7 +113,7 @@ gogo/
 │   ├── users/                   # User management
 │   ├── tools/                   # Finds programs on PATH, and a fake for tests
 │   ├── db/queries/              # SQL queries (sqlc)
-│   ├── middleware/              # JWT, roles, CORS, request ID, pagination, recovery
+│   ├── middleware/              # JWT, RequireAdmin, CORS, request ID, pagination, recovery
 │   ├── cache/                   # In-process cache with TTLs
 │   ├── mail/                    # SMTP mail service + MemorySender
 │   ├── errs/                    # Domain errors
@@ -147,7 +147,7 @@ make swagger          # Generate API docs
 - `POST /api/v1/auth/register` - Register new user (403 unless `ALLOW_REGISTRATION=true`)
 - `POST /api/v1/auth/login` - Login
 - `POST /api/v1/auth/refresh` - Refresh token
-- `GET /api/v1/auth/me` - Get current user with roles (protected)
+- `GET /api/v1/auth/me` - Get the current user, with `is_admin` (protected)
 - `PUT /api/v1/auth/me` - Update name and email (protected)
 - `PUT /api/v1/auth/me/password` - Change password, revokes refresh tokens (protected)
 - `POST /api/v1/auth/logout` - Logout and revoke refresh tokens (protected)
@@ -156,14 +156,16 @@ make swagger          # Generate API docs
 - `POST /api/v1/auth/verify-email` - Confirm an email address with the emailed token
 - `POST /api/v1/auth/me/verify-email` - Send the verification email again (protected)
 
-### Users (admin and super admin)
-- `GET /api/v1/users?role=user|admin|super-admin` - Paginated list of users with a role
-- `POST /api/v1/users` - Create a user with one role
-- `PUT /api/v1/users/:id` - Update name and email
+### Users (admins only)
+- `GET /api/v1/users` - Paginated list of every account
+- `POST /api/v1/users` - Create a user, an admin with `is_admin: true`
+- `PUT /api/v1/users/:id` - Update name, email and `is_admin`
 - `POST /api/v1/users/:id/set-password` - Set a password, revokes the user's refresh tokens
-- `DELETE /api/v1/users/:id` - Delete a user (not yourself)
+- `DELETE /api/v1/users/:id` - Delete a user
 
-Admins can only manage accounts whose role is `user`; anything else returns 403 `users.forbidden_role`.
+An admin cannot delete themselves (400 `users.cannot_delete_self`) or remove their own admin flag (400 `users.cannot_demote_self`), and no change may leave zero admins (409 `users.last_admin`). A plain user gets 403 on every `/users` route.
+
+Folders, settings and tools are open to every signed-in user.
 
 ### Other
 - `GET /health` - Health check (database); 503 with a per-dependency `checks` map when one is down

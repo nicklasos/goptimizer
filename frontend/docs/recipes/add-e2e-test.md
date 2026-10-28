@@ -8,14 +8,14 @@ The suite runs against a real gogo API on the test database. It starts both serv
 | Folder | Session | Use it for |
 |---|---|---|
 | `tests/e2e/shared-session/` | One plain user, signed in once for the whole run | Flows any user can do, that do not change the account itself |
-| `tests/e2e/own-session/` | None; the spec signs in itself | Anything role-specific, anything that changes the account (password, profile), and signed-out pages |
+| `tests/e2e/own-session/` | None; the spec signs in itself | Anything admin-only, anything that changes the account (password, profile), and signed-out pages |
 
 A spec runs because of the folder it is in. There is nothing to register.
 
 ## 2. Data
 
-- `loginAs(page, 'admin')` creates a user with that role and signs the page in. It returns the user.
-- `dbHelper.createUser({ roles, emailVerified })` and `dbHelper.createEmailToken(userId, 'password_reset')` seed the database directly.
+- `loginAs(page, 'admin')` or `loginAs(page, 'user')` creates an admin or a plain user and signs the page in. It returns the user.
+- `dbHelper.createUser({ isAdmin, emailVerified })` and `dbHelper.createEmailToken(userId, 'password_reset')` seed the database directly.
 - Records created through the UI must be findable by cleanup: emails from `uniqueEmail('label')`, names starting with `E2E`.
 - Add a method to `tests/e2e/helpers/db-helper.ts` when a new table needs seeding.
 

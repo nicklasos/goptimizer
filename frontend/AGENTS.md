@@ -27,7 +27,7 @@ src/
   main.tsx  index.css  vite-env.d.ts
   app/       App, providers, queryClient, router, theme, i18n
   api/       client, errors, types, queryKeys, url
-  auth/      authStore, roles, guards, LoginPage, RoleTags
+  auth/      authStore, guards (RequireAdmin), LoginPage
   layout/    AppShell, nav (menu registry), navMatch
   shared/    components/, hooks/, utils/, lib/unsavedChanges/
   features/  <module>/{types,api,hooks}.ts + pages/ (+ components/)
@@ -52,7 +52,7 @@ Import with the `@/` alias. A feature imports from `api`, `auth`, `layout` and `
 - `/folders/new` and `/folders/:id/edit` are `FolderEditorPage`, the long-form pattern: `useUnsavedChangesGuard`, `useGuardedNavigate`, `applyFormErrors`. Form field names are the API's paths (`['profile', 'jpeg_max_quality']`), so server errors land under their fields. Lossy-only fields are not rendered in lossless mode, so the page submits `form.getFieldsValue(true)`.
 - `NEW_FOLDER` in `features/folders/folderForm.ts` mirrors the API's default profile and intervals; change both together.
 - `/settings` (`features/settings/pages/SettingsPage`) lists the image tools from `GET /tools` and saves the global settings. A tool's purpose is translated by `settings.purpose.<name>`, with the API's English text as the fallback.
-- Folders, settings and users are admin pages. A plain user sees no top-bar items and a forbidden page at `/`.
+- Folders and settings are open to every signed-in user. Only `/users` is for admins.
 
 ## API client
 - `api.get/post/put/patch/del<T>()` return the response's `data` field.
@@ -69,18 +69,18 @@ Import with the `@/` alias. A feature imports from `api`, `auth`, `layout` and `
 ## Pagination
 `usePageParams()` keeps `page` / `page_size` in the URL; `useTablePagination(paging, query.data)` turns the response into the `pagination` prop of `ResponsiveTable`. Without that prop `ResponsiveTable` pages in the browser.
 
-## Roles
-- `super-admin`, `admin`, `user` (`auth/roles.ts`). `hasAnyRole` lets a super admin through everything, the same as the backend.
-- Routes: wrap in `<RequireRole roles={[...]}>`, which renders `<Forbidden />`.
-- Menus: `TOP_NAV` (the top bar) and `USER_MENU` (under the user's name, above Sign out) in `layout/nav.tsx`, each item with `roles`. The top bar highlights the item with the longest matching path; a page from the user menu highlights nothing there. On phones the top bar's items move into a drawer behind a menu button.
+## Admins and users
+- An account is an admin or a plain user: `is_admin` on the session user (`useCurrentUser()`). Admins also manage accounts; everything else is open to every user.
+- Routes: wrap an admins-only page in `<RequireAdmin>`, which renders `<Forbidden />`.
+- Menus: `TOP_NAV` (the top bar) and `USER_MENU` (under the user's name, above Sign out) in `layout/nav.tsx`; an item with `adminOnly: true` is shown to admins alone. The top bar highlights the item with the longest matching path; a page from the user menu highlights nothing there. On phones the top bar's items move into a drawer behind a menu button.
 - Guards only hide UI. The backend enforces access.
-- User management: `/users` (`features/users/pages/UsersPage.tsx`), reached from the user menu. One tab per role in `?role=` (none means plain users); a tab shows when `canManageUser` allows that role, so admins see only Users and super admins also see Admins and Super admins. Any other `role` renders `<Forbidden />`. The old `/admin/admins` and `/admin/super-admins` redirect to their tabs.
+- User management: `/users` (`features/users/pages/UsersPage.tsx`), reached from the user menu by admins. One paginated table of every account with an Admin tag; the create and edit forms have an Admin switch. An admin's own row offers no delete and their own Admin switch is disabled (`canDeleteOrDemote`).
 - Language: the Profile page's picker (`shared/utils/languages.ts` lists the languages). i18next saves the choice in `localStorage` and `app/i18n.ts` mirrors it on `<html lang>`.
 
 ## Policies
-- Who may do what to a record lives in `features/<module>/policy.ts` as pure functions: `canManageUser(actor, target)`, or a `canManageX(user)` for an area that is admins only.
+- Who may do what to a record lives in `features/<module>/policy.ts` as pure functions, such as `canDeleteOrDemote(actor, target)`.
 - They mirror the API's `internal/<module>/policy.go` and only decide what the UI offers (a hidden button, a disabled action). The API enforces the same rule and is the authority.
-- Route guards (`RequireRole`) are for "this page is for these roles". A policy is for rules that depend on the record.
+- The route guard (`RequireAdmin`) is for "this page is for admins". A policy is for rules that depend on the record.
 - Every policy has cases in `src/features/policies.test.ts`, the same cases as the API's policy test.
 
 ## Crashes and unknown URLs
@@ -113,7 +113,7 @@ make build
 
 ## E2E notes
 - `tests/e2e/shared-session/`: specs that share one signed-in plain user (`auth.setup.ts` writes `.auth/user.json`).
-- `tests/e2e/own-session/`: specs that sign in themselves with `loginAs(page, role)`, or test the signed-out pages.
+- `tests/e2e/own-session/`: specs that sign in themselves with `loginAs(page, 'admin' | 'user')`, or test the signed-out pages.
 - A spec runs in the project of the folder it is in; nothing has to be registered.
 - Users are seeded straight into the test database (`helpers/db-helper.ts`); emails start with `e2e-` so cleanup finds them. Use `uniqueEmail()` for users created through the UI.
 - Folders made through the UI are named `E2E ...` so cleanup finds them, and point at a directory the spec creates under `os.tmpdir()` (the API runs on the same machine). The folders table is shared by every spec, so never assert on the whole list or the empty state.

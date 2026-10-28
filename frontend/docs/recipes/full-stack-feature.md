@@ -36,7 +36,6 @@ Follow [add-feature.md](add-feature.md).
 |---|---|
 | A new error key in `internal/errs/keys.go` | A translation under `errors.<key>` in **both** locale files |
 | A rule in `internal/<module>/policy.go` | The same rule in `src/features/<module>/policy.ts`, with the same test cases |
-| A new role | `src/auth/roles.ts`, `enums.role.<role>` in the locales, and the menus in `src/layout/nav.tsx` |
 | A new enum value | The generated union picks it up; add `enums.<name>.<value>` to the locales |
 | A factory in `internal/factory` | A matching method in `tests/e2e/helpers/db-helper.ts` if E2E tests need the data |
 

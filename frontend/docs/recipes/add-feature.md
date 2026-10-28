@@ -41,8 +41,8 @@ Page skeleton: `PageStack` > `Card` > `PageHeader` (title, `mainAction`) + conte
 ## 3. Wire it in
 
 1. `src/app/router.tsx`: `const OrdersPage = lazy(() => import('@/features/orders/pages/OrdersPage'))` and a `<Route>`.
-   Wrap it in `<RequireRole roles={[...]}>` when only some roles may open it.
-2. `src/layout/nav.tsx`: an entry in `TOP_NAV` (the top bar) or `USER_MENU` (under the user's name, for account and administration pages) with `roles` and a `testId`.
+   Wrap it in `<RequireAdmin>` when only admins may open it.
+2. `src/layout/nav.tsx`: an entry in `TOP_NAV` (the top bar) or `USER_MENU` (under the user's name, for account and administration pages) with a `testId`, and `adminOnly: true` when only admins see it.
 3. Both `src/locales/en/translation.json` and `src/locales/uk/translation.json`: `navigation.orders`, an `orders.*` section,
    and `errors.<key>` for every error key the API can return for this resource. A unit test fails when the two files differ.
 

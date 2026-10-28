@@ -141,11 +141,11 @@
       vars: *nginx_vars
       when: install_nginx | default('write') == 'print'
 
-    - name: Explain how to create the first super admin
+    - name: Explain how to create the first admin
       ansible.builtin.debug:
         msg: |
-          Installed. If there are no accounts yet, create the first super admin on the server:
+          Installed. If there are no accounts yet, create the first admin on the server:
 
-            cd {{ backend_dir }} && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password"
+            cd {{ backend_dir }} && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password" --admin
 
           Then sign in at {{ site_url }}. Later releases: cd {{ app_root }} && make deploy

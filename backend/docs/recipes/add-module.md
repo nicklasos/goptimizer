@@ -39,7 +39,7 @@ Details that are easy to get wrong:
   (`internal.NewPaginationMeta`), `internal.RespondMessage(c, "...")` when there is nothing to return.
   Timestamps through `internal.FormatTime`.
 - **Two writes that must both happen** go inside `s.tx.WithTx(ctx, func(q *db.Queries) error { ... })`.
-- **Role-restricted routes**: `group.Use(app.AuthMiddleware, middleware.RequireRole(middleware.RoleAdmin))`.
+- **Admins-only routes**: `group.Use(app.AuthMiddleware, middleware.RequireAdmin)`.
 - **Swagger annotations** on every handler, copied from `internal/users/handler.go` and adjusted. Errors are `errs.ErrorResponse`.
 
 ## 3. Register it

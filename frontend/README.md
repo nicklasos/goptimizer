@@ -46,10 +46,10 @@ npm install
 npm run dev             # http://localhost:5747
 ```
 
-Create the first super admin in the gogo repo, then sign in with it:
+Create the first admin in the gogo repo, then sign in with it:
 
 ```bash
-make cli-create-user EMAIL=admin@example.com PASSWORD=password123
+make cli-create-user EMAIL=admin@example.com PASSWORD=password123 ADMIN=1
 ```
 
 ### Tests
@@ -65,11 +65,11 @@ The E2E run starts its own gogo API against the test database and its own Vite s
 
 - **Auth**: email/password login, automatic token refresh, session kept across reloads and tabs
 - **Password reset and email verification**: forgot-password, reset and confirm pages for the emailed links, and a "try again in N minutes" message when the API throttles sign-in
-- **Policies**: rules (`canManageUser(actor, target)`) that mirror the API's and decide what the UI offers
+- **Policies**: rules (`canDeleteOrDemote(actor, target)`) that mirror the API's and decide what the UI offers
 - **Agent recipes**: step-by-step procedures in `docs/recipes/` for the common changes, also available as Claude Code skills
-- **Roles**: `super-admin`, `admin`, `user`, with route guards and role-filtered menus
+- **Admins and users**: `is_admin` on the session user, an admin route guard and admin-only menu items
 - **Navigation**: a top bar with the logo, the sections and a user menu (profile, user management, sign out); on phones the sections move into a drawer
-- **User management**: one page from the user menu, with a tab per role the signed-in user may manage
+- **User management**: one page from the user menu for admins, with an Admin switch on every account
 - **Profile**: name, email, language and password
 - **Generated API types**: `make api-types` turns the backend's OpenAPI file into `src/api/schema.ts`
 - **Typed API client**: `ApiError`, server validation errors mapped onto form fields, translated error keys
@@ -113,7 +113,7 @@ The E2E ports are specific to this project so Playwright never attaches to anoth
 src/
   app/        App, providers, queryClient, router, theme, i18n
   api/        client (fetch + refresh-on-401), ApiError, shared types, query keys
-  auth/       authStore (persist key: goptimizer-auth), roles, guards, LoginPage
+  auth/       authStore (persist key: goptimizer-auth), guards, LoginPage
   layout/     AppShell, nav registry
   shared/     components, hooks, utils, lib/unsavedChanges
   features/   dashboard, users, account
@@ -129,7 +129,7 @@ Follow [docs/recipes/add-feature.md](docs/recipes/add-feature.md), or [full-stac
 
 - Success: `{ "data": ... }`; paginated lists: `{ "data": [...], "pagination": { total, current_page, last_page, per_page } }`
 - Errors: `{ "error_key", "message", "status" }`; validation: `{ "error_key": "validation.failed", "errors": { "field": ["validation.field.rule"] } }`
-- `/auth/login` returns `{ access_token, refresh_token, user }`; `user` is `{ id, email, name, roles }`
+- `/auth/login` returns `{ access_token, refresh_token, user }`; `user` is `{ id, email, name, is_admin, email_verified }`
 
 ## Docker
 

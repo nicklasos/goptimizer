@@ -14,6 +14,7 @@ It is built from [Gogobackup](https://github.com/nicklasos/gogobackup), which is
 | Sources | Local folders only. `kind` is a registry, so SSH, S3 and GCS are new entries later. |
 | WebP and AVIF copies | Not in v1. |
 | SVG | Not in v1. SVG optimizers rewrite markup and can change how a file renders. |
+| Users | Two kinds: admins and users (`users.is_admin`). Every user can add, edit, pause and delete any folder and change the settings. Admins also manage accounts and can make other admins. |
 
 ## Phases
 
@@ -133,6 +134,5 @@ Same three playbooks as Gogobackup, with these changes:
 
 ## Open decisions
 
-- Users. Gogobackup has super admins, admins and users. A single admin role is probably enough, and phase 1 can drop the rest.
 - The web UI runs as root. Binding to `127.0.0.1` behind nginx keeps it off the network. An option for later is a root worker process plus an unprivileged API, split the way Gogobackup's `cmd/cron` is.
 - Email when a folder's images start failing, through the existing mail module. Not in v1 unless asked.

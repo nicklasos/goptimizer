@@ -30,7 +30,7 @@ backend/
 │   │   ├── handlers.go          # HTTP handlers
 │   │   ├── routes.go            # Route registration (sets app.AuthMiddleware)
 │   │   └── types.go             # Request/response types
-│   ├── users/                   # User management (super admins, admins, users)
+│   ├── users/                   # User management (admins only) and the lockout rule
 │   ├── folders/                 # Folders to keep optimized: kind registry (kinds.go), path rules, Profile
 │   ├── settings/                # The settings page: the one settings row, and GET /tools
 │   ├── tools/                   # Finds programs on PATH (System, or Fake in tests) and the image tool registry (images.go)
@@ -39,8 +39,8 @@ backend/
 │   │   ├── tx.go                # TxRunner.WithTx transaction helper
 │   │   └── queries/             # SQL queries (incl. technical Healthcheck)
 │   ├── middleware/
-│   │   ├── user_auth.go         # JWT authentication, loads roles from DB
-│   │   ├── require_role.go      # Roles + RequireRole / RequireAnyRole
+│   │   ├── user_auth.go         # JWT authentication, loads is_admin from DB
+│   │   ├── require_admin.go     # RequireAdmin
 │   │   ├── cors.go              # CORS from CORS_ALLOWED_ORIGINS
 │   │   ├── logging.go           # RequestID, Recovery, ErrorHandler
 │   │   ├── request.go           # CurrentUserID, PathID, Page: handler helpers that answer the error themselves
@@ -88,21 +88,20 @@ When adding new modules:
 - **Auth**: `auth.RegisterRoutes(app)` sets `app.AuthMiddleware`; protect a route group with `group.Use(app.AuthMiddleware)`
 - **Registration**: every module is listed once in `internal/server/server.go` `RegisterRoutes`. The API binary and the test server both call it, so a new module is one line there.
 
-## Roles
-- Roles live in `users.roles`, a JSON array in a TEXT column read as `db.Roles` (a `[]string`): `super-admin`, `admin`, `user` (constants in `middleware/require_role.go`).
-- `UserAuthMiddleware` loads roles from the database on every request; never read roles from JWT claims.
-- Guard routes with `middleware.RequireRole(middleware.RoleAdmin)` or `RequireAnyRole(...)`. A super admin passes every role check.
-- In handlers use `middleware.GetUserRolesFromContext(c)`.
-- Who manages whom is one rule, `users.CanManage`: super admins manage everyone, admins manage only accounts whose every role is `user`.
-- The first super admin is created with `make cli-create-user EMAIL=... PASSWORD=...`.
+## Admins and users
+- There are two kinds of account: `users.is_admin` is true for admins. Every signed-in user can use folders, settings and tools; only admins manage accounts (`/users`).
+- `UserAuthMiddleware` loads `is_admin` from the database on every request; never read it from JWT claims.
+- Guard an admins-only route group with `middleware.RequireAdmin`. In a handler, `middleware.CurrentActor(c)` carries `IsAdmin`.
+- An admin can create, edit, promote, demote and delete any account. `users.Lockout` stops an admin deleting or demoting themselves, and any change that would leave zero admins (409 `users.last_admin`). It runs inside the write's transaction, so two admins demoting each other at once still leave one.
+- The first admin is created with `make cli-create-user EMAIL=... PASSWORD=... ADMIN=1` (`create-user --admin`). Without the flag the account is a plain user.
 
 ## Policies
 - Who may do what to a record lives in the module's `policy.go` as pure functions: `CanView(actor middleware.Actor, record db.X) bool`.
 - A handler gets the actor with `middleware.CurrentActor(c)` and passes it to the service. The service loads the record, calls the policy, and returns a 403 domain error on a no (404 stays for "does not exist").
 - Look records up by ID alone and let the policy decide; do not hide the rule inside a `WHERE user_id = ...`.
-- `middleware.RequireRole` on a route group is for "this whole area is admins only". A policy is for rules that depend on the record.
+- `middleware.RequireAdmin` on a route group is for "this whole area is admins only". A policy is for rules that depend on the record.
 - The frontend mirrors each policy in `features/<module>/policy.ts` to hide what is not allowed. The API stays the authority.
-- `internal/users/policy.go` is the reference; `tests/unit/policy_test.go` shows how to test one. A module that only admins reach needs no policy: `RequireRole` on its route group is the rule.
+- `internal/users/policy.go` is the reference; `tests/unit/policy_test.go` shows how to test one. A module that only admins reach needs no policy: `RequireAdmin` on its route group is the rule.
 
 ## Folders, settings and tools
 - A folder's `kind` is the `kinds` map in `internal/folders/kinds.go`; `local` is the only entry. A new source (SSH, S3) is a new entry with its own `resolve`.
@@ -218,7 +217,7 @@ make build            # Build binary
 make test             # Run all tests (each test gets its own SQLite file)
 make seed             # Accounts and sample data for an empty development database
 make cli migrate up   # Any console command; flags go after -- (make cli -- create-user --email a@b.c --password secret123)
-make cli-create-user EMAIL=a@b.c PASSWORD=secret123   # Create a user (default role super-admin)
+make cli-create-user EMAIL=a@b.c PASSWORD=secret123 ADMIN=1   # Create an admin (leave out ADMIN for a plain user)
 make migrate-up       # Apply migrations
 make sqlc             # Generate sqlc code
 make swagger          # Generate API docs (then run `make api-types` in `../frontend`)

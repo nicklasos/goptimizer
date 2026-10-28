@@ -164,12 +164,12 @@
   register: accounts
   changed_when: false
 
-- name: Explain how to create the first super admin
+- name: Explain how to create the first admin
   ansible.builtin.debug:
     msg: |
-      The application is up and has no accounts yet. Create the first super admin on the server:
+      The application is up and has no accounts yet. Create the first admin on the server:
 
-        sudo -u {{ app_user }} sh -c 'cd {{ backend_dir }} && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password"'
+        sudo -u {{ app_user }} sh -c 'cd {{ backend_dir }} && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password" --admin'
 
       Then sign in at {{ site_url }}
   when: accounts.stdout | int == 0

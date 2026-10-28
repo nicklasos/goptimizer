@@ -61,6 +61,9 @@ errs.NewForbiddenError(key, message)
 
 // Internal Error (500)
 errs.NewInternalError(key, message)
+
+// Any other status, such as 409 for users.last_admin
+errs.NewDomainError(key, message, http.StatusConflict)
 ```
 
 ## Error Keys

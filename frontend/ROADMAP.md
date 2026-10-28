@@ -16,7 +16,6 @@ What is worth adding to the skeleton next, in priority order. Each item names th
 | Server-side search and filters | A filter row above a table whose values go into the query params, debounced | `smartcity-backoffice-front/src/hooks/useDebouncedCallback.js` |
 | Theme tokens + dark mode | `app/theme.ts` is the single place; add an algorithm switch | `sytno/frontend/src/app/theme.ts` for a full token set |
 | Registration page | The API can open `/auth/register`; there is no page for it | — |
-| Role editing | Roles are fixed when an account is created; needs the matching gogo endpoint | — |
 
 ## P3
 
@@ -29,4 +28,4 @@ What is worth adding to the skeleton next, in priority order. Each item names th
 
 - **Component tests**: a second test stack (vitest + testing-library) for little gain over `node:test` plus Playwright.
 - **Generic CRUD hook factory**: hooks are about ten lines per entity and a factory hides the query keys. Revisit after three identical modules.
-- **Per-module permissions**: roles are enough for a skeleton.
+- **Per-module permissions**: admins and users are enough for a skeleton.

@@ -14,7 +14,6 @@ What is worth adding to the skeleton next, in priority order. Each item names th
 
 | Item | Why | Port from |
 |---|---|---|
-| Role editing | Roles are fixed at creation today; add `UpdateUserRoles` with a last-super-admin guard when a project needs it | — |
 | Pagination, sort and filter conventions | Only page parsing exists; every list endpoint reinvents filters | `smartcity-backoffice-api/internal/pagination/` |
 | Constraint registry | Table-driven unique / foreign key constraint → error key, instead of string matching | — |
 | Null helpers | Less boilerplate converting `sql.Null*` columns | — |
@@ -31,4 +30,4 @@ What is worth adding to the skeleton next, in priority order. Each item names th
 
 - **Queue / background jobs**: cron plus goroutines cover a skeleton; pick a queue per project.
 - **Keyed lock**: in-process only, misleading once there is more than one instance.
-- **Per-module permissions (JSON columns)** and **multi-tenancy**: project-specific; roles are enough here.
+- **Per-module permissions (JSON columns)** and **multi-tenancy**: project-specific; admins and users are enough here.

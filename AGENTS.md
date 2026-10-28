@@ -9,7 +9,7 @@ in one repository.
 
 | Folder | What it is |
 |---|---|
-| `backend/` | Go API: Gin, SQLite through sqlc, an in-process cache and scheduler, JWT auth with roles |
+| `backend/` | Go API: Gin, SQLite through sqlc, an in-process cache and scheduler, JWT auth, admins and users |
 | `frontend/` | Admin panel: React, TypeScript, Ant Design, TanStack Query |
 | `deploy/` | Ansible: provision a server or install on an existing one, deploy and update the application |
 

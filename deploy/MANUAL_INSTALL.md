@@ -29,7 +29,7 @@ cp deploy/examples/nginx.conf /etc/nginx/sites-available/goptimizer.conf
 ln -s /etc/nginx/sites-available/goptimizer.conf /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
 
-cd backend && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password"
+cd backend && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password" --admin
 ```
 
 `VITE_API_URL=/api/v1` makes the panel call its own origin, where nginx forwards `/api` to the API.

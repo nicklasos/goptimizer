@@ -133,6 +133,11 @@ Sign in at http://localhost:5747 as `admin@example.com` with the password `passw
 documentation is at http://localhost:8747/swagger/index.html. With `APP_DEBUG=true`, as in
 `.env.example`, emails go to the API's log.
 
+Every account can add, edit, pause and delete folders and change the settings. Admins also manage
+accounts at `/users` and can make other admins. `make cli -- create-user --email you@example.com
+--password a-long-password --admin` creates an admin. Without `--admin` the account is a plain user;
+the command used to create a super admin by default.
+
 ## Tests
 
 `make test` runs the backend's Go unit and integration tests, then the frontend's typecheck, ESLint, unit
@@ -143,7 +148,7 @@ before the first run.
 
 | Folder | What it is |
 |---|---|
-| [backend/](backend) | Go API: Gin, SQLite through sqlc, JWT auth with roles, an in-process scheduler |
+| [backend/](backend) | Go API: Gin, SQLite through sqlc, JWT auth with admins and users, an in-process scheduler |
 | [frontend/](frontend) | Admin panel: React, TypeScript, Ant Design, TanStack Query |
 | [deploy/](deploy) | Ansible: provision a server, install on an existing one, release |
 | [docs/](docs) | The plan and the logo |

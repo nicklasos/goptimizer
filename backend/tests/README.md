@@ -14,7 +14,7 @@ An API test (`tests/integration`):
 func TestUsersAPI_CreateUser(t *testing.T) {
     app := testkit.New(t)
     admin := app.Create.User(factory.Admin())
-    body := users.CreateUserRequest{Name: "Ada", Email: "ada@example.com", Password: "password123", Role: middleware.RoleUser}
+    body := users.CreateUserRequest{Name: "Ada", Email: "ada@example.com", Password: "password123"}
 
     app.As(admin).POST("/api/v1/users", body).
         AssertOK().
@@ -97,7 +97,7 @@ Every `Assert` stops the test on failure, prints the response body, and returns 
 
 | Factory | Options |
 |---|---|
-| `app.Create.User()` | `WithEmail`, `WithName`, `WithPassword`, `WithRoles`, `Admin()`, `SuperAdmin()`, `Unverified()` |
+| `app.Create.User()` | `WithEmail`, `WithName`, `WithPassword`, `Admin()`, `Unverified()` |
 | `app.Create.Folder()` | `WithFolderName`, `WithFolderPath` (not checked on disk), `WithProfile`, `Paused()` |
 
 A user has the password `factory.DefaultPassword`. Tests never write `INSERT` by hand, and neither
