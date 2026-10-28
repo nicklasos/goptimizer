@@ -11,7 +11,7 @@ cli: ## Run a console command (make cli migrate up)
 	$(MAKE) -C backend cli CLI_ARGS='$(CLI_ARGS)'
 else
 
-.PHONY: help up down seed test test-backend test-frontend deploy-setup provision install-remote deploy-remote deploy
+.PHONY: help up down seed admin test test-backend test-frontend deploy-setup provision install-remote deploy-remote deploy
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -23,6 +23,10 @@ down: ## Stop them
 	$(MAKE) -C backend down
 
 seed: ## Fill an empty development database with sample accounts
+	$(MAKE) -C backend seed
+
+admin: ## Local test admin: migrates, then seeds admin@example.com / password123 (refused in production)
+	$(MAKE) -C backend migrate-up
 	$(MAKE) -C backend seed
 
 test: test-backend test-frontend ## Run every test

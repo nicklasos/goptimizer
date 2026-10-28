@@ -89,7 +89,7 @@ export function AppShell() {
           }}
         >
           {isMobile ? (
-            <img src="/favicon.svg" alt="" width={30} height={30} />
+            <img src="/logo.svg" alt="" width={32} height={32} />
           ) : (
             <img src="/logo-wordmark.svg" alt="" width={132} height={36} />
           )}
@@ -112,7 +112,7 @@ export function AppShell() {
       {isMobile && (
         <Drawer
           data-testid="mobile-menu-drawer"
-          title={<img src="/favicon.svg" alt="" width={26} height={26} />}
+          title={<img src="/logo.svg" alt="" width={28} height={28} />}
           placement="left"
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}

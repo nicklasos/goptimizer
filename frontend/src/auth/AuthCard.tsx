@@ -28,7 +28,7 @@ export function AuthCard({ subtitle, children, testId }: Props) {
     >
       <Card style={{ width: '100%', maxWidth: isMobile ? 360 : 400 }}>
         <div style={{ textAlign: 'center', marginBottom: token.marginLG }}>
-          <img src="/favicon.svg" alt="" width={48} height={48} style={{ marginBottom: token.marginSM }} />
+          <img src="/logo.svg" alt="" width={72} height={72} style={{ marginBottom: token.marginSM }} />
           <Typography.Title level={isMobile ? 3 : 2} style={{ marginBottom: token.marginXS }}>
             {t('common.appName')}
           </Typography.Title>
