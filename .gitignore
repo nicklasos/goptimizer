@@ -1,0 +1,15 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+deploy/inventory/hosts.yml
+deploy/group_vars/all/secrets.yml
+*.retry
+
+# Dependencies and build output
+node_modules/
+dist/
+bin/
+tmp/
+
+.DS_Store

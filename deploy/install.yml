@@ -1,0 +1,173 @@
+# Installs the application on a server that already runs other things and already has Go,
+# Node.js, nginx and supervisor. Unlike provision.yml it installs no packages
+# and touches nothing but this application's own files. Safe to run again.
+#
+#   ansible-playbook install.yml
+#
+# The checkout is app_root itself. Afterwards releases are `make deploy` on the server.
+- name: Install the application on an existing server
+  hosts: all
+  become: true
+  vars:
+    # The account the API runs as. The checkout stays with root, who also builds and pulls.
+    app_user: "{{ install_user | default('www-data') }}"
+    nginx_hide_server_header: false
+    tls_ready: false
+  pre_tasks:
+    - name: Check the settings
+      ansible.builtin.assert:
+        that:
+          - jwt_secret is defined and jwt_secret != 'CHANGE_ME' and jwt_secret | length >= 32
+          - encryption_key is defined and encryption_key is match('^[A-Za-z0-9+/]{43}=$')
+          - app_name is match('^[a-z][a-z0-9-]*$')
+          - domain != 'example.com'
+          - "'your-account' not in repo_url"
+          - tls_mode in ['cloudflare', 'none']
+          - install_nginx | default('write') in ['write', 'print']
+        fail_msg: >-
+          Set jwt_secret (32+ characters) and encryption_key (openssl rand -base64 32) in
+          group_vars/all/secrets.yml, and
+          app_name, domain, repo_url and tls_mode (cloudflare or none) in group_vars/all/main.yml or
+          for the host in inventory/hosts.yml.
+        quiet: true
+
+    - name: Load the Cloudflare address ranges
+      ansible.builtin.include_vars:
+        file: roles/nginx/defaults/main.yml
+        name: nginx_defaults
+  tasks:
+    # As root, so the server's own access to the repository is what counts
+    - name: Clone the repository
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_root }}"
+        version: "{{ repo_branch }}"
+        accept_hostkey: true
+        update: false
+
+    - name: Create the folders the API writes to
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        owner: "{{ item.owner }}"
+        group: "{{ item.owner }}"
+        mode: "0755"
+      loop:
+        - { path: "{{ app_root }}/shared", owner: root }
+        - { path: "{{ database_path | dirname }}", owner: "{{ app_user }}" }
+        - { path: "{{ log_dir }}", owner: root }
+
+    - name: Write the backend environment file
+      ansible.builtin.template:
+        src: roles/app/templates/backend.env.j2
+        dest: "{{ backend_dir }}/.env"
+        owner: root
+        group: "{{ app_user }}"
+        mode: "0640"
+      register: backend_env
+
+    - name: Write the frontend environment file
+      ansible.builtin.template:
+        src: roles/app/templates/frontend.env.j2
+        dest: "{{ frontend_dir }}/.env"
+        mode: "0644"
+
+    # The same release the owner runs on the server afterwards; the restart is left to the tasks below
+    - name: Pull, build and migrate
+      ansible.builtin.command: make deploy SUPERVISOR_PROGRAM=
+      args:
+        chdir: "{{ app_root }}"
+      environment:
+        # install_extra_path: where Go or Node.js live when root does not find them (nvm, snap, ...)
+        PATH: "{{ ansible_env.PATH }}:{{ install_extra_path | default('/usr/local/go/bin:/snap/bin') }}"
+        GOFLAGS: "-buildvcs=false"
+      changed_when: true
+
+    - name: Write the supervisor program
+      ansible.builtin.template:
+        src: roles/app/templates/supervisor.conf.j2
+        dest: "/etc/supervisor/conf.d/{{ app_name }}.conf"
+        mode: "0644"
+      register: supervisor_conf
+
+    - name: Apply the supervisor configuration
+      ansible.builtin.command: supervisorctl update
+      when: supervisor_conf is changed
+      changed_when: true
+
+    - name: Restart the API
+      ansible.builtin.command: "supervisorctl restart {{ app_name }}-api"
+      when: supervisor_conf is not changed
+      changed_when: true
+
+    - name: Wait for the API to report healthy
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ api_port }}/health"
+        status_code: 200
+      register: health
+      until: health.status == 200
+      retries: 20
+      delay: 2
+
+    - name: Create the self-backup directory
+      ansible.builtin.file:
+        path: "{{ self_backup_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: "0750"
+      when: self_backup_enabled
+
+    - name: Make sure Gogobackup backs up its own database
+      ansible.builtin.command:
+        argv: [./bin/gogo-cli, self-backup, --dir, "{{ self_backup_dir }}"]
+      args:
+        chdir: "{{ backend_dir }}"
+      become: true
+      become_user: "{{ app_user }}"
+      register: self_backup
+      changed_when: "'Created' in self_backup.stdout"
+      when: self_backup_enabled
+
+    # install_nginx: write (default) puts the site in sites-available and reloads nginx;
+    # print only shows it, to paste into a file nginx already loads.
+    - name: Set up the nginx site
+      when: install_nginx | default('write') == 'write'
+      vars: &nginx_vars
+        cloudflare_ips: "{{ nginx_defaults.cloudflare_ips }}"
+      block:
+        - name: Write the nginx site
+          ansible.builtin.template:
+            src: roles/nginx/templates/site.conf.j2
+            dest: "/etc/nginx/sites-available/{{ app_name }}.conf"
+            mode: "0644"
+
+        - name: Enable the nginx site
+          ansible.builtin.file:
+            src: "/etc/nginx/sites-available/{{ app_name }}.conf"
+            dest: "/etc/nginx/sites-enabled/{{ app_name }}.conf"
+            state: link
+
+        - name: Check the nginx configuration
+          ansible.builtin.command: nginx -t
+          changed_when: false
+
+        - name: Reload nginx
+          ansible.builtin.service:
+            name: nginx
+            state: reloaded
+
+    - name: Print the nginx site to add by hand
+      ansible.builtin.debug:
+        msg: "{{ lookup('ansible.builtin.template', 'roles/nginx/templates/site.conf.j2') }}"
+      vars: *nginx_vars
+      when: install_nginx | default('write') == 'print'
+
+    - name: Explain how to create the first super admin
+      ansible.builtin.debug:
+        msg: |
+          Installed. If there are no accounts yet, create the first super admin on the server:
+
+            cd {{ backend_dir }} && ./bin/gogo-cli create-user --email you@example.com --password "a-long-password"
+
+          Then sign in at {{ site_url }}. Later releases: cd {{ app_root }} && make deploy

@@ -1,0 +1,59 @@
+.site-layout-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-inline-end: 8px;
+}
+
+.site-layout-header .top-nav {
+  flex: 1 1 auto;
+  min-width: 0;
+  border-bottom: none;
+  background: transparent;
+  line-height: 54px;
+}
+
+.top-nav-spacer {
+  flex: 1 1 auto;
+}
+
+.user-menu-button {
+  flex-shrink: 0;
+  max-width: 260px;
+}
+
+.user-menu-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-menu-caret {
+  margin-inline-start: 6px;
+  font-size: 10px;
+  color: var(--ant-color-text-tertiary);
+}
+
+.site-layout-content {
+  padding: 16px;
+  min-height: 280px;
+}
+
+@media (min-width: 768px) {
+  .site-layout-content {
+    padding: 24px;
+  }
+}
+
+.has-sticky-bar .site-layout-content {
+  padding-bottom: 88px;
+}

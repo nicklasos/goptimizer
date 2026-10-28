@@ -1,0 +1,86 @@
+- name: Install nginx
+  ansible.builtin.apt:
+    name: "{{ nginx_package }}"
+    state: present
+
+- name: Remove the default site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx
+
+- name: Collect the hostnames
+  ansible.builtin.set_fact:
+    site_domains: "{{ [domain] + ([api_domain] if api_domain else []) }}"
+
+- name: Check for existing certificates
+  ansible.builtin.stat:
+    path: "{{ letsencrypt_live_dir }}/{{ domain }}/fullchain.pem"
+  register: certificate
+  when: tls_mode == 'letsencrypt'
+
+# certbot proves ownership through nginx, so the site has to answer on port 80 first.
+- name: Obtain certificates from Let's Encrypt
+  when: tls_mode == 'letsencrypt' and not certificate.stat.exists
+  block:
+    - name: Install certbot
+      ansible.builtin.apt:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: present
+
+    - name: Write the site without TLS
+      ansible.builtin.template:
+        src: site.conf.j2
+        dest: "/etc/nginx/sites-available/{{ app_name }}.conf"
+        mode: "0644"
+      vars:
+        tls_ready: false
+
+    - name: Enable the site
+      ansible.builtin.file:
+        src: "/etc/nginx/sites-available/{{ app_name }}.conf"
+        dest: "/etc/nginx/sites-enabled/{{ app_name }}.conf"
+        state: link
+
+    - name: Reload nginx with the plain site
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+    - name: Request the certificates
+      ansible.builtin.command: >-
+        certbot certonly --nginx --non-interactive --agree-tos
+        --email {{ letsencrypt_email }}
+        --cert-name {{ domain }}
+        {% for name in site_domains %}-d {{ name }} {% endfor %}
+        --deploy-hook "systemctl reload nginx"
+      args:
+        creates: "{{ letsencrypt_live_dir }}/{{ domain }}/fullchain.pem"
+
+- name: Write the site
+  ansible.builtin.template:
+    src: site.conf.j2
+    dest: "/etc/nginx/sites-available/{{ app_name }}.conf"
+    mode: "0644"
+  vars:
+    tls_ready: "{{ tls_mode == 'letsencrypt' }}"
+  notify: Reload nginx
+
+- name: Enable the site
+  ansible.builtin.file:
+    src: "/etc/nginx/sites-available/{{ app_name }}.conf"
+    dest: "/etc/nginx/sites-enabled/{{ app_name }}.conf"
+    state: link
+  notify: Reload nginx
+
+- name: Check the nginx configuration
+  ansible.builtin.command: nginx -t
+  changed_when: false
+
+- name: Make sure nginx is running
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: true

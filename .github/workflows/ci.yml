@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  TEST_DATABASE_PATH: ./data/gogobackup_test.db
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    # Servers for the tests that dump a real database (tests/integration/database_dumps_test.go)
+    # The tests check these passwords never reach a log, so they must not be words a log uses.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: pg-ci-secret-41f9
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: my-ci-secret-8c2e
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pmy-ci-secret-8c2e"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+
+    env:
+      TEST_POSTGRES_URL: postgres://postgres:pg-ci-secret-41f9@127.0.0.1:5432/postgres?sslmode=disable
+      TEST_MYSQL_URL: mysql://root:my-ci-secret-8c2e@127.0.0.1:3306/
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # pg_dump must be at least the server's major version, so 17 from the PostgreSQL apt
+      # repository, first on PATH ahead of the runner's own. sqlite3 runs the SQLite dumps.
+      - name: Dump tools
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17 mysql-client sqlite3
+          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+
+      - name: Dump tool versions
+        run: pg_dump --version && pg_restore --version && mysqldump --version && mysql --version && sqlite3 --version
+
+      - name: Formatting
+        run: test -z "$(gofmt -l cmd config internal tests | grep -v '^internal/db/.*\.sql\.go$')"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: make test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    env:
+      CI: "true"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      # The E2E suite starts the API from ../backend, which reads its settings from .env
+      - name: Backend environment
+        working-directory: backend
+        run: |
+          cat > .env <<ENV
+          DATABASE_PATH=$TEST_DATABASE_PATH
+          TEST_DATABASE_PATH=$TEST_DATABASE_PATH
+          JWT_SECRET=ci-only-secret-not-used-anywhere-else
+          ENCRYPTION_KEY=Y2ktb25seS1lbmNyeXB0aW9uLWtleS0zMi1ieXRlcyE=
+          APP_ENV=test
+          LOG_OUTPUT=stdout
+          ENV
+
+      - name: Frontend environment
+        run: cp .env.example .env
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generated API types are up to date
+        run: make api-types-check
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # The E2E suite tests a SQLite plan, whose connection test looks for sqlite3 on PATH
+      - name: Install sqlite3
+        run: command -v sqlite3 || (sudo apt-get update && sudo apt-get install -y sqlite3)
+
+      - name: Typecheck, lint, unit and E2E tests
+        run: make test
+
+      - name: Build
+        run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ansible
+        run: pipx install --include-deps ansible
+
+      - name: Install collections
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Syntax check
+        run: |
+          cp inventory/hosts.example.yml inventory/hosts.yml
+          ansible-playbook provision.yml --syntax-check
+          ansible-playbook deploy.yml --syntax-check

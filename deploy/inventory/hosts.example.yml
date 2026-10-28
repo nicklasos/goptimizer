@@ -1,0 +1,14 @@
+# Copy to hosts.yml (not committed) and fill in.
+all:
+  hosts:
+    production:
+      ansible_host: 203.0.113.10
+      # The account Ansible signs in with. It must be able to sudo.
+      ansible_user: root
+      # Settings of group_vars/all/main.yml can be overridden for one host, for example:
+      # domain: dev.example.com
+      # api_port: 8182
+      # tls_mode: cloudflare
+      # install.yml only: print the nginx site instead of writing it, without the Cloudflare address lines
+      # install_nginx: print
+      # cloudflare_real_ip: false

@@ -1,0 +1,13 @@
+[
+  {"name": "no schedules: manual runs only", "schedules": [], "after": "2026-10-14T10:00:00Z", "next": null},
+  {"name": "later today", "schedules": [{"time": "03:00", "days": []}], "after": "2026-10-14T02:59:00Z", "next": "2026-10-14T03:00:00Z"},
+  {"name": "a slot that is due now is not next", "schedules": [{"time": "03:00", "days": []}], "after": "2026-10-14T03:00:00Z", "next": "2026-10-15T03:00:00Z"},
+  {"name": "the nearest of two slots", "schedules": [{"time": "03:00", "days": []}, {"time": "18:00", "days": []}], "after": "2026-10-14T10:00:00Z", "next": "2026-10-14T18:00:00Z"},
+  {"name": "wraps past midnight", "schedules": [{"time": "18:00", "days": []}, {"time": "03:00", "days": []}], "after": "2026-10-14T23:30:00Z", "next": "2026-10-15T03:00:00Z"},
+  {"name": "skips the weekend", "schedules": [{"time": "18:00", "days": ["mon", "tue", "wed", "thu", "fri"]}], "after": "2026-10-16T19:00:00Z", "next": "2026-10-19T18:00:00Z"},
+  {"name": "one weekday comes back a week later", "schedules": [{"time": "04:00", "days": ["sun"]}], "after": "2026-10-18T05:00:00Z", "next": "2026-10-25T04:00:00Z"},
+  {"name": "one weekday, later the same day", "schedules": [{"time": "01:00", "days": ["tue"]}], "after": "2026-10-13T00:59:00Z", "next": "2026-10-13T01:00:00Z"},
+  {"name": "every day wins over weekdays on a Saturday", "schedules": [{"time": "03:00", "days": []}, {"time": "18:00", "days": ["mon", "tue", "wed", "thu", "fri"]}], "after": "2026-10-17T12:00:00Z", "next": "2026-10-18T03:00:00Z"},
+  {"name": "the time is taken in UTC", "schedules": [{"time": "21:00", "days": []}], "after": "2026-10-14T23:30:00+03:00", "next": "2026-10-14T21:00:00Z"},
+  {"name": "across the end of the year", "schedules": [{"time": "00:00", "days": []}], "after": "2026-12-31T23:59:59Z", "next": "2027-01-01T00:00:00Z"}
+]

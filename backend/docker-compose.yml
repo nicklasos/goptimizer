@@ -1,0 +1,34 @@
+# Local services for development: `make up`, then run the API on the host with `make dev`.
+# The mail settings in .env.example match these services. The database is a SQLite
+# file (DATABASE_PATH), so it needs no service.
+#
+# `docker compose --profile app up --build` also builds and runs the API in a container.
+services:
+  # Catches every outgoing email. Inbox: http://localhost:8025
+  # To use it set APP_DEBUG=false, MAIL_HOST=localhost, MAIL_PORT=1025, MAIL_SCHEME=none
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+  api:
+    profiles: ["app"]
+    build: .
+    environment:
+      DATABASE_PATH: /data/db/gogobackup.db
+      JWT_SECRET: ${JWT_SECRET:-local-development-secret-not-for-production}
+      APP_ENV: development
+      APP_NAME: ${APP_NAME:-Gogobackup}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      MAIL_HOST: mailpit
+      MAIL_PORT: "1025"
+      MAIL_SCHEME: none
+      MAIL_FROM_ADDRESS: noreply@example.com
+    ports:
+      - "8181:8181"
+    volumes:
+      - db-data:/data/db
+
+volumes:
+  db-data:

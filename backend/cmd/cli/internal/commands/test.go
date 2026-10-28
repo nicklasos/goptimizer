@@ -1,0 +1,53 @@
+package commands
+
+import (
+	"app/cmd/cli/internal"
+	"context"
+	"flag"
+	"fmt"
+)
+
+// RunTest runs various tests
+func RunTest(app *internal.CLIApp, args []string) {
+	fs := flag.NewFlagSet("test", flag.ExitOnError)
+	fs.Usage = func() {
+		fmt.Println("Usage: make cli test [options]")
+		fmt.Println()
+		fmt.Println("Run various tests")
+		fmt.Println()
+		fmt.Println("Options:")
+		fs.PrintDefaults()
+		fmt.Println()
+		fmt.Println("Examples:")
+		fmt.Println("  make cli test")
+		fmt.Println("  make cli -- --test test  # Use test database")
+	}
+
+	fs.Parse(args)
+
+	ctx := context.Background()
+
+	app.Logger.Info("Starting CLI test command")
+
+	// Test database connection
+	fmt.Println("Testing database connection...")
+	if err := app.Database.PingContext(ctx); err != nil {
+		app.Logger.Error("Database ping failed", "error", err)
+		fmt.Printf("Database connection failed: %v\n", err)
+		return
+	}
+	fmt.Println("Database connection successful")
+
+	// Test basic query
+	fmt.Println("Testing basic database query...")
+	_, err := app.Queries.SQLiteVersion(ctx)
+	if err != nil {
+		app.Logger.Error("Failed to get database version", "error", err)
+		fmt.Printf("Database query failed: %v\n", err)
+		return
+	}
+	fmt.Println("Database query successful")
+
+	app.Logger.Info("CLI test command completed successfully")
+	fmt.Println("All tests passed!")
+}

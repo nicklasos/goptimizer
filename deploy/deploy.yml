@@ -1,0 +1,13 @@
+# Releases the current code of repo_branch: pull, build, migrate, restart, check.
+#
+#   ansible-playbook deploy.yml
+- name: Deploy the application
+  hosts: all
+  become: true
+  pre_tasks:
+    - name: Preflight checks
+      ansible.builtin.import_tasks: preflight.yml
+      tags: always
+  roles:
+    - app
+    - nginx

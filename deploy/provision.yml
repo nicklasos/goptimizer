@@ -1,0 +1,16 @@
+# Turns a fresh Ubuntu server into a running deployment. Safe to run again.
+#
+#   ansible-playbook provision.yml
+- name: Provision the server and deploy the application
+  hosts: all
+  become: true
+  pre_tasks:
+    - name: Preflight checks
+      ansible.builtin.import_tasks: preflight.yml
+      tags: always
+  roles:
+    - common
+    - golang
+    - nodejs
+    - app
+    - nginx

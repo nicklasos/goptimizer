@@ -1,0 +1,196 @@
+- name: Create the application directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"
+  loop:
+    - "{{ app_root }}"
+    - "{{ app_root }}/shared"
+    - "{{ database_path | dirname }}"
+    - "{{ log_dir }}"
+
+- name: Read the deploy key
+  ansible.builtin.slurp:
+    src: "/home/{{ app_user }}/.ssh/id_ed25519.pub"
+  register: deploy_key
+
+- name: Fetch the code
+  block:
+    - name: Clone or update the repository
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ app_root }}/repo"
+        version: "{{ repo_branch }}"
+        accept_hostkey: true
+        force: true
+      become: true
+      become_user: "{{ app_user }}"
+      register: checkout
+  rescue:
+    - name: Explain how to give the server access to the repository
+      ansible.builtin.fail:
+        msg: |
+          Could not clone {{ repo_url }}.
+          If the repository is private, add this public key to it as a read-only deploy key
+          (GitHub: Settings -> Deploy keys -> Add deploy key), then run the playbook again:
+
+          {{ deploy_key.content | b64decode | trim }}
+
+# The checkout lives in repo/, and backend/ and frontend/ are links into it,
+# so paths in configs stay short and a fresh clone is a matter of replacing one folder.
+- name: Link the project folders
+  ansible.builtin.file:
+    src: "{{ app_root }}/repo/{{ item }}"
+    dest: "{{ app_root }}/{{ item }}"
+    state: link
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+  loop: [backend, frontend]
+
+- name: Write the backend environment file
+  ansible.builtin.template:
+    src: backend.env.j2
+    dest: "{{ backend_dir }}/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0600"
+  register: backend_env
+
+- name: Write the frontend environment file
+  ansible.builtin.template:
+    src: frontend.env.j2
+    dest: "{{ frontend_dir }}/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0600"
+  register: frontend_env
+
+- name: Check which build outputs exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ backend_dir }}/bin/api"
+    - "{{ frontend_dir }}/dist/index.html"
+  register: build_outputs
+
+- name: Decide what has to be rebuilt
+  ansible.builtin.set_fact:
+    rebuild_backend: "{{ checkout is changed or not build_outputs.results[0].stat.exists }}"
+    rebuild_frontend: "{{ checkout is changed or frontend_env is changed or not build_outputs.results[1].stat.exists }}"
+
+- name: Build the backend binaries
+  ansible.builtin.command: "go build -o bin/{{ item.out }} ./cmd/{{ item.cmd }}"
+  args:
+    chdir: "{{ backend_dir }}"
+  environment: "{{ go_env }}"
+  become: true
+  become_user: "{{ app_user }}"
+  loop:
+    - { cmd: api, out: api }
+    - { cmd: cron, out: gogo-cron }
+    - { cmd: cli, out: gogo-cli }
+  when: rebuild_backend
+  changed_when: true
+
+- name: Apply database migrations
+  ansible.builtin.command: ./bin/gogo-cli migrate up
+  args:
+    chdir: "{{ backend_dir }}"
+  become: true
+  become_user: "{{ app_user }}"
+  register: migrations
+  changed_when: "'no migrations to run' not in migrations.stderr"
+
+- name: Install frontend dependencies
+  ansible.builtin.command: npm ci --no-audit --no-fund
+  args:
+    chdir: "{{ frontend_dir }}"
+  become: true
+  become_user: "{{ app_user }}"
+  when: rebuild_frontend
+  changed_when: true
+
+- name: Build the frontend
+  ansible.builtin.command: npm run build
+  args:
+    chdir: "{{ frontend_dir }}"
+  become: true
+  become_user: "{{ app_user }}"
+  when: rebuild_frontend
+  changed_when: true
+
+- name: Write the supervisor program
+  ansible.builtin.template:
+    src: supervisor.conf.j2
+    dest: "/etc/supervisor/conf.d/{{ app_name }}.conf"
+    mode: "0644"
+  register: supervisor_conf
+
+# Adds new programs, removes dropped ones and restarts those whose definition changed
+- name: Apply the supervisor configuration
+  ansible.builtin.command: supervisorctl update
+  when: supervisor_conf is changed
+  changed_when: true
+
+- name: Restart the application
+  community.general.supervisorctl:
+    name: "{{ item }}"
+    state: restarted
+  loop: "{{ supervisor_programs }}"
+  when: (rebuild_backend or backend_env is changed or migrations is changed) and supervisor_conf is not changed
+
+- name: Make sure the application is running
+  community.general.supervisorctl:
+    name: "{{ item }}"
+    state: started
+  loop: "{{ supervisor_programs }}"
+
+- name: Wait for the API to report healthy
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ api_port }}/health"
+    status_code: 200
+  register: health
+  until: health.status == 200
+  retries: 20
+  delay: 2
+
+- name: Count the accounts
+  ansible.builtin.command:
+    argv: [sqlite3, "{{ database_path }}", "SELECT count(*) FROM users"]
+  become: true
+  become_user: "{{ app_user }}"
+  register: accounts
+  changed_when: false
+
+- name: Explain how to create the first super admin
+  ansible.builtin.debug:
+    msg: |
+      The application is up and has no accounts yet. Create the first super admin on the server:
+
+        sudo -u {{ app_user }} sh -c 'cd {{ backend_dir }} && ./bin/gogo-cli create-user --email you@example.com --password "a-long-password"'
+
+      Then sign in at {{ site_url }}
+  when: accounts.stdout | int == 0
+
+# Outside repo/, so a fresh clone keeps the archives
+- name: Create the self-backup directory
+  ansible.builtin.file:
+    path: "{{ self_backup_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0750"
+  when: self_backup_enabled
+
+- name: Make sure Gogobackup backs up its own database
+  ansible.builtin.command:
+    argv: [./bin/gogo-cli, self-backup, --dir, "{{ self_backup_dir }}"]
+  args:
+    chdir: "{{ backend_dir }}"
+  become: true
+  become_user: "{{ app_user }}"
+  register: self_backup
+  changed_when: "'Created' in self_backup.stdout"
+  when: self_backup_enabled

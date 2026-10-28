@@ -1,0 +1,107 @@
+- name: Update the package index and upgrade installed packages
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+    upgrade: safe
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - acl
+      - build-essential
+      - ca-certificates
+      - curl
+      - git
+      - gnupg
+      - python3-debian
+      - sqlite3
+      - supervisor
+      - ufw
+      - unattended-upgrades
+      - unzip
+      - zip
+    state: present
+
+- name: Install the PostgreSQL client tools (pg_dump, pg_restore)
+  when: install_postgres_client | bool
+  ansible.builtin.apt:
+    name: postgresql-client
+    state: present
+
+- name: Install the MySQL client tools (mysqldump, mysql)
+  when: install_mysql_client | bool
+  ansible.builtin.apt:
+    name: default-mysql-client
+    state: present
+
+- name: Set the time zone
+  community.general.timezone:
+    name: "{{ timezone }}"
+
+- name: Create the application user
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    shell: /bin/bash
+    create_home: true
+    generate_ssh_key: true
+    ssh_key_type: ed25519
+    ssh_key_comment: "{{ app_name }}-deploy"
+
+- name: Check for existing swap
+  ansible.builtin.command: swapon --noheadings --show
+  register: swap_status
+  changed_when: false
+
+- name: Create a swap file
+  when: swap_size_mb | int > 0 and swap_status.stdout | trim == ''
+  block:
+    - name: Allocate the swap file
+      ansible.builtin.command: "fallocate -l {{ swap_size_mb }}M /swapfile"
+      args:
+        creates: /swapfile
+
+    - name: Restrict the swap file
+      ansible.builtin.file:
+        path: /swapfile
+        mode: "0600"
+
+    - name: Format and enable the swap file
+      ansible.builtin.shell: mkswap /swapfile && swapon /swapfile
+      changed_when: true
+
+    - name: Keep the swap file across reboots
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        line: "/swapfile none swap sw 0 0"
+
+- name: Allow SSH through the firewall
+  community.general.ufw:
+    rule: allow
+    name: OpenSSH
+
+- name: Allow HTTP and HTTPS through the firewall
+  community.general.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: ["80", "443"]
+
+- name: Turn the firewall on, denying everything else inbound
+  community.general.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: Install security updates automatically
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    mode: "0644"
+
+- name: Make sure supervisor is running
+  ansible.builtin.service:
+    name: supervisor
+    state: started
+    enabled: true

@@ -1,0 +1,40 @@
+; Written by Ansible (deploy/roles/app).
+
+[program:{{ app_name }}-api]
+command={{ backend_dir }}/bin/api
+directory={{ backend_dir }}
+user={{ app_user }}
+autostart=true
+autorestart=true
+startsecs=5
+startretries=3
+stdout_logfile={{ log_dir }}/api.log
+stderr_logfile={{ log_dir }}/api-error.log
+stdout_logfile_maxbytes=10MB
+stdout_logfile_backups=10
+stderr_logfile_maxbytes=10MB
+stderr_logfile_backups=10
+stopsignal=TERM
+; The API finishes in-flight requests for up to 20 seconds, then stops the backups in progress
+; and records them as failed, before it exits
+stopwaitsecs=45
+{% if not scheduler_in_api %}
+
+[program:{{ app_name }}-cron]
+command={{ backend_dir }}/bin/gogo-cron
+directory={{ backend_dir }}
+user={{ app_user }}
+autostart=true
+autorestart=true
+startsecs=5
+startretries=3
+stdout_logfile={{ log_dir }}/cron.log
+stderr_logfile={{ log_dir }}/cron-error.log
+stdout_logfile_maxbytes=10MB
+stdout_logfile_backups=10
+stderr_logfile_maxbytes=10MB
+stderr_logfile_backups=10
+stopsignal=TERM
+; Stopping kills the dumps in progress and records them as failed
+stopwaitsecs=30
+{% endif %}

@@ -1,0 +1,30 @@
+- name: Read the installed Go version
+  ansible.builtin.slurp:
+    src: /usr/local/go/VERSION
+  register: go_installed
+  failed_when: false
+
+- name: Install Go {{ go_version }}
+  when: go_installed.content is not defined or ('go' ~ go_version) not in (go_installed.content | b64decode)
+  block:
+    - name: Remove the previous Go
+      ansible.builtin.file:
+        path: /usr/local/go
+        state: absent
+
+    - name: Download and unpack Go
+      ansible.builtin.unarchive:
+        src: "https://go.dev/dl/go{{ go_version }}.linux-{{ go_arch[ansible_architecture] }}.tar.gz"
+        dest: /usr/local
+        remote_src: true
+      vars:
+        go_arch:
+          x86_64: amd64
+          aarch64: arm64
+
+- name: Put Go on the PATH of login shells
+  ansible.builtin.copy:
+    dest: /etc/profile.d/go.sh
+    content: |
+      export PATH=$PATH:/usr/local/go/bin
+    mode: "0644"

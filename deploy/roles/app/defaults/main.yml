@@ -1,0 +1,1 @@
+supervisor_programs: "{{ [app_name ~ '-api'] + ([] if scheduler_in_api else [app_name ~ '-cron']) }}"

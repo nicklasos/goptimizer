@@ -1,0 +1,3664 @@
+basePath: /
+definitions:
+  app_internal_errs.ErrorResponse:
+    properties:
+      details:
+        additionalProperties: true
+        type: object
+      error_key:
+        type: string
+      message:
+        type: string
+      status:
+        type: integer
+      timestamp:
+        type: string
+    required:
+    - error_key
+    - status
+    type: object
+  app_internal_errs.ValidationErrorResponse:
+    properties:
+      error_key:
+        type: string
+      errors:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        type: object
+      message:
+        type: string
+    required:
+    - error_key
+    - errors
+    - message
+    type: object
+  app_internal_plans.FilesTarget:
+    properties:
+      directory:
+        type: string
+      original_locations:
+        type: boolean
+    required:
+    - directory
+    - original_locations
+    type: object
+  app_internal_plans.FilesTargetInput:
+    properties:
+      directory:
+        type: string
+      original_locations:
+        type: boolean
+    type: object
+  app_internal_plans.MySQLTarget:
+    properties:
+      create_database:
+        type: boolean
+      database:
+        type: string
+      host:
+        type: string
+      port:
+        type: integer
+      user:
+        type: string
+    required:
+    - create_database
+    - database
+    - host
+    - port
+    - user
+    type: object
+  app_internal_plans.MySQLTargetInput:
+    properties:
+      create_database:
+        type: boolean
+      database:
+        maxLength: 255
+        type: string
+      host:
+        maxLength: 255
+        type: string
+      password:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      user:
+        maxLength: 255
+        type: string
+    required:
+    - database
+    type: object
+  app_internal_plans.PostgresTarget:
+    properties:
+      create_database:
+        type: boolean
+      database:
+        type: string
+      host:
+        type: string
+      port:
+        type: integer
+      ssl_mode:
+        enum:
+        - disable
+        - require
+        - verify-full
+        type: string
+      user:
+        type: string
+    required:
+    - create_database
+    - database
+    - host
+    - port
+    - ssl_mode
+    - user
+    type: object
+  app_internal_plans.PostgresTargetInput:
+    properties:
+      create_database:
+        type: boolean
+      database:
+        maxLength: 255
+        type: string
+      host:
+        maxLength: 255
+        type: string
+      password:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      ssl_mode:
+        enum:
+        - disable
+        - require
+        - verify-full
+        type: string
+      user:
+        maxLength: 255
+        type: string
+    required:
+    - database
+    type: object
+  app_internal_plans.RestoreRequest:
+    properties:
+      confirm:
+        type: string
+      files:
+        $ref: '#/definitions/app_internal_plans.FilesTargetInput'
+      mysql:
+        $ref: '#/definitions/app_internal_plans.MySQLTargetInput'
+      postgres:
+        $ref: '#/definitions/app_internal_plans.PostgresTargetInput'
+      sqlite:
+        $ref: '#/definitions/app_internal_plans.SQLiteTargetInput'
+    type: object
+  app_internal_plans.RestoreTarget:
+    properties:
+      files:
+        $ref: '#/definitions/app_internal_plans.FilesTarget'
+      mysql:
+        $ref: '#/definitions/app_internal_plans.MySQLTarget'
+      postgres:
+        $ref: '#/definitions/app_internal_plans.PostgresTarget'
+      source_kind:
+        allOf:
+        - $ref: '#/definitions/app_internal_plans.SourceKind'
+        enum:
+        - postgres
+        - mysql
+        - sqlite
+        - files
+      sqlite:
+        $ref: '#/definitions/app_internal_plans.SQLiteTarget'
+    required:
+    - source_kind
+    type: object
+  app_internal_plans.SQLiteTarget:
+    properties:
+      path:
+        type: string
+    required:
+    - path
+    type: object
+  app_internal_plans.SQLiteTargetInput:
+    properties:
+      path:
+        type: string
+    required:
+    - path
+    type: object
+  app_internal_plans.SourceKind:
+    enum:
+    - postgres
+    - mysql
+    - sqlite
+    - files
+    type: string
+    x-enum-varnames:
+    - SourcePostgres
+    - SourceMySQL
+    - SourceSQLite
+    - SourceFiles
+  app_internal_storages.Kind:
+    enum:
+    - local
+    - s3
+    - gcs
+    type: string
+    x-enum-varnames:
+    - KindLocal
+    - KindS3
+    - KindGCS
+  internal.MessageData:
+    properties:
+      message:
+        type: string
+    required:
+    - message
+    type: object
+  internal.MessageResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal.MessageData'
+    required:
+    - data
+    type: object
+  internal.PaginationMeta:
+    properties:
+      current_page:
+        type: integer
+      last_page:
+        type: integer
+      per_page:
+        type: integer
+      total:
+        type: integer
+    required:
+    - current_page
+    - last_page
+    - per_page
+    - total
+    type: object
+  internal_auth.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  internal_auth.LoginDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_auth.LoginResponse'
+    required:
+    - data
+    type: object
+  internal_auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  internal_auth.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/internal_auth.UserResponse'
+    required:
+    - access_token
+    - refresh_token
+    - user
+    type: object
+  internal_auth.RefreshTokenDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_auth.RefreshTokenResponse'
+    required:
+    - data
+    type: object
+  internal_auth.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  internal_auth.RefreshTokenResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    required:
+    - access_token
+    - refresh_token
+    type: object
+  internal_auth.RegisterDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_auth.RegisterResponse'
+    required:
+    - data
+    type: object
+  internal_auth.RegisterRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - email
+    - name
+    - password
+    type: object
+  internal_auth.RegisterResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/internal_auth.UserResponse'
+    required:
+    - access_token
+    - refresh_token
+    - user
+    type: object
+  internal_auth.ResetPasswordRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      token:
+        type: string
+    required:
+    - password
+    - token
+    type: object
+  internal_auth.UpdatePasswordRequest:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        minLength: 8
+        type: string
+    required:
+    - current_password
+    - new_password
+    type: object
+  internal_auth.UpdateProfileRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+    required:
+    - email
+    - name
+    type: object
+  internal_auth.UserDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_auth.UserResponse'
+    required:
+    - data
+    type: object
+  internal_auth.UserResponse:
+    properties:
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      id:
+        type: integer
+      name:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+    required:
+    - email
+    - email_verified
+    - id
+    - name
+    - roles
+    type: object
+  internal_auth.VerifyEmailRequest:
+    properties:
+      token:
+        type: string
+    required:
+    - token
+    type: object
+  internal_plans.DashboardDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_plans.DashboardResponse'
+    required:
+    - data
+    type: object
+  internal_plans.DashboardPlanResponse:
+    properties:
+      created_at:
+        type: string
+      days:
+        items:
+          $ref: '#/definitions/internal_plans.DayResponse'
+        type: array
+      enabled:
+        type: boolean
+      files:
+        $ref: '#/definitions/internal_plans.FilesConfig'
+      folder:
+        type: string
+      health:
+        allOf:
+        - $ref: '#/definitions/internal_plans.Health'
+        enum:
+        - restoring
+        - running
+        - failed
+        - paused
+        - overdue
+        - never
+        - ok
+      id:
+        type: integer
+      keep_monthly:
+        type: integer
+      keep_weekly:
+        type: integer
+      last_run:
+        allOf:
+        - $ref: '#/definitions/internal_plans.LastRunResponse'
+        x-nullable: true
+      last_size_bytes:
+        type: integer
+        x-nullable: true
+      last_success_at:
+        type: string
+        x-nullable: true
+      max_age_days:
+        type: integer
+      mysql:
+        $ref: '#/definitions/internal_plans.MySQLConfig'
+      name:
+        type: string
+      next_run_at:
+        type: string
+        x-nullable: true
+      postgres:
+        $ref: '#/definitions/internal_plans.PostgresConfig'
+      schedules:
+        items:
+          $ref: '#/definitions/internal_plans.Schedule'
+        type: array
+      secret_set:
+        type: boolean
+      source_kind:
+        allOf:
+        - $ref: '#/definitions/internal_plans.SourceKind'
+        enum:
+        - postgres
+        - mysql
+        - sqlite
+        - files
+      sqlite:
+        $ref: '#/definitions/internal_plans.SQLiteConfig'
+      storages:
+        items:
+          $ref: '#/definitions/internal_plans.PlanStorageResponse'
+        type: array
+      updated_at:
+        type: string
+    required:
+    - created_at
+    - days
+    - enabled
+    - folder
+    - health
+    - id
+    - keep_monthly
+    - keep_weekly
+    - last_run
+    - last_size_bytes
+    - last_success_at
+    - max_age_days
+    - name
+    - next_run_at
+    - schedules
+    - secret_set
+    - source_kind
+    - storages
+    - updated_at
+    type: object
+  internal_plans.DashboardResponse:
+    properties:
+      plans:
+        items:
+          $ref: '#/definitions/internal_plans.DashboardPlanResponse'
+        type: array
+      summary:
+        $ref: '#/definitions/internal_plans.HealthSummaryResponse'
+    required:
+    - plans
+    - summary
+    type: object
+  internal_plans.DayResponse:
+    properties:
+      date:
+        example: "2026-10-17"
+        type: string
+      failed:
+        type: integer
+      succeeded:
+        type: integer
+    required:
+    - date
+    - failed
+    - succeeded
+    type: object
+  internal_plans.FilesConfig:
+    properties:
+      excludes:
+        items:
+          type: string
+        type: array
+      paths:
+        items:
+          type: string
+        type: array
+    required:
+    - excludes
+    - paths
+    type: object
+  internal_plans.FilesInput:
+    properties:
+      excludes:
+        items:
+          type: string
+        type: array
+      paths:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - paths
+    type: object
+  internal_plans.Health:
+    enum:
+    - restoring
+    - running
+    - failed
+    - paused
+    - overdue
+    - never
+    - ok
+    type: string
+    x-enum-varnames:
+    - HealthRestoring
+    - HealthRunning
+    - HealthFailed
+    - HealthPaused
+    - HealthOverdue
+    - HealthNever
+    - HealthOK
+  internal_plans.HealthSummaryResponse:
+    properties:
+      failed:
+        type: integer
+      never:
+        type: integer
+      ok:
+        type: integer
+      overdue:
+        type: integer
+      paused:
+        type: integer
+      restoring:
+        type: integer
+      running:
+        type: integer
+    required:
+    - failed
+    - never
+    - ok
+    - overdue
+    - paused
+    - restoring
+    - running
+    type: object
+  internal_plans.LastRunResponse:
+    properties:
+      finished_at:
+        type: string
+        x-nullable: true
+      id:
+        type: integer
+      size_bytes:
+        type: integer
+        x-nullable: true
+      started_at:
+        type: string
+        x-nullable: true
+      status:
+        enum:
+        - queued
+        - running
+        - succeeded
+        - failed
+        type: string
+      trigger:
+        enum:
+        - schedule
+        - manual
+        type: string
+    required:
+    - finished_at
+    - id
+    - size_bytes
+    - started_at
+    - status
+    - trigger
+    type: object
+  internal_plans.MySQLConfig:
+    properties:
+      database:
+        type: string
+      host:
+        type: string
+      port:
+        type: integer
+      user:
+        type: string
+    required:
+    - database
+    - host
+    - port
+    - user
+    type: object
+  internal_plans.MySQLInput:
+    properties:
+      database:
+        maxLength: 255
+        type: string
+      host:
+        maxLength: 255
+        type: string
+      password:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      user:
+        maxLength: 255
+        type: string
+    required:
+    - database
+    - host
+    - user
+    type: object
+  internal_plans.PaginatedPlansResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_plans.PlanResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/internal.PaginationMeta'
+    required:
+    - data
+    - pagination
+    type: object
+  internal_plans.PlanDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_plans.PlanResponse'
+    required:
+    - data
+    type: object
+  internal_plans.PlanRequest:
+    properties:
+      enabled:
+        type: boolean
+      files:
+        $ref: '#/definitions/internal_plans.FilesInput'
+      keep_monthly:
+        maximum: 240
+        minimum: 0
+        type: integer
+      keep_weekly:
+        maximum: 520
+        minimum: 0
+        type: integer
+      max_age_days:
+        maximum: 3650
+        minimum: 0
+        type: integer
+      mysql:
+        $ref: '#/definitions/internal_plans.MySQLInput'
+      name:
+        maxLength: 100
+        type: string
+      postgres:
+        $ref: '#/definitions/internal_plans.PostgresInput'
+      schedules:
+        items:
+          $ref: '#/definitions/internal_plans.ScheduleInput'
+        type: array
+      source_kind:
+        allOf:
+        - $ref: '#/definitions/internal_plans.SourceKind'
+        enum:
+        - postgres
+        - mysql
+        - sqlite
+        - files
+      sqlite:
+        $ref: '#/definitions/internal_plans.SQLiteInput'
+      storage_ids:
+        items:
+          type: integer
+        minItems: 1
+        type: array
+    required:
+    - enabled
+    - keep_monthly
+    - keep_weekly
+    - max_age_days
+    - name
+    - schedules
+    - source_kind
+    - storage_ids
+    type: object
+  internal_plans.PlanResponse:
+    properties:
+      created_at:
+        type: string
+      enabled:
+        type: boolean
+      files:
+        $ref: '#/definitions/internal_plans.FilesConfig'
+      folder:
+        type: string
+      health:
+        allOf:
+        - $ref: '#/definitions/internal_plans.Health'
+        enum:
+        - restoring
+        - running
+        - failed
+        - paused
+        - overdue
+        - never
+        - ok
+      id:
+        type: integer
+      keep_monthly:
+        type: integer
+      keep_weekly:
+        type: integer
+      last_run:
+        allOf:
+        - $ref: '#/definitions/internal_plans.LastRunResponse'
+        x-nullable: true
+      last_size_bytes:
+        type: integer
+        x-nullable: true
+      last_success_at:
+        type: string
+        x-nullable: true
+      max_age_days:
+        type: integer
+      mysql:
+        $ref: '#/definitions/internal_plans.MySQLConfig'
+      name:
+        type: string
+      next_run_at:
+        type: string
+        x-nullable: true
+      postgres:
+        $ref: '#/definitions/internal_plans.PostgresConfig'
+      schedules:
+        items:
+          $ref: '#/definitions/internal_plans.Schedule'
+        type: array
+      secret_set:
+        type: boolean
+      source_kind:
+        allOf:
+        - $ref: '#/definitions/internal_plans.SourceKind'
+        enum:
+        - postgres
+        - mysql
+        - sqlite
+        - files
+      sqlite:
+        $ref: '#/definitions/internal_plans.SQLiteConfig'
+      storages:
+        items:
+          $ref: '#/definitions/internal_plans.PlanStorageResponse'
+        type: array
+      updated_at:
+        type: string
+    required:
+    - created_at
+    - enabled
+    - folder
+    - health
+    - id
+    - keep_monthly
+    - keep_weekly
+    - last_run
+    - last_size_bytes
+    - last_success_at
+    - max_age_days
+    - name
+    - next_run_at
+    - schedules
+    - secret_set
+    - source_kind
+    - storages
+    - updated_at
+    type: object
+  internal_plans.PlanStorageResponse:
+    properties:
+      id:
+        type: integer
+      kind:
+        allOf:
+        - $ref: '#/definitions/app_internal_storages.Kind'
+        enum:
+        - local
+        - s3
+        - gcs
+      name:
+        type: string
+    required:
+    - id
+    - kind
+    - name
+    type: object
+  internal_plans.PostgresConfig:
+    properties:
+      database:
+        type: string
+      host:
+        type: string
+      port:
+        type: integer
+      ssl_mode:
+        enum:
+        - disable
+        - require
+        - verify-full
+        type: string
+      user:
+        type: string
+    required:
+    - database
+    - host
+    - port
+    - ssl_mode
+    - user
+    type: object
+  internal_plans.PostgresInput:
+    properties:
+      database:
+        maxLength: 255
+        type: string
+      host:
+        maxLength: 255
+        type: string
+      password:
+        type: string
+      port:
+        maximum: 65535
+        minimum: 1
+        type: integer
+      ssl_mode:
+        enum:
+        - disable
+        - require
+        - verify-full
+        type: string
+      user:
+        maxLength: 255
+        type: string
+    required:
+    - database
+    - host
+    - user
+    type: object
+  internal_plans.SQLiteConfig:
+    properties:
+      path:
+        type: string
+    required:
+    - path
+    type: object
+  internal_plans.SQLiteInput:
+    properties:
+      path:
+        type: string
+    required:
+    - path
+    type: object
+  internal_plans.Schedule:
+    properties:
+      days:
+        items:
+          $ref: '#/definitions/internal_plans.Weekday'
+          enum:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+          - sat
+          - sun
+        type: array
+      time:
+        type: string
+    required:
+    - days
+    - time
+    type: object
+  internal_plans.ScheduleInput:
+    properties:
+      days:
+        items:
+          enum:
+          - mon
+          - tue
+          - wed
+          - thu
+          - fri
+          - sat
+          - sun
+          type: string
+        type: array
+      time:
+        type: string
+    required:
+    - days
+    - time
+    type: object
+  internal_plans.SetEnabledRequest:
+    properties:
+      enabled:
+        type: boolean
+    required:
+    - enabled
+    type: object
+  internal_plans.SourceKind:
+    enum:
+    - postgres
+    - mysql
+    - sqlite
+    - files
+    type: string
+    x-enum-varnames:
+    - SourcePostgres
+    - SourceMySQL
+    - SourceSQLite
+    - SourceFiles
+  internal_plans.SourceRequest:
+    properties:
+      files:
+        $ref: '#/definitions/internal_plans.FilesInput'
+      mysql:
+        $ref: '#/definitions/internal_plans.MySQLInput'
+      postgres:
+        $ref: '#/definitions/internal_plans.PostgresInput'
+      source_kind:
+        allOf:
+        - $ref: '#/definitions/internal_plans.SourceKind'
+        enum:
+        - postgres
+        - mysql
+        - sqlite
+        - files
+      sqlite:
+        $ref: '#/definitions/internal_plans.SQLiteInput'
+    required:
+    - source_kind
+    type: object
+  internal_plans.SourceTestDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_plans.SourceTestResponse'
+    required:
+    - data
+    type: object
+  internal_plans.SourceTestResponse:
+    properties:
+      error:
+        type: string
+      ok:
+        type: boolean
+      server_version:
+        type: string
+      step:
+        enum:
+        - connect
+        - tool
+        - path
+        type: string
+      tool:
+        $ref: '#/definitions/internal_plans.ToolResponse'
+    required:
+    - ok
+    type: object
+  internal_plans.ToolResponse:
+    properties:
+      found:
+        type: boolean
+      name:
+        type: string
+      version:
+        type: string
+    required:
+    - found
+    - name
+    type: object
+  internal_plans.Weekday:
+    enum:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+    - sat
+    - sun
+    type: string
+    x-enum-varnames:
+    - Monday
+    - Tuesday
+    - Wednesday
+    - Thursday
+    - Friday
+    - Saturday
+    - Sunday
+  internal_runs.ArchiveResponse:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+        x-nullable: true
+      id:
+        type: integer
+      object_key:
+        type: string
+      plan_id:
+        type: integer
+      run_id:
+        type: integer
+      sha256:
+        type: string
+      size_bytes:
+        type: integer
+      storage_id:
+        type: integer
+      storage_kind:
+        allOf:
+        - $ref: '#/definitions/app_internal_storages.Kind'
+        enum:
+        - local
+        - s3
+        - gcs
+      storage_name:
+        type: string
+    required:
+    - created_at
+    - deleted_at
+    - id
+    - object_key
+    - plan_id
+    - run_id
+    - sha256
+    - size_bytes
+    - storage_id
+    - storage_kind
+    - storage_name
+    type: object
+  internal_runs.DownloadLinkDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_runs.DownloadLinkResponse'
+    required:
+    - data
+    type: object
+  internal_runs.DownloadLinkResponse:
+    properties:
+      expires_at:
+        type: string
+      token:
+        type: string
+    required:
+    - expires_at
+    - token
+    type: object
+  internal_runs.PaginatedArchivesResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_runs.ArchiveResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/internal.PaginationMeta'
+    required:
+    - data
+    - pagination
+    type: object
+  internal_runs.PaginatedRestoresResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_runs.RestoreResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/internal.PaginationMeta'
+    required:
+    - data
+    - pagination
+    type: object
+  internal_runs.PaginatedRunsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_runs.RunResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/internal.PaginationMeta'
+    required:
+    - data
+    - pagination
+    type: object
+  internal_runs.RestoreArchiveResponse:
+    properties:
+      created_at:
+        type: string
+      object_key:
+        type: string
+      size_bytes:
+        type: integer
+      storage_name:
+        type: string
+    required:
+    - created_at
+    - object_key
+    - size_bytes
+    - storage_name
+    type: object
+  internal_runs.RestoreDetailDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_runs.RestoreDetailResponse'
+    required:
+    - data
+    type: object
+  internal_runs.RestoreDetailResponse:
+    properties:
+      archive:
+        allOf:
+        - $ref: '#/definitions/internal_runs.RestoreArchiveResponse'
+        x-nullable: true
+      archive_id:
+        type: integer
+        x-nullable: true
+      created_at:
+        type: string
+      created_by:
+        allOf:
+        - $ref: '#/definitions/internal_runs.RestoreUserResponse'
+        x-nullable: true
+      duration_ms:
+        type: integer
+        x-nullable: true
+      error:
+        type: string
+        x-nullable: true
+      finished_at:
+        type: string
+        x-nullable: true
+      id:
+        type: integer
+      log:
+        type: string
+      plan_id:
+        type: integer
+      secret_set:
+        type: boolean
+      started_at:
+        type: string
+        x-nullable: true
+      status:
+        allOf:
+        - $ref: '#/definitions/internal_runs.Status'
+        enum:
+        - queued
+        - running
+        - succeeded
+        - failed
+      target:
+        $ref: '#/definitions/app_internal_plans.RestoreTarget'
+    required:
+    - archive
+    - archive_id
+    - created_at
+    - created_by
+    - duration_ms
+    - error
+    - finished_at
+    - id
+    - log
+    - plan_id
+    - secret_set
+    - started_at
+    - status
+    - target
+    type: object
+  internal_runs.RestoreResponse:
+    properties:
+      archive:
+        allOf:
+        - $ref: '#/definitions/internal_runs.RestoreArchiveResponse'
+        x-nullable: true
+      archive_id:
+        type: integer
+        x-nullable: true
+      created_at:
+        type: string
+      created_by:
+        allOf:
+        - $ref: '#/definitions/internal_runs.RestoreUserResponse'
+        x-nullable: true
+      duration_ms:
+        type: integer
+        x-nullable: true
+      error:
+        type: string
+        x-nullable: true
+      finished_at:
+        type: string
+        x-nullable: true
+      id:
+        type: integer
+      plan_id:
+        type: integer
+      secret_set:
+        type: boolean
+      started_at:
+        type: string
+        x-nullable: true
+      status:
+        allOf:
+        - $ref: '#/definitions/internal_runs.Status'
+        enum:
+        - queued
+        - running
+        - succeeded
+        - failed
+      target:
+        $ref: '#/definitions/app_internal_plans.RestoreTarget'
+    required:
+    - archive
+    - archive_id
+    - created_at
+    - created_by
+    - duration_ms
+    - error
+    - finished_at
+    - id
+    - plan_id
+    - secret_set
+    - started_at
+    - status
+    - target
+    type: object
+  internal_runs.RestoreTargetDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/app_internal_plans.RestoreTarget'
+    required:
+    - data
+    type: object
+  internal_runs.RestoreUserResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+    required:
+    - email
+    - id
+    - name
+    type: object
+  internal_runs.RunDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_runs.RunResponse'
+    required:
+    - data
+    type: object
+  internal_runs.RunDetailDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_runs.RunDetailResponse'
+    required:
+    - data
+    type: object
+  internal_runs.RunDetailResponse:
+    properties:
+      archives:
+        items:
+          $ref: '#/definitions/internal_runs.ArchiveResponse'
+        type: array
+      created_at:
+        type: string
+      duration_ms:
+        type: integer
+        x-nullable: true
+      error:
+        type: string
+        x-nullable: true
+      finished_at:
+        type: string
+        x-nullable: true
+      id:
+        type: integer
+      log:
+        type: string
+      plan_id:
+        type: integer
+      scheduled_for:
+        type: string
+        x-nullable: true
+      size_bytes:
+        type: integer
+        x-nullable: true
+      started_at:
+        type: string
+        x-nullable: true
+      status:
+        allOf:
+        - $ref: '#/definitions/internal_runs.Status'
+        enum:
+        - queued
+        - running
+        - succeeded
+        - failed
+      trigger:
+        allOf:
+        - $ref: '#/definitions/internal_runs.Trigger'
+        enum:
+        - schedule
+        - manual
+    required:
+    - archives
+    - created_at
+    - duration_ms
+    - error
+    - finished_at
+    - id
+    - log
+    - plan_id
+    - scheduled_for
+    - size_bytes
+    - started_at
+    - status
+    - trigger
+    type: object
+  internal_runs.RunResponse:
+    properties:
+      created_at:
+        type: string
+      duration_ms:
+        type: integer
+        x-nullable: true
+      error:
+        type: string
+        x-nullable: true
+      finished_at:
+        type: string
+        x-nullable: true
+      id:
+        type: integer
+      plan_id:
+        type: integer
+      scheduled_for:
+        type: string
+        x-nullable: true
+      size_bytes:
+        type: integer
+        x-nullable: true
+      started_at:
+        type: string
+        x-nullable: true
+      status:
+        allOf:
+        - $ref: '#/definitions/internal_runs.Status'
+        enum:
+        - queued
+        - running
+        - succeeded
+        - failed
+      trigger:
+        allOf:
+        - $ref: '#/definitions/internal_runs.Trigger'
+        enum:
+        - schedule
+        - manual
+    required:
+    - created_at
+    - duration_ms
+    - error
+    - finished_at
+    - id
+    - plan_id
+    - scheduled_for
+    - size_bytes
+    - started_at
+    - status
+    - trigger
+    type: object
+  internal_runs.Status:
+    enum:
+    - queued
+    - running
+    - succeeded
+    - failed
+    type: string
+    x-enum-varnames:
+    - StatusQueued
+    - StatusRunning
+    - StatusSucceeded
+    - StatusFailed
+  internal_runs.Trigger:
+    enum:
+    - schedule
+    - manual
+    type: string
+    x-enum-varnames:
+    - TriggerSchedule
+    - TriggerManual
+  internal_storages.GCSConfig:
+    properties:
+      bucket:
+        type: string
+      prefix:
+        type: string
+    required:
+    - bucket
+    - prefix
+    type: object
+  internal_storages.GCSInput:
+    properties:
+      bucket:
+        type: string
+      credentials_json:
+        type: string
+      prefix:
+        type: string
+    required:
+    - bucket
+    type: object
+  internal_storages.Kind:
+    enum:
+    - local
+    - s3
+    - gcs
+    type: string
+    x-enum-varnames:
+    - KindLocal
+    - KindS3
+    - KindGCS
+  internal_storages.LocalConfig:
+    properties:
+      path:
+        type: string
+    required:
+    - path
+    type: object
+  internal_storages.LocalInput:
+    properties:
+      path:
+        type: string
+    required:
+    - path
+    type: object
+  internal_storages.ObjectResponse:
+    properties:
+      is_dir:
+        type: boolean
+      modified_at:
+        type: string
+      name:
+        type: string
+      size:
+        type: integer
+    required:
+    - is_dir
+    - name
+    - size
+    type: object
+  internal_storages.ObjectsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_storages.ObjectResponse'
+        type: array
+    required:
+    - data
+    type: object
+  internal_storages.PaginatedStoragesResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_storages.StorageResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/internal.PaginationMeta'
+    required:
+    - data
+    - pagination
+    type: object
+  internal_storages.S3Config:
+    properties:
+      bucket:
+        type: string
+      endpoint:
+        type: string
+      prefix:
+        type: string
+      region:
+        type: string
+      use_path_style:
+        type: boolean
+    required:
+    - bucket
+    - endpoint
+    - prefix
+    - region
+    - use_path_style
+    type: object
+  internal_storages.S3Input:
+    properties:
+      access_key_id:
+        type: string
+      bucket:
+        type: string
+      endpoint:
+        type: string
+      prefix:
+        type: string
+      region:
+        type: string
+      secret_access_key:
+        type: string
+      use_path_style:
+        type: boolean
+    required:
+    - bucket
+    type: object
+  internal_storages.StorageDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_storages.StorageResponse'
+    required:
+    - data
+    type: object
+  internal_storages.StorageRequest:
+    properties:
+      gcs:
+        $ref: '#/definitions/internal_storages.GCSInput'
+      kind:
+        allOf:
+        - $ref: '#/definitions/internal_storages.Kind'
+        enum:
+        - local
+        - s3
+        - gcs
+      local:
+        $ref: '#/definitions/internal_storages.LocalInput'
+      name:
+        maxLength: 100
+        type: string
+      s3:
+        $ref: '#/definitions/internal_storages.S3Input'
+    required:
+    - kind
+    - name
+    type: object
+  internal_storages.StorageResponse:
+    properties:
+      created_at:
+        type: string
+      gcs:
+        $ref: '#/definitions/internal_storages.GCSConfig'
+      id:
+        type: integer
+      kind:
+        allOf:
+        - $ref: '#/definitions/internal_storages.Kind'
+        enum:
+        - local
+        - s3
+        - gcs
+      local:
+        $ref: '#/definitions/internal_storages.LocalConfig'
+      name:
+        type: string
+      s3:
+        $ref: '#/definitions/internal_storages.S3Config'
+      secret_set:
+        type: boolean
+      updated_at:
+        type: string
+    required:
+    - created_at
+    - id
+    - kind
+    - name
+    - secret_set
+    - updated_at
+    type: object
+  internal_storages.TestResultDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_storages.TestResultResponse'
+    required:
+    - data
+    type: object
+  internal_storages.TestResultResponse:
+    properties:
+      error:
+        type: string
+      ok:
+        type: boolean
+      step:
+        enum:
+        - connect
+        - write
+        - read
+        - delete
+        type: string
+    required:
+    - ok
+    type: object
+  internal_users.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      role:
+        enum:
+        - super-admin
+        - admin
+        - user
+        type: string
+    required:
+    - email
+    - name
+    - password
+    - role
+    type: object
+  internal_users.PaginatedUsersResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_users.UserResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/internal.PaginationMeta'
+    required:
+    - data
+    - pagination
+    type: object
+  internal_users.SetPasswordRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+    required:
+    - password
+    type: object
+  internal_users.UpdateUserRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+    required:
+    - email
+    - name
+    type: object
+  internal_users.UserDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_users.UserResponse'
+    required:
+    - data
+    type: object
+  internal_users.UserResponse:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      id:
+        type: integer
+      name:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: string
+    required:
+    - created_at
+    - email
+    - email_verified
+    - id
+    - name
+    - roles
+    - updated_at
+    type: object
+host: localhost:8181
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: 'Gogobackup: storages, backup plans and the accounts that manage them'
+  license:
+    name: WTFPL
+    url: http://www.wtfpl.net/
+  termsOfService: http://swagger.io/terms/
+  title: Gogo API Template
+  version: "1.0"
+paths:
+  /api/v1/archives/{id}/download:
+    get:
+      description: Streams the archive's object from its storage, as an attachment
+        named after the object. An archive that retention deleted is a 404; a storage
+        that fails, or has lost the object, a 502 storages.unreachable. A browser
+        uses a download link instead. Admins only.
+      parameters:
+      - description: Archive ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Download an archive
+      tags:
+      - runs
+  /api/v1/archives/{id}/download-link:
+    post:
+      consumes:
+      - application/json
+      description: A token for GET /api/v1/downloads/{token}, valid for a minute.
+        A browser follows it to save a large archive straight to disk; a request with
+        the Authorization header cannot do that. Admins only.
+      parameters:
+      - description: Archive ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_runs.DownloadLinkDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Make a download link for an archive
+      tags:
+      - runs
+  /api/v1/archives/{id}/restore:
+    post:
+      consumes:
+      - application/json
+      description: Queues a restore of the archive into the target in the block of
+        the plan's source kind. Blank database connection fields and a blank password
+        are the plan's. A target that is the plan's own source (the same server and
+        database, the same SQLite path, or files to their original locations) needs
+        confirm set to the database name, the path or "original locations", or it
+        is a 400 restores.confirm_mismatch on confirm. The worker starts it once no
+        run or other restore of the plan is running; a plan with a restore queued
+        or running already is a 409 restores.in_progress. A deleted archive is a 404
+        archives.not_found. Admins only.
+      parameters:
+      - description: Archive ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Restore target
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/app_internal_plans.RestoreRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/internal_runs.RestoreDetailDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Restore an archive
+      tags:
+      - restores
+  /api/v1/archives/{id}/restore-target:
+    get:
+      consumes:
+      - application/json
+      description: 'The plan''s own source, in the block of its kind, for a restore
+        form to start from: for a database its server and database, for SQLite its
+        path, for files a new directory in the work directory. Restoring over the
+        plan''s own source needs confirm. Admins only.'
+      parameters:
+      - description: Archive ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_runs.RestoreTargetDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get the default target of a restore
+      tags:
+      - restores
+  /api/v1/auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: Emails a single-use reset link when the address belongs to an account.
+        Always answers 200, so it does not reveal which emails are registered.
+      parameters:
+      - description: Account email
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      summary: Request a password reset
+      tags:
+      - auth
+  /api/v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with email and password
+      parameters:
+      - description: Login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.LoginDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      summary: Login user
+      tags:
+      - auth
+  /api/v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logout the currently authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Logout user
+      tags:
+      - auth
+  /api/v1/auth/me:
+    get:
+      consumes:
+      - application/json
+      description: Get information about the currently authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.UserDataResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user info
+      tags:
+      - auth
+    put:
+      consumes:
+      - application/json
+      description: Update name and email for the currently authenticated user
+      parameters:
+      - description: Profile update
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.UserDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update current user
+      tags:
+      - auth
+  /api/v1/auth/me/password:
+    put:
+      consumes:
+      - application/json
+      description: Change password for the currently authenticated user. Revokes all
+        refresh tokens.
+      parameters:
+      - description: Password change
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.UpdatePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change current user password
+      tags:
+      - auth
+  /api/v1/auth/me/verify-email:
+    post:
+      consumes:
+      - application/json
+      description: Sends a new verification link to the current user's email address
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Resend verification email
+      tags:
+      - auth
+  /api/v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Refresh the access token using a valid refresh token
+      parameters:
+      - description: Refresh token request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.RefreshTokenDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      summary: Refresh access token
+      tags:
+      - auth
+  /api/v1/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account with email and password
+      parameters:
+      - description: Registration request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_auth.RegisterDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      summary: Register new user
+      tags:
+      - auth
+  /api/v1/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Sets a new password with the token from the emailed link. The link
+        works once; all sessions are signed out.
+      parameters:
+      - description: Token and new password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      summary: Reset password
+      tags:
+      - auth
+  /api/v1/auth/verify-email:
+    post:
+      consumes:
+      - application/json
+      description: Confirms an email address with the token from the emailed link
+      parameters:
+      - description: Token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      summary: Verify email
+      tags:
+      - auth
+  /api/v1/dashboard:
+    get:
+      consumes:
+      - application/json
+      description: 'Every plan, by name, not paginated: with its health, its latest
+        run, its last successful backup and how many runs succeeded and failed on
+        each of the last 30 UTC days. summary counts the plans per health. Admins
+        only.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_plans.DashboardDataResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Plans dashboard
+      tags:
+      - plans
+  /api/v1/downloads/{token}:
+    get:
+      description: 'Needs no session: the token from POST /api/v1/archives/{id}/download-link
+        is the permission, until it expires a minute after it was made. An invalid
+        or expired token is a 403 archives.invalid_link.'
+      parameters:
+      - description: Download token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      summary: Download an archive by link
+      tags:
+      - runs
+  /api/v1/plans:
+    get:
+      consumes:
+      - application/json
+      description: Every plan, without source passwords. Admins only.
+      parameters:
+      - default: 1
+        description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 'Page size (default: 20, min: 1, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_plans.PaginatedPlansResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List backup plans (paginated)
+      tags:
+      - plans
+    post:
+      consumes:
+      - application/json
+      description: Send the source block named by source_kind (postgres, mysql, sqlite
+        or files) and no other. Postgres and MySQL need a password. Admins only.
+      parameters:
+      - description: Plan
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_plans.PlanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_plans.PlanDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create backup plan
+      tags:
+      - plans
+  /api/v1/plans/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Removes the plan. Its storages and the archives in them are not
+        touched. Admins only.
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete backup plan
+      tags:
+      - plans
+    get:
+      consumes:
+      - application/json
+      description: 'A plan without its source password: secret_set says whether one
+        is stored. Admins only.'
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_plans.PlanDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get backup plan
+      tags:
+      - plans
+    put:
+      consumes:
+      - application/json
+      description: A password left blank keeps the stored one, unless the source kind
+        changes. Admins only.
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Plan
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_plans.PlanRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_plans.PlanDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update backup plan
+      tags:
+      - plans
+  /api/v1/plans/{id}/archives:
+    get:
+      consumes:
+      - application/json
+      description: Archives still kept, newest first, one entry per storage. storage_id
+        narrows the list to one storage. Admins only.
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Only the archives on this storage
+        in: query
+        name: storage_id
+        type: integer
+      - default: 1
+        description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 'Page size (default: 20, min: 1, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_runs.PaginatedArchivesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List the archives of a plan (paginated)
+      tags:
+      - runs
+  /api/v1/plans/{id}/enabled:
+    put:
+      consumes:
+      - application/json
+      description: A paused plan keeps its settings and can still be run by hand,
+        but does not run on its schedule. Resuming starts with the next slot, not
+        the ones missed while paused. Admins only.
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Enabled
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_plans.SetEnabledRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_plans.PlanDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Pause or resume a backup plan
+      tags:
+      - plans
+  /api/v1/plans/{id}/restores:
+    get:
+      consumes:
+      - application/json
+      description: Newest first, without logs. Admins only.
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 1
+        description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 'Page size (default: 20, min: 1, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_runs.PaginatedRestoresResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List the restores of a plan (paginated)
+      tags:
+      - restores
+  /api/v1/plans/{id}/run:
+    post:
+      consumes:
+      - application/json
+      description: Queues a manual run, which the runner starts within seconds. A
+        plan with a run queued or running already is a 409 plans.run_in_progress.
+        Disabled plans can be run by hand. Admins only.
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/internal_runs.RunDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Run a backup plan now
+      tags:
+      - runs
+  /api/v1/plans/{id}/runs:
+    get:
+      consumes:
+      - application/json
+      description: Newest first, without logs. Admins only.
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - default: 1
+        description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 'Page size (default: 20, min: 1, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_runs.PaginatedRunsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List the runs of a plan (paginated)
+      tags:
+      - runs
+  /api/v1/plans/{id}/test:
+    post:
+      consumes:
+      - application/json
+      description: Connects to the database (or opens the files) and looks for the
+        dump program on this server. A failed test is a 200 whose step says what failed.
+        Admins only.
+      parameters:
+      - description: Plan ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_plans.SourceTestDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Test a plan's source
+      tags:
+      - plans
+  /api/v1/plans/test:
+    post:
+      consumes:
+      - application/json
+      description: Connects to the database (or opens the files) and looks for the
+        dump program on this server. A failed test is a 200 whose step says what failed.
+        On an edit form, pass plan_id so a blank password is taken from that plan.
+        Admins only.
+      parameters:
+      - description: The plan being edited, whose password a blank form uses
+        in: query
+        name: plan_id
+        type: integer
+      - description: Source
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_plans.SourceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_plans.SourceTestDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Test an unsaved source
+      tags:
+      - plans
+  /api/v1/restores/{id}:
+    get:
+      consumes:
+      - application/json
+      description: The log is written while the restore goes on, every few seconds,
+        so polling this shows it live. Admins only.
+      parameters:
+      - description: Restore ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_runs.RestoreDetailDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a restore with its log
+      tags:
+      - restores
+  /api/v1/runs/{id}:
+    get:
+      consumes:
+      - application/json
+      description: The log is written while the run goes on, every few seconds, so
+        polling this shows it live. archives lists what the run stored, per storage.
+        Admins only.
+      parameters:
+      - description: Run ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_runs.RunDetailDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a run with its log
+      tags:
+      - runs
+  /api/v1/storages:
+    get:
+      consumes:
+      - application/json
+      description: Every storage, without credentials. Admins only.
+      parameters:
+      - default: 1
+        description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 'Page size (default: 20, min: 1, max: 100)'
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_storages.PaginatedStoragesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List storages (paginated)
+      tags:
+      - storages
+    post:
+      consumes:
+      - application/json
+      description: Send the block named by kind (local, s3 or gcs) and no other. S3
+        and GCS need credentials. Admins only.
+      parameters:
+      - description: Storage
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_storages.StorageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_storages.StorageDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create storage
+      tags:
+      - storages
+  /api/v1/storages/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Removes the storage from Gogobackup. The files in it are not touched.
+        A storage that backup plans use is a 409 storages.in_use whose details.plans
+        lists them. Admins only.
+      parameters:
+      - description: Storage ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete storage
+      tags:
+      - storages
+    get:
+      consumes:
+      - application/json
+      description: 'A storage without its credentials: secret_set says whether they
+        are stored. Admins only.'
+      parameters:
+      - description: Storage ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_storages.StorageDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get storage
+      tags:
+      - storages
+    put:
+      consumes:
+      - application/json
+      description: Credentials left blank keep the stored ones, unless the kind changes.
+        Admins only.
+      parameters:
+      - description: Storage ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Storage
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_storages.StorageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_storages.StorageDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update storage
+      tags:
+      - storages
+  /api/v1/storages/{id}/objects:
+    get:
+      consumes:
+      - application/json
+      description: The folders, then the files, directly under prefix (empty for the
+        top). A storage that cannot be reached is a 502 with the reason in details.reason.
+        Admins only.
+      parameters:
+      - description: Storage ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Folder inside the storage, such as nightly/2026/
+        in: query
+        name: prefix
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_storages.ObjectsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Browse a storage
+      tags:
+      - storages
+  /api/v1/storages/{id}/test:
+    post:
+      consumes:
+      - application/json
+      description: Writes a small object, reads it back and deletes it. A failed test
+        is a 200 whose step says what failed. Admins only.
+      parameters:
+      - description: Storage ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_storages.TestResultDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Test a storage
+      tags:
+      - storages
+  /api/v1/storages/test:
+    post:
+      consumes:
+      - application/json
+      description: Writes a small object, reads it back and deletes it. A failed test
+        is a 200 whose step says what failed. On an edit form, pass storage_id so
+        blank credentials are taken from that storage. Admins only.
+      parameters:
+      - description: The storage being edited, whose credentials a blank form uses
+        in: query
+        name: storage_id
+        type: integer
+      - description: Storage
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_storages.StorageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_storages.TestResultDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ValidationErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Test an unsaved storage
+      tags:
+      - storages
+  /api/v1/users:
+    get:
+      consumes:
+      - application/json
+      description: Paginated list of users with the given role. Admins may only list
+        role "user"; super admins may list any role.
+      parameters:
+      - default: user
+        description: Role to list
+        enum:
+        - super-admin
+        - admin
+        - user
+        in: query
+        name: role
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_users.PaginatedUsersResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List users by role
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      description: Create a user with one role. Admins may only create role "user";
+        super admins may create any role.
+      parameters:
+      - description: User details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_users.CreateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_users.UserDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create user
+      tags:
+      - users
+  /api/v1/users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a user the caller is allowed to manage. Cannot delete yourself.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: Update name and email of a user the caller is allowed to manage
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: User details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_users.UpdateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_users.UserDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - users
+  /api/v1/users/{id}/set-password:
+    post:
+      consumes:
+      - application/json
+      description: Set a new password for a user the caller is allowed to manage.
+        Revokes the user's refresh tokens.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_users.SetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Set user password
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

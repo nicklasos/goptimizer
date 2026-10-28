@@ -1,0 +1,3 @@
+`node scripts/screenshots/shoot.mjs` from the repository root rebuilds the API and the admin panel, seeds a throwaway database in `/tmp/gogobackup-demo` (`backend/cmd/screenshots-seed`) and writes the README screenshots to `docs/images`.
+It needs Go, `sqlite3` and the frontend's `node_modules` with Playwright's Chromium (`make playwright-browsers` in `frontend/`), and takes about a minute because it waits for the scheduler's tick.
+The folder has a fixed name because its paths show in the screenshots. Each run clears it first, so run one at a time; a failed run leaves the API and preview logs there.

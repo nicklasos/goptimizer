@@ -1,0 +1,127 @@
+# Written by Ansible (deploy/roles/nginx). Change the variables there, not this file.
+{% set tls = tls_ready | bool %}
+{% macro common() %}
+    gzip on;
+    gzip_comp_level 6;
+    gzip_min_length 1100;
+    gzip_buffers 16 8k;
+    gzip_proxied any;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        text/javascript
+        application/javascript
+        application/json
+        application/xml
+        application/rss+xml
+        image/svg+xml;
+
+    server_tokens off;
+{% if nginx_hide_server_header | bool %}
+    more_clear_headers Server;
+{% endif %}
+{% if tls_mode == 'cloudflare' and cloudflare_real_ip | default(true) | bool %}
+
+    # Behind Cloudflare every request arrives from a Cloudflare address. This restores the
+    # visitor's address, which the login rate limiter and the logs depend on. Per server, so it
+    # cannot clash with a real_ip_header another site on the machine declares.
+{% for range in cloudflare_ips %}
+    set_real_ip_from {{ range }};
+{% endfor %}
+    real_ip_header CF-Connecting-IP;
+{% endif %}
+{% endmacro %}
+{% macro listen() %}
+{% if tls %}
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+
+    ssl_certificate {{ letsencrypt_live_dir }}/{{ domain }}/fullchain.pem;
+    ssl_certificate_key {{ letsencrypt_live_dir }}/{{ domain }}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+{% else %}
+    listen 80;
+    listen [::]:80;
+{% endif %}
+{% endmacro %}
+{% macro proxy() %}
+        proxy_pass http://127.0.0.1:{{ api_port }};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto {{ 'https' if tls_mode != 'none' else '$scheme' }};
+        proxy_set_header X-Forwarded-Host $host;
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+
+        proxy_buffering on;
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
+{% endmacro %}
+{% if tls %}
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name {{ site_domains | join(' ') }};
+    server_tokens off;
+    return 301 https://$host$request_uri;
+}
+{% endif %}
+
+# Admin panel, with the API under /api
+server {
+{{ listen() }}
+    server_name {{ domain }};
+
+{{ common() }}
+    root {{ frontend_dir }}/dist;
+    index index.html;
+
+    location ^~ /api/ {
+{{ proxy() }}    }
+
+    location = /health {
+{{ proxy() }}    }
+{% if expose_swagger | bool %}
+
+    location ^~ /swagger/ {
+{{ proxy() }}    }
+{% endif %}
+
+    # Build output has a content hash in every file name, so it never changes under the same name
+    location ^~ /assets/ {
+        expires 1y;
+        access_log off;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri $uri/ /index.html;
+    }
+}
+{% if api_domain %}
+
+# API only
+server {
+{{ listen() }}
+    server_name {{ api_domain }};
+
+{{ common() }}
+    location / {
+{{ proxy() }}    }
+}
+{% endif %}
