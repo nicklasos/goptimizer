@@ -88,7 +88,11 @@ export function AppShell() {
             navigate('/')
           }}
         >
-          <img src="/favicon.svg" alt="" width={30} height={30} />
+          {isMobile ? (
+            <img src="/favicon.svg" alt="" width={30} height={30} />
+          ) : (
+            <img src="/logo-wordmark.svg" alt="" width={132} height={36} />
+          )}
         </a>
         {isMobile ? <div className="top-nav-spacer" /> : nav}
         <Dropdown menu={userMenu} placement="bottomRight" trigger={['click']}>

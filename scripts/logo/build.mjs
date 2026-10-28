@@ -1,6 +1,7 @@
 // Writes the wordmarks from docs/images/logo.svg and renders logo.png with the frontend's Playwright.
-// Also renders the admin panel's PNG icons: favicon.png from frontend/public/favicon.svg (the mark
-// redrawn with fewer, bolder shapes so it reads at 16px) and apple-touch-icon.png from the full mark.
+// Also writes the light wordmark to frontend/public for the admin panel's header, and renders the admin
+// panel's PNG icons: favicon.png from frontend/public/favicon.svg (the mark redrawn with fewer, bolder
+// shapes so it reads at 16px) and apple-touch-icon.png from the full mark.
 import fs from 'node:fs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
@@ -21,6 +22,7 @@ const wordmark = (ink) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 
 `
 fs.writeFileSync(path.join(images, 'logo-wordmark.svg'), wordmark('#16313D'))
 fs.writeFileSync(path.join(images, 'logo-wordmark-dark.svg'), wordmark('#E6EDF3'))
+fs.writeFileSync(path.join(publicDir, 'logo-wordmark.svg'), wordmark('#16313D'))
 
 const dataUrl = (svg) => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`
 
@@ -40,4 +42,4 @@ await render(fs.readFileSync(path.join(publicDir, 'favicon.svg'), 'utf8'), 32, p
 // iOS fills transparency with black, so the touch icon gets a white tile.
 await render(logo, 180, path.join(publicDir, 'apple-touch-icon.png'), { background: '#ffffff', padding: 14 })
 await browser.close()
-console.log('wrote logo-wordmark.svg, logo-wordmark-dark.svg, logo.png, favicon.png, apple-touch-icon.png')
+console.log('wrote logo-wordmark.svg, public/logo-wordmark.svg, logo-wordmark-dark.svg, logo.png, favicon.png, apple-touch-icon.png')
