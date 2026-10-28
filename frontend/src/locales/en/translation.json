@@ -60,11 +60,6 @@
     "settings": "Settings"
   },
   "enums": {
-    "role": {
-      "super-admin": "Super admin",
-      "admin": "Admin",
-      "user": "User"
-    },
     "mode": {
       "lossy": "Lossy",
       "lossless": "Lossless"
@@ -149,30 +144,16 @@
     "saved": "Settings saved"
   },
   "userManagement": {
-    "byRole": {
-      "super-admin": {
-        "title": "Super admins",
-        "add": "Add super admin",
-        "edit": "Edit super admin"
-      },
-      "admin": {
-        "title": "Admins",
-        "add": "Add admin",
-        "edit": "Edit admin"
-      },
-      "user": {
-        "title": "Users",
-        "add": "Add user",
-        "edit": "Edit user"
-      }
-    },
+    "add": "Add user",
+    "edit": "Edit user",
     "userName": "Name",
     "userEmail": "Email",
     "password": "Password",
     "newPassword": "New password",
     "setPassword": "Set password",
     "passwordTooShort": "At least 8 characters",
-    "roles": "Roles",
+    "admin": "Admin",
+    "adminHint": "Admins manage users and can make other admins.",
     "empty": "No users yet",
     "userCreated": "User created",
     "userUpdated": "User updated",
@@ -218,8 +199,9 @@
     "auth.user_exists": "A user with this email already exists",
     "auth.invalid_current_password": "Current password is incorrect",
     "users.not_found": "User not found",
-    "users.forbidden_role": "You cannot manage users with this role",
     "users.cannot_delete_self": "You cannot delete yourself",
+    "users.cannot_demote_self": "You cannot remove your own admin rights",
+    "users.last_admin": "At least one admin must remain",
     "folders.not_found": "Folder not found",
     "folders.name_taken": "Another folder has this name",
     "folders.path_not_absolute": "Enter an absolute path, starting with /",

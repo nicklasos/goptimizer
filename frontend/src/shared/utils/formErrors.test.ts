@@ -50,7 +50,7 @@ describe('applyFormErrors', () => {
 
   it('returns the message of an error that has no field', () => {
     const { form, calls } = fakeForm()
-    const error = new ApiError(403, 'users.forbidden_role', 'Not allowed')
+    const error = new ApiError(409, 'users.last_admin', 'Not allowed')
 
     assert.equal(applyFormErrors(form, t, error, ['title']), 'Not allowed')
     assert.equal(calls.length, 0)

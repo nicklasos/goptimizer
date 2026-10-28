@@ -34,13 +34,13 @@ test.describe('Authentication', () => {
   })
 
   test('should login successfully with valid credentials', async ({ page }) => {
-    const user = await dbHelper.createUser({ roles: ['admin'] })
+    const user = await dbHelper.createUser()
     await loginPage.login(user.email, user.password)
     await expect(page.getByTestId('dashboard-page')).toBeVisible()
   })
 
   test('should persist login state after page refresh', async ({ page }) => {
-    const user = await dbHelper.createUser({ roles: ['admin'] })
+    const user = await dbHelper.createUser()
     await loginPage.login(user.email, user.password)
     await page.reload()
     await expect(appShell.mainContent).toBeVisible({ timeout: 15000 })

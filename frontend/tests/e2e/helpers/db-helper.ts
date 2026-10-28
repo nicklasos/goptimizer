@@ -10,21 +10,19 @@ const backendDir = path.resolve(__dirname, '../../../../backend')
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
 dotenv.config({ path: path.join(backendDir, '.env') })
 
-export type TestRole = 'super-admin' | 'admin' | 'user'
-
 export interface TestUser {
   id: number
   email: string
   name: string
   password: string
-  roles: TestRole[]
+  isAdmin: boolean
 }
 
 interface CreateUserOptions {
   email?: string
   password?: string
   name?: string
-  roles?: TestRole[]
+  isAdmin?: boolean
   emailVerified?: boolean
 }
 
@@ -70,18 +68,18 @@ export class DatabaseHelper {
     email = uniqueEmail(),
     password = 'testpassword123',
     name = 'E2E User',
-    roles = ['user'],
+    isAdmin = false,
     emailVerified = true,
   }: CreateUserOptions = {}): Promise<TestUser> {
     const hashed = await bcrypt.hash(password, 4)
     const row = this.connection()
       .prepare(
-        `INSERT INTO users (email, name, password, roles, email_verified_at)
+        `INSERT INTO users (email, name, password, is_admin, email_verified_at)
          VALUES (?, ?, ?, ?, CASE WHEN ? THEN CURRENT_TIMESTAMP END)
          RETURNING id, email, name`
       )
-      .get(email, name, hashed, JSON.stringify(roles), emailVerified ? 1 : 0) as Pick<TestUser, 'id' | 'email' | 'name'>
-    return { ...row, password, roles }
+      .get(email, name, hashed, isAdmin ? 1 : 0, emailVerified ? 1 : 0) as Pick<TestUser, 'id' | 'email' | 'name'>
+    return { ...row, password, isAdmin }
   }
 
   /**

@@ -35,7 +35,7 @@ test.describe('A page that crashes while rendering', () => {
 
     broken = false
     await page.reload()
-    await expect(list.root('user')).toBeVisible()
+    await expect(list.root).toBeVisible()
     await expect(page.getByTestId('crash-screen')).toHaveCount(0)
   })
 })

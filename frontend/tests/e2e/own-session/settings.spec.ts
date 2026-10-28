@@ -6,7 +6,7 @@ const PROGRAMS = ['pngquant', 'oxipng', 'optipng', 'jpegoptim', 'gifsicle']
 
 test.describe('Settings', () => {
   test('lists every image tool and saves the global settings', async ({ page }) => {
-    await loginAs(page, 'admin')
+    await loginAs(page, 'user')
     const shell = new AppShell(page)
     await shell.goto('/')
     await shell.navItem('settings').click()

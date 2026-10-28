@@ -123,8 +123,8 @@ export interface InternalAuthUserResponse {
   email: string;
   email_verified: boolean;
   id: number;
+  is_admin: boolean;
   name: string;
-  roles: string[];
 }
 
 export interface InternalAuthVerifyEmailRequest {
@@ -239,10 +239,10 @@ export interface InternalSettingsToolsResponse {
 
 export interface InternalUsersCreateUserRequest {
   email: string;
+  is_admin: boolean;
   name: string;
   /** @minLength 8 */
   password: string;
-  role: "super-admin" | "admin" | "user";
 }
 
 export interface InternalUsersPaginatedUsersResponse {
@@ -257,6 +257,7 @@ export interface InternalUsersSetPasswordRequest {
 
 export interface InternalUsersUpdateUserRequest {
   email: string;
+  is_admin: boolean;
   name: string;
 }
 
@@ -269,7 +270,7 @@ export interface InternalUsersUserResponse {
   email: string;
   email_verified: boolean;
   id: number;
+  is_admin: boolean;
   name: string;
-  roles: string[];
   updated_at: string;
 }

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import dbHelper, { type TestRole, type TestUser } from './db-helper'
+import dbHelper, { type TestUser } from './db-helper'
 
 const TEST_BACKEND_PORT = process.env.TEST_BACKEND_PORT || '8748'
 export const API_BASE = process.env.VITE_E2E_API_BASE_URL || `http://localhost:${TEST_BACKEND_PORT}/api/v1`
@@ -36,9 +36,9 @@ export async function loginViaAPI(page: Page, email: string, password: string): 
   )
 }
 
-/** Creates a user with the given role and signs the page in as them. */
-export async function loginAs(page: Page, role: TestRole, options: { emailVerified?: boolean } = {}): Promise<TestUser> {
-  const user = await dbHelper.createUser({ roles: [role], name: `E2E ${role}`, ...options })
+/** Creates an admin or a plain user and signs the page in as them. */
+export async function loginAs(page: Page, kind: 'admin' | 'user', options: { emailVerified?: boolean } = {}): Promise<TestUser> {
+  const user = await dbHelper.createUser({ isAdmin: kind === 'admin', name: `E2E ${kind}`, ...options })
   await loginViaAPI(page, user.email, user.password)
   return user
 }

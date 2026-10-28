@@ -1,19 +1,18 @@
 import type { ReactNode } from 'react'
-import { hasAnyRole, type Role, type RoleHolder } from '@/auth/roles'
 
 export interface NavItem {
   key: string
   labelKey: string
   icon: ReactNode
   testId: string
-  roles: readonly Role[] | 'all'
+  adminOnly?: boolean
   path: string
 }
 
 type Target = Pick<NavItem, 'key' | 'path'>
 
-export function visibleNav(items: readonly NavItem[], user: RoleHolder | null): NavItem[] {
-  return items.filter((item) => item.roles === 'all' || hasAnyRole(user, item.roles))
+export function visibleNav(items: readonly NavItem[], isAdmin: boolean): NavItem[] {
+  return items.filter((item) => !item.adminOnly || isAdmin)
 }
 
 /** The item whose path is the longest prefix of the current location. */

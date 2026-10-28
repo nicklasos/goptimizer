@@ -1,13 +1,9 @@
-import { useState, type ReactNode } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { Button, Card, Form, Input, Tabs, Tooltip } from 'antd'
-import { CrownOutlined, KeyOutlined, PlusOutlined, SafetyCertificateOutlined, TeamOutlined } from '@ant-design/icons'
+import { useState } from 'react'
+import { Button, Card, Form, Input, Switch, Tag, Tooltip } from 'antd'
+import { KeyOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { useTranslation } from 'react-i18next'
 import { useCurrentUser } from '@/auth/authStore'
-import { RoleTags } from '@/auth/RoleTags'
-import { ROLE_ADMIN, ROLE_SUPER_ADMIN, ROLE_USER, type Role } from '@/auth/roles'
-import { Forbidden } from '@/shared/components/Forbidden'
 import { ModalForm } from '@/shared/components/ModalForm'
 import { PageHeader } from '@/shared/components/PageHeader'
 import { PageStack } from '@/shared/components/PageStack'
@@ -20,47 +16,14 @@ import message from '@/shared/utils/message'
 import { generatePassword } from '@/shared/utils/password'
 import { applyFormErrors } from '@/shared/utils/formErrors'
 import { useDeleteUser, useSaveUser, useSetUserPassword, useUsers } from '../hooks'
-import { canDeleteUser, canManageUser } from '../policy'
+import { canDeleteOrDemote } from '../policy'
 import type { ManagedUser, UserFormValues } from '../types'
 
-const FORM_FIELDS = ['name', 'email', 'password'] as const
-const KEY_FIELDS = { 'auth.user_exists': 'email' }
+const FORM_FIELDS = ['name', 'email', 'password', 'is_admin'] as const
+const KEY_FIELDS = { 'auth.user_exists': 'email', 'users.last_admin': 'is_admin' }
 
-/** One tab per role, in this order. A tab shows when the policy lets the current user manage that role. */
-const TABS: { role: Role; icon: ReactNode }[] = [
-  { role: ROLE_USER, icon: <TeamOutlined /> },
-  { role: ROLE_ADMIN, icon: <SafetyCertificateOutlined /> },
-  { role: ROLE_SUPER_ADMIN, icon: <CrownOutlined /> },
-]
-
-/** `/users?role=admin`: the accounts of one role. Without `role` it lists plain users. */
+/** `/users`: every account, admins and users, in one table. */
 export default function UsersPage() {
-  const { t } = useTranslation()
-  const currentUser = useCurrentUser()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const tabs = TABS.filter((tab) => canManageUser(currentUser, { roles: [tab.role] }))
-  const role = tabs.find((tab) => tab.role === (searchParams.get('role') ?? ROLE_USER))?.role
-  if (!role) return <Forbidden />
-
-  const tabBar =
-    tabs.length > 1 ? (
-      <Tabs
-        data-testid="users-tabs"
-        activeKey={role}
-        onChange={(key) => setSearchParams(key === ROLE_USER ? {} : { role: key })}
-        items={tabs.map((tab) => ({
-          key: tab.role,
-          icon: tab.icon,
-          label: <span data-testid={`users-tab-${tab.role}`}>{t(`userManagement.byRole.${tab.role}.title`)}</span>,
-        }))}
-      />
-    ) : null
-
-  return <RoleUsers key={role} role={role} tabBar={tabBar} />
-}
-
-/** List, create, edit, set password and delete for the accounts of one role. */
-function RoleUsers({ role, tabBar }: { role: Role; tabBar: ReactNode }) {
   const { t } = useTranslation()
   const currentUser = useCurrentUser()
   const [form] = Form.useForm<UserFormValues>()
@@ -69,18 +32,16 @@ function RoleUsers({ role, tabBar }: { role: Role; tabBar: ReactNode }) {
   const [editing, setEditing] = useState<ManagedUser | null>(null)
   const [passwordTarget, setPasswordTarget] = useState<ManagedUser | null>(null)
   const paging = usePageParams()
-  const users = useUsers(role, paging.params)
+  const users = useUsers(paging.params)
   const pagination = useTablePagination(paging, users.data)
-  const save = useSaveUser(role)
+  const save = useSaveUser()
   const setPassword = useSetUserPassword()
   const remove = useDeleteUser()
-
-  const text = (key: string) => t(`userManagement.byRole.${role}.${key}`)
 
   const openModal = (record: ManagedUser | null) => {
     setEditing(record)
     form.resetFields()
-    form.setFieldsValue(record ? { name: record.name, email: record.email } : { password: generatePassword() })
+    form.setFieldsValue(record ? { name: record.name, email: record.email, is_admin: record.is_admin } : { password: generatePassword(), is_admin: false })
     setModalOpen(true)
   }
 
@@ -130,7 +91,7 @@ function RoleUsers({ role, tabBar }: { role: Role; tabBar: ReactNode }) {
       entity="user"
       id={record.id}
       onEdit={() => openModal(record)}
-      onDelete={canDeleteUser(currentUser, record) ? () => onDelete(record) : undefined}
+      onDelete={canDeleteOrDemote(currentUser, record) ? () => onDelete(record) : undefined}
       deleteTitle={t('userManagement.deleteConfirm')}
       deleteDescription={t('userManagement.deleteConfirmDescription')}
     >
@@ -152,7 +113,7 @@ function RoleUsers({ role, tabBar }: { role: Role; tabBar: ReactNode }) {
   const columns: ColumnsType<ManagedUser> = [
     { title: t('userManagement.userName'), dataIndex: 'name', key: 'name', ellipsis: true },
     { title: t('userManagement.userEmail'), dataIndex: 'email', key: 'email' },
-    { title: t('userManagement.roles'), dataIndex: 'roles', key: 'roles', render: (roles: string[]) => <RoleTags roles={roles} /> },
+    { title: t('userManagement.admin'), dataIndex: 'is_admin', key: 'is_admin', width: 100, render: (isAdmin: boolean) => <AdminTag isAdmin={isAdmin} /> },
     {
       title: t('common.createdAt'),
       dataIndex: 'created_at',
@@ -164,18 +125,17 @@ function RoleUsers({ role, tabBar }: { role: Role; tabBar: ReactNode }) {
   ]
 
   return (
-    <PageStack testId={`users-page-${role}`}>
+    <PageStack testId="users-page">
       <Card>
         <PageHeader
           icon={<TeamOutlined />}
           title={t('navigation.users')}
           mainAction={
             <Button data-testid="add-user-button" type="primary" icon={<PlusOutlined />} onClick={() => openModal(null)}>
-              {text('add')}
+              {t('userManagement.add')}
             </Button>
           }
         />
-        {tabBar}
         <ResponsiveTable
           testId="users-table"
           items={users.data?.data}
@@ -189,9 +149,7 @@ function RoleUsers({ role, tabBar }: { role: Role; tabBar: ReactNode }) {
           renderCard={(item) => (
             <>
               <div>{item.email}</div>
-              <div>
-                <RoleTags roles={item.roles} />
-              </div>
+              <AdminTag isAdmin={item.is_admin} />
               <div>
                 {t('common.createdAt')}: {formatDateTime(item.created_at)}
               </div>
@@ -203,7 +161,7 @@ function RoleUsers({ role, tabBar }: { role: Role; tabBar: ReactNode }) {
       <ModalForm
         testId="user-form-modal"
         buttonPrefix="user-modal"
-        title={editing ? text('edit') : text('add')}
+        title={editing ? t('userManagement.edit') : t('userManagement.add')}
         open={modalOpen}
         onCancel={closeModal}
         form={form}
@@ -241,6 +199,9 @@ function RoleUsers({ role, tabBar }: { role: Role; tabBar: ReactNode }) {
             />
           </Form.Item>
         )}
+        <Form.Item name="is_admin" label={t('userManagement.admin')} valuePropName="checked" extra={t('userManagement.adminHint')}>
+          <Switch data-testid="user-admin-switch" disabled={editing != null && !canDeleteOrDemote(currentUser, editing)} />
+        </Form.Item>
       </ModalForm>
 
       <ModalForm
@@ -272,5 +233,15 @@ function RoleUsers({ role, tabBar }: { role: Role; tabBar: ReactNode }) {
         </Form.Item>
       </ModalForm>
     </PageStack>
+  )
+}
+
+function AdminTag({ isAdmin }: { isAdmin: boolean }) {
+  const { t } = useTranslation()
+  if (!isAdmin) return null
+  return (
+    <Tag bordered={false} color="processing" data-testid="user-admin-tag">
+      {t('userManagement.admin')}
+    </Tag>
   )
 }

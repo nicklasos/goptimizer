@@ -45,7 +45,7 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
-      // Specs that sign in themselves, as a fresh user or with a specific role.
+      // Specs that sign in themselves, as a fresh admin or plain user.
       name: 'own-session',
       testDir: './tests/e2e/own-session',
       use: { ...devices['Desktop Chrome'] },

@@ -25,8 +25,10 @@ export function AppShell() {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
 
-  const topItems = useMemo(() => visibleNav(TOP_NAV, user), [user])
-  const userItems = useMemo(() => visibleNav(USER_MENU, user), [user])
+  const isAdmin = user?.is_admin === true
+
+  const topItems = useMemo(() => visibleNav(TOP_NAV, isAdmin), [isAdmin])
+  const userItems = useMemo(() => visibleNav(USER_MENU, isAdmin), [isAdmin])
 
   const toMenuItems = (items: NavItem[]) =>
     items.map((item) => ({

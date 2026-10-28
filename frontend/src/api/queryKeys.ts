@@ -7,7 +7,7 @@ import type { ID, PageParams } from './types'
 export const qk = {
   users: {
     all: ['users'] as const,
-    list: (role: string, params: PageParams) => ['users', 'list', role, params] as const,
+    list: (params: PageParams) => ['users', 'list', params] as const,
   },
   folders: {
     all: ['folders'] as const,

@@ -18,7 +18,7 @@ test.afterAll(() => {
 
 test.describe('Folders', () => {
   test('are added, paused, edited and deleted', async ({ page }) => {
-    await loginAs(page, 'admin')
+    await loginAs(page, 'user')
     const dashboard = new DashboardPage(page)
     const editor = new FolderEditorPage(page)
     const name = `E2E Shop ${Date.now()}`

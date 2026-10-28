@@ -5,41 +5,22 @@ import { AppShell } from '../pages/AppShell'
 import { LoginPage } from '../pages/LoginPage'
 import { UserManagementPage } from '../pages/UserManagementPage'
 
-test.describe('User management as a super admin', () => {
-  test('creates a super admin from the user menu', async ({ page }) => {
-    await loginAs(page, 'super-admin')
-    const shell = new AppShell(page)
-    const users = new UserManagementPage(page)
-    const email = uniqueEmail('super')
-
-    await shell.goto('/')
-    await expect(shell.navItem('users')).toHaveCount(0)
-    await shell.openUserMenu()
-    await shell.userMenuItem('users').click()
-    await expect(users.root('user')).toBeVisible()
-    await users.tab('super-admin').click()
-    await expect(users.root('super-admin')).toBeVisible()
-    await expect(page).toHaveURL(/\/users\?role=super-admin$/)
-
-    await users.create('E2E New Super Admin', email)
-    await page.reload()
-    await expect(users.root('super-admin')).toBeVisible()
-    await users.rename(email, 'E2E Renamed Super Admin')
-    await users.delete(email)
-  })
-
-  test('creates an admin who can then sign in', async ({ page }) => {
-    await loginAs(page, 'super-admin')
+test.describe('User management', () => {
+  test('an admin creates an admin who can then manage users', async ({ page }) => {
+    await loginAs(page, 'admin')
     const shell = new AppShell(page)
     const users = new UserManagementPage(page)
     const email = uniqueEmail('admin')
     const password = 'admin-password-123'
 
-    await users.open('user')
-    await users.tab('admin').click()
-    await expect(users.root('admin')).toBeVisible()
+    await shell.goto('/')
+    await expect(shell.navItem('users')).toHaveCount(0)
+    await shell.openUserMenu()
+    await shell.userMenuItem('users').click()
+    await expect(users.root).toBeVisible()
 
-    await users.create('E2E New Admin', email)
+    await users.create('E2E New Admin', email, { admin: true })
+    await expect(users.row(email).getByTestId('user-admin-tag')).toBeVisible()
     await users.setPassword(email, password)
 
     await shell.logoutViaUI()
@@ -49,22 +30,41 @@ test.describe('User management as a super admin', () => {
     await expect(shell.userMenuItem('users')).toBeVisible()
   })
 
-  test('cannot delete themselves', async ({ page }) => {
-    const me = await loginAs(page, 'super-admin')
+  test('an admin creates, renames and deletes a plain user', async ({ page }) => {
+    await loginAs(page, 'admin')
+    const users = new UserManagementPage(page)
+    const email = uniqueEmail('plain')
+
+    await users.open()
+    await users.create('E2E New User', email)
+    await expect(users.row(email).getByTestId('user-admin-tag')).toHaveCount(0)
+    await page.reload()
+    await users.rename(email, 'E2E Renamed User')
+    await users.delete(email)
+  })
+
+  test('an admin cannot delete themselves or remove their own admin flag', async ({ page }) => {
+    const me = await loginAs(page, 'admin')
+    const other = await dbHelper.createUser({ isAdmin: true })
     const users = new UserManagementPage(page)
 
-    await users.open('super-admin')
-    await expect(users.row(me.email)).toBeVisible()
-    await expect(users.row(me.email).locator('[data-testid^="edit-user-button-"]')).toBeVisible()
+    await users.open()
     await expect(users.row(me.email).locator('[data-testid^="delete-user-button-"]')).toHaveCount(0)
+    await users.edit(me.email)
+    await expect(users.adminSwitch).toBeDisabled()
+    await page.getByTestId('user-modal-cancel-button').click()
+
+    await expect(users.row(other.email).locator('[data-testid^="delete-user-button-"]')).toBeVisible()
+    await users.edit(other.email)
+    await expect(users.adminSwitch).toBeEnabled()
   })
 
   test('sees a taken email as an error on the email field', async ({ page }) => {
-    await loginAs(page, 'super-admin')
-    const existing = await dbHelper.createUser({ roles: ['admin'] })
+    await loginAs(page, 'admin')
+    const existing = await dbHelper.createUser()
     const users = new UserManagementPage(page)
 
-    await users.open('admin')
+    await users.open()
     await page.getByTestId('add-user-button').click()
     await page.getByTestId('user-name-input').fill('E2E Duplicate')
     await page.getByTestId('user-email-input').fill(existing.email)
@@ -74,63 +74,5 @@ test.describe('User management as a super admin', () => {
     await expect(page.getByTestId('user-name-input')).not.toHaveAttribute('aria-invalid', 'true')
     await expect(page.getByTestId('user-modal-submit-button')).toBeVisible()
     await expect(users.table.locator('tr[data-row-key]').filter({ hasText: 'E2E Duplicate' })).toHaveCount(0)
-  })
-
-  test('follows the old admin pages to their tabs', async ({ page }) => {
-    await loginAs(page, 'super-admin')
-    const users = new UserManagementPage(page)
-
-    await users.goto('/admin/admins')
-    await expect(users.root('admin')).toBeVisible()
-    await users.goto('/admin/super-admins')
-    await expect(users.root('super-admin')).toBeVisible()
-  })
-})
-
-test.describe('User management as an admin', () => {
-  test('manages plain users from the user menu, with no other tabs', async ({ page }) => {
-    await loginAs(page, 'admin')
-    const shell = new AppShell(page)
-    const users = new UserManagementPage(page)
-    const email = uniqueEmail('plain')
-
-    await shell.goto('/')
-    await shell.openUserMenu()
-    await shell.userMenuItem('users').click()
-    await expect(users.root('user')).toBeVisible()
-    await expect(users.tab('admin')).toHaveCount(0)
-    await expect(users.tab('super-admin')).toHaveCount(0)
-
-    await users.create('E2E New User', email)
-    await users.delete(email)
-  })
-
-  test('is refused on the admin and super admin lists', async ({ page }) => {
-    await loginAs(page, 'admin')
-    const users = new UserManagementPage(page)
-
-    for (const path of ['/users?role=super-admin', '/users?role=admin', '/admin/admins']) {
-      await users.goto(path)
-      await expect(users.forbidden).toBeVisible()
-      await expect(users.table).toHaveCount(0)
-    }
-  })
-})
-
-test.describe('User management as a plain user', () => {
-  test('has no Users entry and is refused on every list', async ({ page }) => {
-    await loginAs(page, 'user')
-    const shell = new AppShell(page)
-    const users = new UserManagementPage(page)
-
-    await shell.goto('/')
-    await expect(shell.navItem('dashboard')).toHaveCount(0)
-    await shell.openUserMenu()
-    await expect(shell.userMenuItem('users')).toHaveCount(0)
-
-    for (const path of ['/users', '/users?role=admin', '/users?role=super-admin']) {
-      await users.goto(path)
-      await expect(users.forbidden).toBeVisible()
-    }
   })
 })

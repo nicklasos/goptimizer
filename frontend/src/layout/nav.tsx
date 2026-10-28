@@ -1,15 +1,13 @@
 import { FolderOutlined, SettingOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
-import { ROLE_ADMIN } from '@/auth/roles'
 import type { NavItem } from './navMatch'
 
-/** The top bar. An item is shown to the listed roles; a super admin sees all of them. */
+/** The top bar. Every signed-in user sees an item unless it is `adminOnly`. */
 export const TOP_NAV: NavItem[] = [
   {
     key: 'dashboard',
     labelKey: 'navigation.dashboard',
     icon: <FolderOutlined />,
     testId: 'nav-dashboard',
-    roles: [ROLE_ADMIN],
     path: '/',
   },
   {
@@ -17,7 +15,6 @@ export const TOP_NAV: NavItem[] = [
     labelKey: 'navigation.settings',
     icon: <SettingOutlined />,
     testId: 'nav-settings',
-    roles: [ROLE_ADMIN],
     path: '/settings',
   },
 ]
@@ -29,7 +26,6 @@ export const USER_MENU: NavItem[] = [
     labelKey: 'navigation.profile',
     icon: <UserOutlined />,
     testId: 'user-menu-profile',
-    roles: 'all',
     path: '/profile',
   },
   {
@@ -37,7 +33,7 @@ export const USER_MENU: NavItem[] = [
     labelKey: 'navigation.users',
     icon: <TeamOutlined />,
     testId: 'user-menu-users',
-    roles: [ROLE_ADMIN],
+    adminOnly: true,
     path: '/users',
   },
 ]

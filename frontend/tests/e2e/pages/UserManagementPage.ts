@@ -1,45 +1,45 @@
 import { expect, type Locator } from '@playwright/test'
-import type { TestRole } from '../helpers/db-helper'
 import { BasePage } from './BasePage'
 
-
 export class UserManagementPage extends BasePage {
-  root(role: TestRole): Locator {
-    return this.page.getByTestId(`users-page-${role}`)
+  get root(): Locator {
+    return this.page.getByTestId('users-page')
   }
 
   get table(): Locator {
     return this.page.getByTestId('users-table')
   }
 
-  get forbidden(): Locator {
-    return this.page.getByTestId('forbidden-result')
-  }
-
-  tab(role: TestRole): Locator {
-    return this.page.getByTestId(`users-tab-${role}`)
+  get adminSwitch(): Locator {
+    return this.page.getByTestId('user-admin-switch')
   }
 
   row(email: string): Locator {
     return this.table.locator('tr[data-row-key]').filter({ hasText: email })
   }
 
-  async open(role: TestRole): Promise<void> {
-    await this.goto(role === 'user' ? '/users' : `/users?role=${role}`)
-    await expect(this.root(role)).toBeVisible()
+  async open(): Promise<void> {
+    await this.goto('/users')
+    await expect(this.root).toBeVisible()
   }
 
-  async create(name: string, email: string): Promise<void> {
+  async create(name: string, email: string, { admin = false } = {}): Promise<void> {
     await this.page.getByTestId('add-user-button').click()
     await this.page.getByTestId('user-name-input').fill(name)
     await this.page.getByTestId('user-email-input').fill(email)
     await expect(this.page.getByTestId('user-password-input')).not.toHaveValue('')
+    if (admin) await this.adminSwitch.click()
     await this.page.getByTestId('user-modal-submit-button').click()
     await expect(this.row(email)).toBeVisible()
   }
 
-  async rename(email: string, name: string): Promise<void> {
+  async edit(email: string): Promise<void> {
     await this.row(email).locator('[data-testid^="edit-user-button-"]').click()
+    await expect(this.page.getByTestId('user-name-input')).toBeVisible()
+  }
+
+  async rename(email: string, name: string): Promise<void> {
+    await this.edit(email)
     await this.page.getByTestId('user-name-input').fill(name)
     await this.page.getByTestId('user-modal-submit-button').click()
     await expect(this.row(email)).toContainText(name)
