@@ -20,10 +20,11 @@
 </p>
 
 > [!WARNING]
-> **Goptimizer is in early development and does not optimize images yet.** Today it has sign-in, user
-> management, folders and the settings page with the image tools. Scanning and optimizing are being built
-> in the order of the [roadmap](#roadmap).
-> Screenshots come with the dashboard.
+> **Goptimizer is in early development and does not optimize images yet.** You can add and configure
+> folders, check the image tools on the server and manage accounts. Scanning and optimizing are being
+> built in the order of the [roadmap](#roadmap).
+
+![The folders page: one card per project folder, with its path, compression mode, scan intervals and a pause switch](docs/images/dashboard.png)
 
 ## Why
 
@@ -36,12 +37,27 @@ Goptimizer replaces those scripts with one service and a web page. You add each 
 once. The service finds new and changed images on its own, shrinks them with the best command-line tools
 installed on the server, and shows per folder how many images it handled and how many bytes it saved.
 
-## How it works
+## What works today
 
-- **Folders.** Add any folder on the server from the browser, pause it, or change its settings. Each
-  folder has its own scan interval and compression profile, and one folder never sits inside another.
+- **Folders.** Add any folder on the server from the browser, pause it, edit it or delete it. Each folder
+  has its own scan intervals and compression profile: lossy or lossless, JPEG and PNG quality, the
+  similarity threshold, the minimum saving and exclude patterns such as `cache/**`. The path is checked
+  when you save it: it has to exist, symlinks are stored as the directory they point to, system folders
+  such as `/etc` and `/usr` are refused, and one folder never sits inside another.
+- **Tools page.** The settings page lists every program Goptimizer uses, whether the API finds it, its
+  version and path, and the `apt` and `brew` commands that install it. A warning names any format that
+  cannot be optimized until a program is installed.
+- **Global settings.** How many images are optimized at once (by default one less than the CPU count),
+  how many folders are scanned at once, and whether the tools run at low priority.
+- **Accounts.** Every account can work with every folder and the settings. Admins also create, edit and
+  delete accounts, and can make other admins. Nobody can lock the last admin out.
+
+## How optimizing will work
+
+This part is being built now. [docs/PLAN.md](docs/PLAN.md) has the full design.
+
 - **TinyPNG-like compression.** By default PNGs go through `pngquant` palette quantization (the same
-  approach as TinyPNG) and then `oxipng`. JPEGs are re-encoded by `jpegoptim` with a quality cap. GIFs go
+  approach as TinyPNG) and then `oxipng`, or `optipng` where `oxipng` is missing. JPEGs are re-encoded by `jpegoptim` with a quality cap. GIFs go
   through `gifsicle`. Any folder can switch to lossless, where every pixel stays the same.
 - **Fast scans of huge folders.** A quick scan checks only each directory's modification time and lists
   just the directories that changed, so a folder with a million images costs about one `stat` per
@@ -52,13 +68,26 @@ installed on the server, and shows per folder how many images it handled and how
   new uploads. After a restart, everything carries on where it stopped.
 - **Light on the server.** You choose how many images are optimized at once. The tools run under `nice`
   and `ionice` by default, so the sites on the same server stay fast.
-- **Tools page.** The settings page lists every tool Goptimizer can use, whether it is installed, its
-  version, and the command that installs it.
 - **Statistics.** Each folder shows its images by status, the bytes saved, the last scans and a 30-day
   chart.
 
 Local folders come first. SSH servers, Amazon S3 and Google Cloud Storage are planned as more kinds of
 folder.
+
+## Screenshots
+
+These are generated from demo data by `node scripts/screenshots/shoot.mjs`.
+
+| | |
+|---|---|
+| ![The folder editor: name, path, scan intervals and the compression profile](docs/images/folder-editor.png) | ![The settings page: each image tool with its status, version, path and install commands, and the global settings](docs/images/settings.png) |
+| **Folder editor.** Path, scan intervals and the compression profile. | **Settings.** The image tools on this server and how to install the missing ones. |
+| ![The users page: accounts with an Admin tag](docs/images/users.png) | ![The sign-in page](docs/images/login.png) |
+| **Users.** Admins manage accounts and can make other admins. | **Sign in.** |
+
+<p align="center">
+  <img src="docs/images/mobile-dashboard.png" alt="The folders page on a phone" width="300">
+</p>
 
 ## Safety
 
@@ -88,7 +117,7 @@ Still, lossy compression changes pixels by design. Try a folder on a copy first 
 | 2 | Folders and the tools page | Done |
 | 3 | Scanner: quick and full scans, measured on a million files | Next |
 | 4 | Optimizer: pipelines, verification, the shared worker pool | Planned |
-| 5 | Dashboard: folder cards, statistics, screenshots in this README | Planned |
+| 5 | Dashboard: statistics per folder, scans and images by status, a 30-day chart | Planned |
 | 6 | Deploy: image tools installed by the playbooks | Planned |
 
 The design, the data model and the reasoning behind each decision are in [docs/PLAN.md](docs/PLAN.md).
@@ -134,9 +163,11 @@ documentation is at http://localhost:8747/swagger/index.html. With `APP_DEBUG=tr
 `.env.example`, emails go to the API's log.
 
 Every account can add, edit, pause and delete folders and change the settings. Admins also manage
-accounts at `/users` and can make other admins. `make cli -- create-user --email you@example.com
---password a-long-password --admin` creates an admin. Without `--admin` the account is a plain user;
-the command used to create a super admin by default.
+accounts at `/users` and can make other admins. To create an account from the command line:
+
+```bash
+make cli -- create-user --email you@example.com --password a-long-password --admin   # leave out --admin for a plain user
+```
 
 ## Tests
 
@@ -151,13 +182,15 @@ before the first run.
 | [backend/](backend) | Go API: Gin, SQLite through sqlc, JWT auth with admins and users, an in-process scheduler |
 | [frontend/](frontend) | Admin panel: React, TypeScript, Ant Design, TanStack Query |
 | [deploy/](deploy) | Ansible: provision a server, install on an existing one, release |
-| [docs/](docs) | The plan and the logo |
+| [docs/](docs) | The plan, the logo and the screenshots |
+| [scripts/](scripts) | `logo/build.mjs` renders the logo files, `screenshots/shoot.mjs` the screenshots |
 
 ## Contributing
 
 Issues and pull requests are welcome. [AGENTS.md](AGENTS.md) is the guide for contributors and coding
 agents, and each folder has its own `AGENTS.md` with its conventions. A change ends with `make test`
-green, and `ansible-playbook --syntax-check` for anything under `deploy/`.
+green, and `ansible-playbook --syntax-check` for anything under `deploy/`. After a change to the admin
+panel, run `node scripts/screenshots/shoot.mjs` to refresh the screenshots.
 
 ## Credits
 

@@ -39,6 +39,8 @@ make provision       # set up a new server (see deploy/README.md)
 make install-remote  # add the app to a server that already has everything (deploy/install.yml)
 make deploy-remote   # release the current code to the server with Ansible
 make deploy          # run on the server (install.yml or by hand): pull, build, migrate, restart
+node scripts/screenshots/shoot.mjs   # regenerate the README screenshots after a UI change (demo data from backend/cmd/screenshots-seed)
+node scripts/logo/build.mjs          # regenerate the logo files from docs/images/logo.svg
 ```
 
 ## Rules
