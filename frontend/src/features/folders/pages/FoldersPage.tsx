@@ -16,8 +16,9 @@ export default function FoldersPage() {
   const navigate = useNavigate()
   const folders = useFolders()
 
-  const addButton = (testId: string) => (
-    <Button data-testid={testId} type="primary" icon={<PlusOutlined />} onClick={() => navigate('/folders/new')}>
+  // The empty state and the header never show together, so both buttons share one test id.
+  const addButton = (
+    <Button data-testid="add-folder-button" type="primary" icon={<PlusOutlined />} onClick={() => navigate('/folders/new')}>
       {t('folders.add')}
     </Button>
   )
@@ -29,36 +30,34 @@ export default function FoldersPage() {
       return (
         <Card>
           <Empty data-testid="folders-empty" description={t('folders.empty')} image={Empty.PRESENTED_IMAGE_SIMPLE}>
-            {addButton('folders-empty-add-button')}
+            {addButton}
           </Empty>
         </Card>
       )
     }
     return (
-      <Row gutter={[token.margin, token.margin]}>
-        {folders.data.map((folder) => (
-          <Col key={folder.id} xs={24} md={12} xl={8}>
-            <FolderCard folder={folder} />
-          </Col>
-        ))}
-      </Row>
+      <>
+        {/* PageHeader brings its own bottom margin, and this card holds nothing else */}
+        <Card styles={{ body: { paddingBottom: 0 } }}>
+          <PageHeader
+            icon={<FolderOutlined />}
+            title={t('folders.title')}
+            subtitle={t('folders.subtitle')}
+            mainAction={addButton}
+          />
+        </Card>
+        <Row gutter={[token.margin, token.margin]}>
+          {folders.data.map((folder) => (
+            <Col key={folder.id} xs={24} md={12} xl={8}>
+              <FolderCard folder={folder} />
+            </Col>
+          ))}
+        </Row>
+      </>
     )
   }
 
-  return (
-    <PageStack testId="dashboard-page">
-      {/* PageHeader brings its own bottom margin, and this card holds nothing else */}
-      <Card styles={{ body: { paddingBottom: 0 } }}>
-        <PageHeader
-          icon={<FolderOutlined />}
-          title={t('folders.title')}
-          subtitle={t('folders.subtitle')}
-          mainAction={addButton('add-folder-button')}
-        />
-      </Card>
-      {content()}
-    </PageStack>
-  )
+  return <PageStack testId="dashboard-page">{content()}</PageStack>
 }
 
 function FolderCard({ folder }: { folder: Folder }) {
