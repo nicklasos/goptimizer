@@ -11,7 +11,7 @@ cli: ## Run a console command (make cli migrate up)
 	$(MAKE) -C backend cli CLI_ARGS='$(CLI_ARGS)'
 else
 
-.PHONY: help up down seed admin test test-backend test-frontend deploy-setup provision install-remote deploy-remote deploy
+.PHONY: help up down run run-backend run-frontend seed admin test test-backend test-frontend deploy-setup provision install-remote deploy-remote deploy
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -21,6 +21,15 @@ up: ## Start Mailpit in Docker for local development
 
 down: ## Stop them
 	$(MAKE) -C backend down
+
+run: ## Run the API (:8747) and the Vite dev server (:5747) together
+	$(MAKE) -j2 run-backend run-frontend
+
+run-backend: ## Run the API on :8747
+	$(MAKE) -C backend run
+
+run-frontend: ## Run the Vite dev server on :5747
+	$(MAKE) -C frontend dev
 
 seed: ## Fill an empty development database with sample accounts
 	$(MAKE) -C backend seed
