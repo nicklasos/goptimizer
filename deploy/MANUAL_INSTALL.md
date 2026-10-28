@@ -18,7 +18,7 @@ chown www-data: shared/database
 
 cp backend/.env.example backend/.env        # then apply deploy/examples/backend.env
 chgrp www-data backend/.env && chmod 640 backend/.env
-printf 'VITE_API_BASE_URL=\nVITE_APP_NAME="Goptimizer"\n' > frontend/.env
+printf 'VITE_API_URL=/api/v1\nVITE_APP_NAME="Goptimizer"\n' > frontend/.env
 
 make deploy SUPERVISOR_PROGRAM=             # first build and migrations; nothing to restart yet
 
@@ -32,7 +32,7 @@ nginx -t && systemctl reload nginx
 cd backend && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password"
 ```
 
-The empty `VITE_API_BASE_URL` makes the panel call its own origin, where nginx forwards `/api` to the API.
+`VITE_API_URL=/api/v1` makes the panel call its own origin, where nginx forwards `/api` to the API.
 The examples assume the API on port 8747, the user `www-data` and Cloudflare in front; change the port in
 both `backend/.env` and `nginx.conf`.
 

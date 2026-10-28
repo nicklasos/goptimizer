@@ -60,7 +60,7 @@ export default defineConfig({
       timeout: 120 * 1000,
     },
     {
-      command: `VITE_API_BASE_URL=http://localhost:${TEST_BACKEND_PORT} npm run dev -- --port ${TEST_FRONTEND_PORT}`,
+      command: `VITE_API_URL=http://localhost:${TEST_BACKEND_PORT}/api/v1 npm run dev -- --port ${TEST_FRONTEND_PORT}`,
       url: `http://localhost:${TEST_FRONTEND_PORT}`,
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,

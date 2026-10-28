@@ -5,6 +5,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const port = Number(env.PORT || 5747)
+  if (!env.VITE_API_URL) {
+    throw new Error('VITE_API_URL is not set: copy frontend/.env.example to frontend/.env (http://localhost:8747/api/v1 locally, /api/v1 behind nginx)')
+  }
 
   return {
     plugins: [react()],

@@ -2,7 +2,7 @@ import { ApiError } from './errors'
 import type { Page } from './types'
 import { buildUrl, type Query } from './url'
 
-export const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL ?? ''}/api/v1`
+export const API_BASE_URL = import.meta.env.VITE_API_URL.replace(/\/+$/, '')
 
 export interface RequestOptions {
   query?: Query

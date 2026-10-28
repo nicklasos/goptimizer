@@ -41,7 +41,7 @@ The [root README](../README.md) covers running and deploying the whole service. 
 ```bash
 git clone git@github.com:nicklasos/gogo-front.git my-admin && cd my-admin
 
-cp .env.example .env    # VITE_API_BASE_URL points at gogo, http://localhost:8747 by default
+cp .env.example .env    # VITE_API_URL is the API with its prefix, http://localhost:8747/api/v1
 npm install
 npm run dev             # http://localhost:5747
 ```
@@ -98,7 +98,7 @@ make playwright-browsers
 
 | Variable | Purpose |
 |----------|---------|
-| `VITE_API_BASE_URL` | gogo API origin, e.g. `http://localhost:8747` (the client appends `/api/v1`) |
+| `VITE_API_URL` | Required. The API with its prefix: `http://localhost:8747/api/v1` locally, `/api/v1` behind nginx. Vite refuses to start without it |
 | `PORT` | Dev server port (default `5747`) |
 | `TEST_FRONTEND_PORT` | E2E Vite port (default `5748`) |
 | `TEST_BACKEND_PORT` | E2E gogo port (default `8748`) |
@@ -138,7 +138,7 @@ docker build -t goptimizer-frontend .
 docker run -p 8080:80 -e API_UPSTREAM=http://host.docker.internal:8747 goptimizer-frontend
 ```
 
-The image is the production build behind nginx. With `VITE_API_BASE_URL` left empty at build time the app calls its own origin, and nginx forwards `/api` and `/health` to `API_UPSTREAM`.
+The image is the production build behind nginx. Built with `VITE_API_URL=/api/v1` (the default build argument), the app calls its own origin, and nginx forwards `/api` and `/health` to `API_UPSTREAM`.
 
 ## CI
 

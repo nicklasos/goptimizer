@@ -4,8 +4,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 # Empty means "same origin": nginx proxies /api to the backend (see docker/nginx.conf).
-ARG VITE_API_BASE_URL=
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ARG VITE_API_URL=/api/v1
+ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
 FROM nginx:1.27-alpine
