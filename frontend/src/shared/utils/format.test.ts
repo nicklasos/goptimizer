@@ -4,12 +4,9 @@ import {
   EMPTY,
   formatBytes,
   formatDateTime,
-  formatDay,
   formatDuration,
-  formatNextRun,
   formatNumber,
   formatRelative,
-  formatUtcDateTime,
   setFormatLanguage,
 } from './format'
 
@@ -36,12 +33,6 @@ describe('format', () => {
     assert.equal(formatDateTime('not a date'), 'not a date')
   })
 
-  it('formats a moment in UTC, whatever the offset it was written with', () => {
-    assert.equal(formatUtcDateTime('2026-10-19T21:00:00+03:00'), 'Mon 19.10.2026 18:00 UTC')
-    assert.equal(formatUtcDateTime(new Date(Date.UTC(2027, 0, 1, 0, 0))), 'Fri 01.01.2027 00:00 UTC')
-    assert.equal(formatUtcDateTime(null), EMPTY)
-  })
-
   it('formats byte counts in binary units', () => {
     assert.equal(formatBytes(0), '0 B')
     assert.equal(formatBytes(512), '512 B')
@@ -61,20 +52,6 @@ describe('format', () => {
     assert.equal(formatRelative(null, now), EMPTY)
     setFormatLanguage('uk')
     assert.equal(formatRelative('2026-10-17T12:00:00Z', now), '3 години тому')
-  })
-
-  it('names the next run by its UTC day', () => {
-    assert.equal(formatNextRun('2026-10-17T18:00:00Z', now), 'today 18:00 UTC')
-    assert.equal(formatNextRun('2026-10-18T03:00:00Z', now), 'tomorrow 03:00 UTC')
-    assert.equal(formatNextRun('2026-10-19T03:00:00Z', now), 'Mon 19.10 03:00 UTC')
-    assert.equal(formatNextRun('2026-10-18T00:30:00Z', new Date('2026-10-17T23:50:00Z')), 'tomorrow 00:30 UTC', 'the UTC date decides, not the hours between')
-    setFormatLanguage('uk')
-    assert.equal(formatNextRun('2026-10-17T18:00:00Z', now), 'сьогодні 18:00 UTC')
-  })
-
-  it('shows a UTC day as day and month', () => {
-    assert.equal(plain(formatDay('2026-10-14')), '14 Oct')
-    assert.equal(plain(formatDay('2026-01-01')), '1 Jan', 'the UTC day, whatever the local zone')
   })
 
   it('shows a duration in its two largest units', () => {

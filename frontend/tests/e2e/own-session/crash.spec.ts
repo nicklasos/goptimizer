@@ -1,17 +1,17 @@
 import { test, expect } from '@playwright/test'
 import { loginAs } from '../helpers/test-helpers'
 import { AppShell } from '../pages/AppShell'
-import { StoragesPage } from '../pages/StoragesPage'
+import { UserManagementPage } from '../pages/UserManagementPage'
 
 test.describe('A page that crashes while rendering', () => {
   test('is contained: the menu keeps working and retrying recovers', async ({ page }) => {
     await loginAs(page, 'admin')
     const shell = new AppShell(page)
-    const list = new StoragesPage(page)
+    const list = new UserManagementPage(page)
     let broken = true
 
     // A row the page cannot render: the list endpoint answers with a null item.
-    await page.route('**/api/v1/storages?*', (route) =>
+    await page.route('**/api/v1/users?*', (route) =>
       broken
         ? route.fulfill({
             status: 200,
@@ -21,7 +21,7 @@ test.describe('A page that crashes while rendering', () => {
         : route.fallback()
     )
 
-    await shell.goto('/storages')
+    await shell.goto('/users')
     await expect(page.getByTestId('crash-screen')).toBeVisible()
     await expect(shell.mainMenu).toBeVisible()
 
@@ -29,12 +29,13 @@ test.describe('A page that crashes while rendering', () => {
     await expect(page.getByTestId('dashboard-page')).toBeVisible()
     await expect(page.getByTestId('crash-screen')).toHaveCount(0)
 
-    await shell.navItem('storages').click()
+    await shell.openUserMenu()
+    await shell.userMenuItem('users').click()
     await expect(page.getByTestId('crash-screen')).toBeVisible()
 
     broken = false
     await page.reload()
-    await expect(list.root).toBeVisible()
+    await expect(list.root('user')).toBeVisible()
     await expect(page.getByTestId('crash-screen')).toHaveCount(0)
   })
 })

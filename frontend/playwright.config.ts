@@ -54,10 +54,7 @@ export default defineConfig({
   webServer: [
     {
       // Debug mode logs mail instead of sending it; the login throttle would trip on a suite that signs in dozens of times.
-      // The runs specs need the backup worker in this process, whatever backend/.env says.
-      // Playwright starts this before globalSetup, and the worker reads the runs table on boot,
-      // so the test database is migrated here first.
-      command: `cd ../backend && set -a && . ./.env && set +a && go run ./cmd/cli --test migrate up && APP_DEBUG=true AUTH_RATE_LIMIT=false ENABLE_SCHEDULER=true go run ./cmd/api --port=${TEST_BACKEND_PORT} --test-db`,
+      command: `cd ../backend && set -a && . ./.env && set +a && APP_DEBUG=true AUTH_RATE_LIMIT=false go run ./cmd/api --port=${TEST_BACKEND_PORT} --test-db`,
       url: `http://localhost:${TEST_BACKEND_PORT}/health`,
       reuseExistingServer: !process.env.CI,
       timeout: 120 * 1000,

@@ -4,7 +4,7 @@ import { buildUrl } from './url'
 
 describe('buildUrl', () => {
   it('joins base and path', () => {
-    assert.equal(buildUrl('http://api/api/v1', '/storages'), 'http://api/api/v1/storages')
+    assert.equal(buildUrl('http://api/api/v1', '/users'), 'http://api/api/v1/users')
   })
 
   it('adds query values and skips empty ones', () => {

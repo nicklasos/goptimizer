@@ -44,7 +44,7 @@ test.describe('User management as a super admin', () => {
 
     await shell.logoutViaUI()
     await new LoginPage(page).submit(email, password)
-    await expect(shell.navItem('storages')).toBeVisible({ timeout: 15000 })
+    await expect(shell.userMenuTrigger).toBeVisible({ timeout: 15000 })
     await shell.openUserMenu()
     await expect(shell.userMenuItem('users')).toBeVisible()
   })

@@ -1,6 +1,6 @@
 # Add a feature to the admin panel
 
-A feature is the screens for one API resource. The steps add `orders`; copy `src/features/storages`
+A feature is the screens for one API resource. The steps add `orders`; copy `src/features/users`
 and rename as you go. The API must exist first: see [full-stack-feature.md](full-stack-feature.md).
 
 ## 1. `src/features/orders/`
@@ -30,7 +30,7 @@ Page skeleton: `PageStack` > `Card` > `PageHeader` (title, `mainAction`) + conte
 - **A list**: `usePageParams()` + the list hook + `useTablePagination(paging, query.data)`, rendered with
   `ResponsiveTable` (give it `columns` for desktop and `cardTitle` / `renderCard` for phones). Row buttons through `RowActions`.
 - **A short form**: `ModalForm` on the list page (see `features/users`).
-- **A long form**: its own page (see `StorageEditorPage`): `PageLoading` / `PageError` while loading,
+- **A long form**: its own page: `PageLoading` / `PageError` while loading,
   `useUnsavedChangesGuard(dirty)`, and leave through `useGuardedNavigate()`.
 - **Saving**: in the mutation's `onError`, `applyFormErrors(form, t, error, FIELDS)` puts server validation
   errors under their fields and returns the message for anything else. Mark that mutation `meta: { silent: true }`

@@ -34,34 +34,23 @@ describe('selectNavKey', () => {
     assert.equal(selectNavKey(items, '/reports/12/edit'), 'reports')
   })
 
-  it('matches the extra sections an item owns', () => {
-    const withPlans = [{ key: 'home', path: '/', alsoPaths: ['/plans'] }, { key: 'reports', path: '/reports' }]
-    assert.equal(selectNavKey(withPlans, '/plans/7'), 'home')
-    assert.equal(selectNavKey(withPlans, '/plans-old'), undefined)
-    assert.equal(selectNavKey(withPlans, '/plans/7/edit'), 'home')
-  })
-
   it('does not match a path that only shares a prefix', () => {
     assert.equal(selectNavKey(items, '/reports-archive'), undefined)
   })
 
   it('picks the longest matching prefix', () => {
     const nested = [
-      { key: 'storages', path: '/storages' },
-      { key: 'browser', path: '/storages/browse' },
+      { key: 'reports', path: '/reports' },
+      { key: 'exports', path: '/reports/exports' },
     ]
-    assert.equal(selectNavKey(nested, '/storages/browse/3'), 'browser')
-    assert.equal(selectNavKey(nested, '/storages/3'), 'storages')
+    assert.equal(selectNavKey(nested, '/reports/exports/3'), 'exports')
+    assert.equal(selectNavKey(nested, '/reports/3'), 'reports')
   })
 })
 
 describe('the top bar', () => {
   it('highlights nothing on a page from the user menu', () => {
     for (const path of ['/profile', '/users']) assert.equal(selectNavKey(TOP_NAV, path), undefined)
-  })
-
-  it('keeps the dashboard selected on a plan', () => {
-    assert.equal(selectNavKey(TOP_NAV, '/plans/4/edit'), 'dashboard')
   })
 
   it('offers user management only to admins', () => {

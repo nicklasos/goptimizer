@@ -1,8 +1,8 @@
-import { CloudServerOutlined, DashboardOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
+import { DashboardOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons'
 import { ROLE_ADMIN } from '@/auth/roles'
 import type { NavItem } from './navMatch'
 
-/** The top bar. An item is shown to the listed roles; a super admin sees all of them. The dashboard is the list of backup plans. */
+/** The top bar. An item is shown to the listed roles; a super admin sees all of them. */
 export const TOP_NAV: NavItem[] = [
   {
     key: 'dashboard',
@@ -11,15 +11,6 @@ export const TOP_NAV: NavItem[] = [
     testId: 'nav-dashboard',
     roles: 'all',
     path: '/',
-    alsoPaths: ['/plans'],
-  },
-  {
-    key: 'storages',
-    labelKey: 'navigation.storages',
-    icon: <CloudServerOutlined />,
-    testId: 'nav-storages',
-    roles: [ROLE_ADMIN],
-    path: '/storages',
   },
 ]
 

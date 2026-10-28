@@ -6,7 +6,7 @@
 
 <p align="center">
   The React admin panel of Gogobackup, for the Go API in <a href="../backend">../backend</a>.<br>
-  Dashboard, backup plans, storages, runs, restores and users, typed end to end and covered by tests.
+  Sign-in, users and a dashboard, typed end to end and covered by tests.
 </p>
 
 <p align="center">
@@ -21,12 +21,9 @@
 <p align="center">
   <a href="#quick-start">Quick start</a> ·
   <a href="#features">Features</a> ·
-  <a href="#screenshots">Screenshots</a> ·
   <a href="#adding-a-module">Add a module</a> ·
   <a href="ROADMAP.md">Roadmap</a>
 </p>
-
-![The dashboard: one card per backup plan](../docs/images/dashboard.png)
 
 ---
 
@@ -74,8 +71,6 @@ The E2E run starts its own gogo API against the test database and its own Vite s
 - **Navigation**: a top bar with the logo, the sections and a user menu (profile, user management, sign out); on phones the sections move into a drawer
 - **User management**: one page from the user menu, with a tab per role the signed-in user may manage
 - **Profile**: name, email, language and password
-- **Backup plans**: an editor with a source picker, a pasted connection URL filled into the fields, schedule rows with a live next-run line, retention switches and a connection test
-- **Storages**: a server-paginated list and an editor with a kind picker, a connection test and an unsaved-changes guard, as the pattern to copy
 - **Generated API types**: `make api-types` turns the backend's OpenAPI file into `src/api/schema.ts`
 - **Typed API client**: `ApiError`, server validation errors mapped onto form fields, translated error keys
 - **Resilient**: a page that crashes shows an error screen inside the shell instead of blanking the app, unknown URLs get a not-found page, and every page is a lazily loaded chunk
@@ -83,18 +78,6 @@ The E2E run starts its own gogo API against the test database and its own Vite s
 - **i18n**: English and Ukrainian
 - **Docker and CI**: an nginx image that serves the build and proxies `/api`, and a GitHub Actions workflow that runs the whole suite
 - **Tests**: unit tests on `node:test`, Playwright E2E with page objects, everything in TypeScript
-
-## Screenshots
-
-| A plan's runs | The plan editor |
-|---|---|
-| ![A plan's runs](../docs/images/plan-runs.png) | ![The plan editor](../docs/images/plan-editor.png) |
-
-| A restore | On a phone |
-|---|---|
-| ![A restore](../docs/images/restore.png) | ![The dashboard on a phone](../docs/images/mobile-dashboard.png) |
-
-`node ../scripts/screenshots/shoot.mjs` regenerates them.
 
 ## Make targets
 
@@ -133,14 +116,14 @@ src/
   auth/       authStore (persist key: gogo-auth), roles, guards, LoginPage
   layout/     AppShell, nav registry
   shared/     components, hooks, utils, lib/unsavedChanges
-  features/   dashboard, plans, storages, users, account
+  features/   dashboard, users, account
   locales/{en,uk}/
 tests/e2e/    Playwright specs, page objects, helpers
 ```
 
 ## Adding a module
 
-Follow [docs/recipes/add-feature.md](docs/recipes/add-feature.md), or [full-stack-feature.md](docs/recipes/full-stack-feature.md) when the API side is new too. In short: `src/features/<module>/{types,api,hooks,policy}.ts` and `pages/`, query keys, a route, a menu entry and locale keys. `features/storages` is the reference.
+Follow [docs/recipes/add-feature.md](docs/recipes/add-feature.md), or [full-stack-feature.md](docs/recipes/full-stack-feature.md) when the API side is new too. In short: `src/features/<module>/{types,api,hooks,policy}.ts` and `pages/`, query keys, a route, a menu entry and locale keys. `features/users` is the reference.
 
 ## API contract (gogo)
 

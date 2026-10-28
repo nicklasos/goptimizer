@@ -31,16 +31,6 @@ export function formatDateTime(value: string | null | undefined): string {
   return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-/** A moment in UTC with its weekday, for schedules that are set in UTC: "Mon 19.10.2026 18:00 UTC". */
-export function formatUtcDateTime(value: Date | string | null | undefined): string {
-  if (!value) return EMPTY
-  const date = typeof value === 'string' ? new Date(value) : value
-  if (Number.isNaN(date.getTime())) return String(value)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const weekday = new Intl.DateTimeFormat(LOCALES[lang], { weekday: 'short', timeZone: 'UTC' }).format(date)
-  return `${weekday} ${pad(date.getUTCDate())}.${pad(date.getUTCMonth() + 1)}.${date.getUTCFullYear()} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`
-}
-
 /** A byte count in binary units: "512 B", "1.5 KB", "3.2 MB". */
 export function formatBytes(bytes: number | null | undefined): string {
   if (missing(bytes)) return EMPTY
@@ -77,30 +67,6 @@ export function formatRelative(value: string | null | undefined, now: Date = new
   const step = relativeSteps.find(({ below }) => Math.abs(diff) < below) ?? relativeSteps[relativeSteps.length - 1]
   const amount = step.unit === 'second' ? 0 : Math.round(diff / step.ms)
   return new Intl.RelativeTimeFormat(LOCALES[lang], { numeric: 'auto' }).format(amount, step.unit)
-}
-
-const utcDay = (date: Date) => Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
-
-/** When a plan runs next: "today 18:00 UTC", "tomorrow 03:00 UTC", or "Mon 19.10 03:00 UTC" further out. */
-export function formatNextRun(value: string | null | undefined, now: Date = new Date()): string {
-  if (!value) return EMPTY
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return String(value)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  const time = `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())} UTC`
-  const days = Math.round((utcDay(date) - utcDay(now)) / DAY)
-  if (days === 0 || days === 1) {
-    return `${new Intl.RelativeTimeFormat(LOCALES[lang], { numeric: 'auto' }).format(days, 'day')} ${time}`
-  }
-  const weekday = new Intl.DateTimeFormat(LOCALES[lang], { weekday: 'short', timeZone: 'UTC' }).format(date)
-  return `${weekday} ${pad(date.getUTCDate())}.${pad(date.getUTCMonth() + 1)} ${time}`
-}
-
-/** A UTC day ("2026-10-14") as the month and day: "14 Oct". */
-export function formatDay(value: string): string {
-  const date = new Date(`${value}T00:00:00Z`)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat(LOCALES[lang], { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(date)
 }
 
 /** How long something took, in its two largest units: "850 ms", "12 sec", "3 min, 5 sec", "1 hr, 2 min". */

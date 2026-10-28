@@ -9,9 +9,8 @@ how to check the result. They are written for coding agents and work as checklis
 | [add-feature.md](add-feature.md) | The API exists and the admin panel needs screens for it |
 | [add-e2e-test.md](add-e2e-test.md) | A flow needs a Playwright test |
 
-`src/features/storages` is the reference feature (paginated list, full-page editor with a kind
-picker and a connection test, policy). `src/features/users` is the reference for a table with modal forms. When a recipe and the
-code disagree, the code wins, and the recipe should be fixed in the same change.
+`src/features/users` is the reference feature (paginated table, modal forms, policy). When a recipe
+and the code disagree, the code wins, and the recipe should be fixed in the same change.
 
 Rules that apply to every recipe:
 

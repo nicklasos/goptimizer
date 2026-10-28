@@ -11,13 +11,8 @@ import { AppShell } from '@/layout/AppShell'
 const ForgotPasswordPage = lazy(() => import('@/auth/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('@/auth/ResetPasswordPage'))
 const VerifyEmailPage = lazy(() => import('@/auth/VerifyEmailPage'))
-const PlanEditorPage = lazy(() => import('@/features/plans/pages/PlanEditorPage'))
-const PlanPage = lazy(() => import('@/features/plans/pages/PlanPage'))
 const ProfilePage = lazy(() => import('@/features/account/ProfilePage'))
-const DashboardPage = lazy(() => import('@/features/plans/pages/DashboardPage'))
-const StorageBrowserPage = lazy(() => import('@/features/storages/pages/StorageBrowserPage'))
-const StorageEditorPage = lazy(() => import('@/features/storages/pages/StorageEditorPage'))
-const StoragesPage = lazy(() => import('@/features/storages/pages/StoragesPage'))
+const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage'))
 const UsersPage = lazy(() => import('@/features/users/pages/UsersPage'))
 const NotFoundPage = lazy(() => import('@/shared/components/NotFoundPage'))
 
@@ -47,64 +42,6 @@ export function AppRoutes() {
         <Route index element={<DashboardPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="verify-email" element={<VerifyEmailPage />} />
-        {/* The dashboard is the list of plans */}
-        <Route path="plans" element={<Navigate to="/" replace />} />
-        <Route
-          path="plans/new"
-          element={
-            <RequireRole roles={[ROLE_ADMIN]}>
-              <PlanEditorPage />
-            </RequireRole>
-          }
-        />
-        <Route
-          path="plans/:id"
-          element={
-            <RequireRole roles={[ROLE_ADMIN]}>
-              <PlanPage />
-            </RequireRole>
-          }
-        />
-        <Route
-          path="plans/:id/edit"
-          element={
-            <RequireRole roles={[ROLE_ADMIN]}>
-              <PlanEditorPage />
-            </RequireRole>
-          }
-        />
-        <Route
-          path="storages"
-          element={
-            <RequireRole roles={[ROLE_ADMIN]}>
-              <StoragesPage />
-            </RequireRole>
-          }
-        />
-        <Route
-          path="storages/new"
-          element={
-            <RequireRole roles={[ROLE_ADMIN]}>
-              <StorageEditorPage />
-            </RequireRole>
-          }
-        />
-        <Route
-          path="storages/:id/edit"
-          element={
-            <RequireRole roles={[ROLE_ADMIN]}>
-              <StorageEditorPage />
-            </RequireRole>
-          }
-        />
-        <Route
-          path="storages/:id/browse"
-          element={
-            <RequireRole roles={[ROLE_ADMIN]}>
-              <StorageBrowserPage />
-            </RequireRole>
-          }
-        />
         <Route
           path="users"
           element={

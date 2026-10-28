@@ -15,7 +15,7 @@ test.describe('Unknown URLs', () => {
   })
 
   test('nested unknown paths are not found either', async ({ page }) => {
-    await new AppShell(page).goto('/storages/12/no-such-tab')
+    await new AppShell(page).goto('/users/12/no-such-tab')
     await expect(page.getByTestId('page-not-found')).toBeVisible()
   })
 })
