@@ -44,8 +44,8 @@ type User struct {
 	Email           string       `db:"email" json:"email"`
 	Name            string       `db:"name" json:"name"`
 	Password        string       `db:"password" json:"password"`
-	Roles           Roles        `db:"roles" json:"roles"`
 	EmailVerifiedAt sql.NullTime `db:"email_verified_at" json:"email_verified_at"`
 	CreatedAt       sql.NullTime `db:"created_at" json:"created_at"`
 	UpdatedAt       sql.NullTime `db:"updated_at" json:"updated_at"`
+	IsAdmin         bool         `db:"is_admin" json:"is_admin"`
 }

@@ -1,6 +1,6 @@
 # Words after `cli` are the console command. Flags go after `--`:
 #   make cli migrate up
-#   make cli -- create-user --email admin@example.com --password password123
+#   make cli -- create-user --email admin@example.com --password password123 --admin
 ifeq ($(firstword $(MAKECMDGOALS)),cli)
   CLI_ARGS ?= $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
   $(foreach arg,$(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS)),$(eval $(arg):;@:))
@@ -119,9 +119,9 @@ cli-test:
 cli-test-db:
 	go run ./cmd/cli --test test
 
-# Usage: make cli-create-user EMAIL=admin@example.com PASSWORD=secret123 [NAME="Admin"] [ROLE=super-admin]
+# Usage: make cli-create-user EMAIL=admin@example.com PASSWORD=secret123 [NAME="Admin"] [ADMIN=1]
 cli-create-user:
-	go run ./cmd/cli create-user --email "$(EMAIL)" --password "$(PASSWORD)" $(if $(NAME),--name "$(NAME)") $(if $(ROLE),--role "$(ROLE)")
+	go run ./cmd/cli create-user --email "$(EMAIL)" --password "$(PASSWORD)" $(if $(NAME),--name "$(NAME)") $(if $(ADMIN),--admin)
 
 # Accounts and sample data for an empty development database
 seed:
@@ -189,7 +189,7 @@ help:
 	@echo "    sqlc-install        Install sqlc CLI"
 	@echo "    seed                Sample accounts for an empty development database"
 	@echo "    cli                 Run a console command (make cli migrate up)"
-	@echo "    cli-create-user     Create a user (EMAIL=, PASSWORD=, NAME=, ROLE=)"
+	@echo "    cli-create-user     Create a user (EMAIL=, PASSWORD=, NAME=, ADMIN=1)"
 	@echo "    cli-mail            Send a test email (TO=)"
 	@echo ""
 	@echo "  Testing:"

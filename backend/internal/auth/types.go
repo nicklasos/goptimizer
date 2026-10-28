@@ -15,11 +15,11 @@ type LoginRequest struct {
 
 // UserResponse represents user information
 type UserResponse struct {
-	ID            int64    `json:"id"`
-	Email         string   `json:"email"`
-	Name          string   `json:"name"`
-	Roles         []string `json:"roles"`
-	EmailVerified bool     `json:"email_verified"`
+	ID            int64  `json:"id"`
+	Email         string `json:"email"`
+	Name          string `json:"name"`
+	IsAdmin       bool   `json:"is_admin"`
+	EmailVerified bool   `json:"email_verified"`
 }
 
 // ForgotPasswordRequest asks for a password reset link

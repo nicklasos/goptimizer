@@ -280,18 +280,16 @@ definitions:
         type: boolean
       id:
         type: integer
+      is_admin:
+        type: boolean
       name:
         type: string
-      roles:
-        items:
-          type: string
-        type: array
     required:
     - email
     - email_verified
     - id
+    - is_admin
     - name
-    - roles
     type: object
   internal_auth.VerifyEmailRequest:
     properties:
@@ -495,22 +493,18 @@ definitions:
     properties:
       email:
         type: string
+      is_admin:
+        type: boolean
       name:
         type: string
       password:
         minLength: 8
         type: string
-      role:
-        enum:
-        - super-admin
-        - admin
-        - user
-        type: string
     required:
     - email
+    - is_admin
     - name
     - password
-    - role
     type: object
   internal_users.PaginatedUsersResponse:
     properties:
@@ -536,10 +530,13 @@ definitions:
     properties:
       email:
         type: string
+      is_admin:
+        type: boolean
       name:
         type: string
     required:
     - email
+    - is_admin
     - name
     type: object
   internal_users.UserDataResponse:
@@ -559,12 +556,10 @@ definitions:
         type: boolean
       id:
         type: integer
+      is_admin:
+        type: boolean
       name:
         type: string
-      roles:
-        items:
-          type: string
-        type: array
       updated_at:
         type: string
     required:
@@ -572,8 +567,8 @@ definitions:
     - email
     - email_verified
     - id
+    - is_admin
     - name
-    - roles
     - updated_at
     type: object
 host: localhost:8747
@@ -941,10 +936,6 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -982,10 +973,6 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -1017,10 +1004,6 @@ paths:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "401":
           description: Unauthorized
-          schema:
-            $ref: '#/definitions/app_internal_errs.ErrorResponse'
-        "403":
-          description: Forbidden
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "404":
@@ -1056,10 +1039,6 @@ paths:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "401":
           description: Unauthorized
-          schema:
-            $ref: '#/definitions/app_internal_errs.ErrorResponse'
-        "403":
-          description: Forbidden
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "404":
@@ -1107,10 +1086,6 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -1155,10 +1130,6 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -1183,10 +1154,6 @@ paths:
             $ref: '#/definitions/internal_settings.SettingsDataResponse'
         "401":
           description: Unauthorized
-          schema:
-            $ref: '#/definitions/app_internal_errs.ErrorResponse'
-        "403":
-          description: Forbidden
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "500":
@@ -1225,10 +1192,6 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -1259,10 +1222,6 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -1276,18 +1235,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Paginated list of users with the given role. Admins may only list
-        role "user"; super admins may list any role.
+      description: Paginated list of every account, admins and users. Admins only.
       parameters:
-      - default: user
-        description: Role to list
-        enum:
-        - super-admin
-        - admin
-        - user
-        in: query
-        name: role
-        type: string
       - default: 1
         description: Page number
         in: query
@@ -1323,14 +1272,13 @@ paths:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: List users by role
+      summary: List users
       tags:
       - users
     post:
       consumes:
       - application/json
-      description: Create a user with one role. Admins may only create role "user";
-        super admins may create any role.
+      description: Create a user or, with is_admin, an admin. Admins only.
       parameters:
       - description: User details
         in: body
@@ -1370,7 +1318,8 @@ paths:
     delete:
       consumes:
       - application/json
-      description: Delete a user the caller is allowed to manage. Cannot delete yourself.
+      description: Delete any user. Admins only. Cannot delete yourself or the last
+        admin.
       parameters:
       - description: User ID
         in: path
@@ -1400,6 +1349,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -1412,7 +1365,8 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update name and email of a user the caller is allowed to manage
+      description: Update name, email and admin flag. Admins only. An admin cannot
+        remove their own admin flag, and the last admin cannot be demoted.
       parameters:
       - description: User ID
         in: path
@@ -1448,6 +1402,10 @@ paths:
           description: Not Found
           schema:
             $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -1461,8 +1419,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Set a new password for a user the caller is allowed to manage.
-        Revokes the user's refresh tokens.
+      description: Set a new password for any user. Admins only. Revokes the user's
+        refresh tokens.
       parameters:
       - description: User ID
         in: path

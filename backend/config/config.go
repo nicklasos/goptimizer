@@ -159,7 +159,7 @@ func (c *Config) JWTSecretIsWeak() bool {
 }
 
 // ValidateJWTSecret must pass before any process issues or accepts tokens. An empty HMAC key
-// lets anyone forge a super-admin token, so starting with it unset is worse than not starting.
+// lets anyone forge an admin's token, so starting with it unset is worse than not starting.
 // A weak secret is refused in production and left to the caller to warn about elsewhere.
 func (c *Config) ValidateJWTSecret() error {
 	if strings.TrimSpace(c.JWTSecret) == "" {

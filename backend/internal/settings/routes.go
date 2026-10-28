@@ -1,19 +1,16 @@
 package settings
 
-import (
-	"app/internal"
-	"app/internal/middleware"
-)
+import "app/internal"
 
 // RegisterRoutes serves the settings page: the global settings and the image tools.
 func RegisterRoutes(app *internal.App) {
 	handler := NewHandler(NewSettingsService(app.Queries, app.Cache, app.Tools))
 
-	admin := app.Api.Group("")
-	admin.Use(app.AuthMiddleware, middleware.RequireRole(middleware.RoleAdmin))
+	authed := app.Api.Group("")
+	authed.Use(app.AuthMiddleware)
 	{
-		admin.GET("/settings", handler.GetSettings)
-		admin.PUT("/settings", handler.UpdateSettings)
-		admin.GET("/tools", handler.GetTools)
+		authed.GET("/settings", handler.GetSettings)
+		authed.PUT("/settings", handler.UpdateSettings)
+		authed.GET("/tools", handler.GetTools)
 	}
 }

@@ -10,8 +10,7 @@ func RegisterRoutes(app *internal.App) {
 	handler := NewHandler(service)
 
 	users := app.Api.Group("/users")
-	users.Use(app.AuthMiddleware)
-	users.Use(middleware.RequireRole(middleware.RoleAdmin))
+	users.Use(app.AuthMiddleware, middleware.RequireAdmin)
 	{
 		users.GET("", handler.ListUsers)
 		users.POST("", handler.CreateUser)

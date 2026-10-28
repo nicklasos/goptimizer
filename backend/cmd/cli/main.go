@@ -104,7 +104,7 @@ func printUsage() {
 	fmt.Println()
 	fmt.Println("Available Commands:")
 	fmt.Println("  migrate              Run database migrations")
-	fmt.Println("  create-user          Create a user (default role: super-admin)")
+	fmt.Println("  create-user          Create a user (--admin for an admin)")
 	fmt.Println("  seed                 Fill an empty development database with sample accounts")
 	fmt.Println("  mail                 Send a test email through the configured SMTP server")
 	fmt.Println("  test                 Check the database connection")

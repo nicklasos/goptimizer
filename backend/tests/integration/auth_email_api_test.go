@@ -180,7 +180,7 @@ func TestAuthAPI_EmailVerification(t *testing.T) {
 
 	t.Run("accounts created by an admin are verified and stay so when the admin edits them", func(t *testing.T) {
 		app := testkit.New(t)
-		admin := app.Create.User(factory.WithRoles("super-admin"))
+		admin := app.Create.User(factory.Admin())
 		token := app.Token(admin)
 
 		var created struct {
@@ -189,7 +189,7 @@ func TestAuthAPI_EmailVerification(t *testing.T) {
 				EmailVerified bool  `json:"email_verified"`
 			} `json:"data"`
 		}
-		resp := app.WithToken(token).POST("/api/v1/users", `{"email": "made@example.com", "name": "Made", "password": "password123", "role": "user"}`)
+		resp := app.WithToken(token).POST("/api/v1/users", `{"email": "made@example.com", "name": "Made", "password": "password123", "is_admin": false}`)
 		resp.JSON(&created)
 		assert.True(t, created.Data.EmailVerified)
 
@@ -233,7 +233,7 @@ func TestAuthAPI_LoginRateLimit(t *testing.T) {
 
 	t.Run("a successful login clears the failure count", func(t *testing.T) {
 		app := testkit.New(t)
-		user := app.Create.User(factory.WithRoles("user"))
+		user := app.Create.User()
 
 		for round := 0; round < 2; round++ {
 			for i := 0; i < 25; i++ {

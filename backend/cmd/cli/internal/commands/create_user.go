@@ -5,14 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"slices"
 	"strings"
 
 	"app/cmd/cli/internal"
 	appinternal "app/internal"
 	"app/internal/db"
 	"app/internal/errs"
-	"app/internal/middleware"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -23,18 +21,18 @@ func RunCreateUser(app *internal.CLIApp, args []string) {
 	email := fs.String("email", "", "User email (required)")
 	name := fs.String("name", "", "User name (defaults to the email local part)")
 	password := fs.String("password", "", "User password, min 8 characters (required)")
-	role := fs.String("role", middleware.RoleSuperAdmin, "User role: "+strings.Join(middleware.Roles, ", "))
+	isAdmin := fs.Bool("admin", false, "Make the user an admin, who can manage users")
 	fs.Usage = func() {
-		fmt.Println("Usage: make cli -- create-user --email EMAIL --password PASSWORD [--name NAME] [--role ROLE]")
+		fmt.Println("Usage: make cli -- create-user --email EMAIL --password PASSWORD [--name NAME] [--admin]")
 		fmt.Println()
-		fmt.Println("Create a user. Default role is super-admin.")
+		fmt.Println("Create a user. Without --admin the user is not an admin, so pass it for the first account.")
 		fmt.Println()
 		fmt.Println("Options:")
 		fs.PrintDefaults()
 		fmt.Println()
 		fmt.Println("Examples:")
-		fmt.Println("  make cli -- create-user --email admin@example.com --password password123")
-		fmt.Println("  make cli -- create-user --email admin@example.com --name Admin --password password123 --role admin")
+		fmt.Println("  make cli -- create-user --email admin@example.com --password password123 --admin")
+		fmt.Println("  make cli -- create-user --email ada@example.com --name Ada --password password123")
 	}
 
 	if err := fs.Parse(args); err != nil {
@@ -44,7 +42,6 @@ func RunCreateUser(app *internal.CLIApp, args []string) {
 
 	*email = appinternal.NormalizeEmail(*email)
 	*name = strings.TrimSpace(*name)
-	*role = strings.TrimSpace(*role)
 
 	if *email == "" || *password == "" {
 		fmt.Fprintln(os.Stderr, "Error: --email and --password are required")
@@ -53,10 +50,6 @@ func RunCreateUser(app *internal.CLIApp, args []string) {
 	}
 	if len(*password) < 8 {
 		fmt.Fprintln(os.Stderr, "Error: --password must be at least 8 characters")
-		os.Exit(1)
-	}
-	if !slices.Contains(middleware.Roles, *role) {
-		fmt.Fprintf(os.Stderr, "Error: unknown role %q (expected one of: %s)\n", *role, strings.Join(middleware.Roles, ", "))
 		os.Exit(1)
 	}
 	if *name == "" {
@@ -73,7 +66,7 @@ func RunCreateUser(app *internal.CLIApp, args []string) {
 		Email:    *email,
 		Name:     *name,
 		Password: string(hashedPassword),
-		Roles:    []string{*role},
+		IsAdmin:  *isAdmin,
 
 		EmailVerified: true,
 	})
@@ -86,5 +79,5 @@ func RunCreateUser(app *internal.CLIApp, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Created user id=%d email=%s name=%s roles=%s\n", user.ID, user.Email, user.Name, strings.Join(user.Roles, ","))
+	fmt.Printf("Created user id=%d email=%s name=%s admin=%t\n", user.ID, user.Email, user.Name, user.IsAdmin)
 }

@@ -47,7 +47,6 @@ func folderResponseFromDB(folder db.Folder) FolderResponse {
 //	@Security		BearerAuth
 //	@Success		200	{object}	FoldersResponse
 //	@Failure		401	{object}	errs.ErrorResponse
-//	@Failure		403	{object}	errs.ErrorResponse
 //	@Failure		500	{object}	errs.ErrorResponse
 //	@Router			/api/v1/folders [get]
 func (h *Handler) ListFolders(c *gin.Context) {
@@ -73,7 +72,6 @@ func (h *Handler) ListFolders(c *gin.Context) {
 //	@Success		200	{object}	FolderDataResponse
 //	@Failure		400	{object}	errs.ErrorResponse
 //	@Failure		401	{object}	errs.ErrorResponse
-//	@Failure		403	{object}	errs.ErrorResponse
 //	@Failure		404	{object}	errs.ErrorResponse
 //	@Failure		500	{object}	errs.ErrorResponse
 //	@Router			/api/v1/folders/{id} [get]
@@ -102,7 +100,6 @@ func (h *Handler) GetFolder(c *gin.Context) {
 //	@Success		200		{object}	FolderDataResponse
 //	@Failure		400		{object}	errs.ErrorResponse
 //	@Failure		401		{object}	errs.ErrorResponse
-//	@Failure		403		{object}	errs.ErrorResponse
 //	@Failure		500		{object}	errs.ErrorResponse
 //	@Router			/api/v1/folders [post]
 func (h *Handler) CreateFolder(c *gin.Context) {
@@ -132,7 +129,6 @@ func (h *Handler) CreateFolder(c *gin.Context) {
 //	@Success		200		{object}	FolderDataResponse
 //	@Failure		400		{object}	errs.ErrorResponse
 //	@Failure		401		{object}	errs.ErrorResponse
-//	@Failure		403		{object}	errs.ErrorResponse
 //	@Failure		404		{object}	errs.ErrorResponse
 //	@Failure		500		{object}	errs.ErrorResponse
 //	@Router			/api/v1/folders/{id} [put]
@@ -166,7 +162,6 @@ func (h *Handler) UpdateFolder(c *gin.Context) {
 //	@Success		200		{object}	FolderDataResponse
 //	@Failure		400		{object}	errs.ErrorResponse
 //	@Failure		401		{object}	errs.ErrorResponse
-//	@Failure		403		{object}	errs.ErrorResponse
 //	@Failure		404		{object}	errs.ErrorResponse
 //	@Failure		500		{object}	errs.ErrorResponse
 //	@Router			/api/v1/folders/{id}/enabled [put]
@@ -199,7 +194,6 @@ func (h *Handler) SetFolderEnabled(c *gin.Context) {
 //	@Success		200	{object}	internal.MessageResponse
 //	@Failure		400	{object}	errs.ErrorResponse
 //	@Failure		401	{object}	errs.ErrorResponse
-//	@Failure		403	{object}	errs.ErrorResponse
 //	@Failure		404	{object}	errs.ErrorResponse
 //	@Failure		500	{object}	errs.ErrorResponse
 //	@Router			/api/v1/folders/{id} [delete]

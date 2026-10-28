@@ -2,9 +2,9 @@
 -- API sets itself (a verified email). Application code uses the other files.
 
 -- name: FactoryCreateUser :one
-INSERT INTO users (email, name, password, roles, email_verified_at)
+INSERT INTO users (email, name, password, is_admin, email_verified_at)
 VALUES (
-    sqlc.arg(email), sqlc.arg(name), sqlc.arg(password), sqlc.arg(roles),
+    sqlc.arg(email), sqlc.arg(name), sqlc.arg(password), sqlc.arg(is_admin),
     CASE WHEN CAST(sqlc.arg(verified) AS BOOLEAN) THEN CURRENT_TIMESTAMP END
 )
 RETURNING *;

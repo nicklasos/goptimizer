@@ -36,7 +36,6 @@ func settingsResponseFromDB(setting db.Setting) SettingsResponse {
 //	@Security		BearerAuth
 //	@Success		200	{object}	SettingsDataResponse
 //	@Failure		401	{object}	errs.ErrorResponse
-//	@Failure		403	{object}	errs.ErrorResponse
 //	@Failure		500	{object}	errs.ErrorResponse
 //	@Router			/api/v1/settings [get]
 func (h *Handler) GetSettings(c *gin.Context) {
@@ -60,7 +59,6 @@ func (h *Handler) GetSettings(c *gin.Context) {
 //	@Success		200		{object}	SettingsDataResponse
 //	@Failure		400		{object}	errs.ErrorResponse
 //	@Failure		401		{object}	errs.ErrorResponse
-//	@Failure		403		{object}	errs.ErrorResponse
 //	@Failure		500		{object}	errs.ErrorResponse
 //	@Router			/api/v1/settings [put]
 func (h *Handler) UpdateSettings(c *gin.Context) {
@@ -87,7 +85,6 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 //	@Param			refresh	query		int	false	"1 to skip the cache"
 //	@Success		200		{object}	ToolsResponse
 //	@Failure		401		{object}	errs.ErrorResponse
-//	@Failure		403		{object}	errs.ErrorResponse
 //	@Failure		500		{object}	errs.ErrorResponse
 //	@Router			/api/v1/tools [get]
 func (h *Handler) GetTools(c *gin.Context) {

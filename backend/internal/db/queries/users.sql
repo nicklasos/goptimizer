@@ -8,23 +8,29 @@ WHERE LOWER(email) = LOWER(sqlc.arg(email)) LIMIT 1;
 
 -- name: CreateUser :one
 INSERT INTO users (
-    email, name, password, roles, email_verified_at
+    email, name, password, is_admin, email_verified_at
 ) VALUES (
-    sqlc.arg(email), sqlc.arg(name), sqlc.arg(password), sqlc.arg(roles),
+    sqlc.arg(email), sqlc.arg(name), sqlc.arg(password), sqlc.arg(is_admin),
     CASE WHEN CAST(sqlc.arg(email_verified) AS BOOLEAN) THEN CURRENT_TIMESTAMP END
 )
 RETURNING *;
 
 -- Newest first, so an account that was just created is on the first page.
--- name: ListUsersByRole :many
+-- name: ListUsers :many
 SELECT * FROM users
-WHERE EXISTS (SELECT 1 FROM json_each(users.roles) WHERE json_each.value = CAST(sqlc.arg(role) AS TEXT))
 ORDER BY id DESC
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
--- name: CountUsersByRole :one
-SELECT count(*) FROM users
-WHERE EXISTS (SELECT 1 FROM json_each(users.roles) WHERE json_each.value = CAST(sqlc.arg(role) AS TEXT));
+-- name: CountUsers :one
+SELECT count(*) FROM users;
+
+-- name: CountAdmins :one
+SELECT count(*) FROM users WHERE is_admin;
+
+-- name: SetUserAdmin :exec
+UPDATE users
+SET is_admin = sqlc.arg(is_admin), updated_at = CURRENT_TIMESTAMP
+WHERE id = sqlc.arg(id);
 
 -- A changed email is unverified again unless keep_verified is set (an admin vouches for it).
 -- name: UpdateUserProfile :one

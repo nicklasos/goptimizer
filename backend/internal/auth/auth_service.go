@@ -103,7 +103,6 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*Token
 		Email:    internal.NormalizeEmail(req.Email),
 		Name:     req.Name,
 		Password: string(hashedPassword),
-		Roles:    []string{middleware.RoleUser},
 	})
 	if err == nil {
 		s.sendEmailVerification(ctx, user)
@@ -242,17 +241,17 @@ func (s *AuthService) GetUserFromContext(ctx context.Context, userID int64) (*db
 	return &user, nil
 }
 
-// GetUserRoles is called on every authenticated request. A token whose user no longer
+// IsUserAdmin is called on every authenticated request. A token whose user no longer
 // exists is an invalid token (401), so clients sign out instead of showing "not found".
-func (s *AuthService) GetUserRoles(ctx context.Context, userID int64) ([]string, error) {
+func (s *AuthService) IsUserAdmin(ctx context.Context, userID int64) (bool, error) {
 	user, err := s.queries.GetUserByID(ctx, userID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, ErrInvalidToken
+		return false, ErrInvalidToken
 	}
 	if err != nil {
-		return nil, errs.WrapDatabaseError(err)
+		return false, errs.WrapDatabaseError(err)
 	}
-	return user.Roles, nil
+	return user.IsAdmin, nil
 }
 
 // UpdateProfile changes name and email. A new email is unverified until its link is opened.

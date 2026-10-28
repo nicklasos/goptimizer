@@ -180,5 +180,5 @@ func (a *App) baseURL() string {
 
 // Actor is the user as a policy sees them, for calling a service directly.
 func Actor(user *db.User) middleware.Actor {
-	return middleware.Actor{ID: user.ID, Roles: user.Roles}
+	return middleware.Actor{ID: user.ID, IsAdmin: user.IsAdmin}
 }

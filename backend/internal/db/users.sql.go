@@ -33,13 +33,23 @@ func (q *Queries) ConsumeAuthToken(ctx context.Context, arg ConsumeAuthTokenPara
 	return user_id, err
 }
 
-const countUsersByRole = `-- name: CountUsersByRole :one
-SELECT count(*) FROM users
-WHERE EXISTS (SELECT 1 FROM json_each(users.roles) WHERE json_each.value = CAST(?1 AS TEXT))
+const countAdmins = `-- name: CountAdmins :one
+SELECT count(*) FROM users WHERE is_admin
 `
 
-func (q *Queries) CountUsersByRole(ctx context.Context, role string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countUsersByRole, role)
+func (q *Queries) CountAdmins(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAdmins)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsers = `-- name: CountUsers :one
+SELECT count(*) FROM users
+`
+
+func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countUsers)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -104,19 +114,19 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (
-    email, name, password, roles, email_verified_at
+    email, name, password, is_admin, email_verified_at
 ) VALUES (
     ?1, ?2, ?3, ?4,
     CASE WHEN CAST(?5 AS BOOLEAN) THEN CURRENT_TIMESTAMP END
 )
-RETURNING id, email, name, password, roles, email_verified_at, created_at, updated_at
+RETURNING id, email, name, password, email_verified_at, created_at, updated_at, is_admin
 `
 
 type CreateUserParams struct {
 	Email         string `db:"email" json:"email"`
 	Name          string `db:"name" json:"name"`
 	Password      string `db:"password" json:"password"`
-	Roles         Roles  `db:"roles" json:"roles"`
+	IsAdmin       bool   `db:"is_admin" json:"is_admin"`
 	EmailVerified bool   `db:"email_verified" json:"email_verified"`
 }
 
@@ -125,7 +135,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Email,
 		arg.Name,
 		arg.Password,
-		arg.Roles,
+		arg.IsAdmin,
 		arg.EmailVerified,
 	)
 	var i User
@@ -134,10 +144,10 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Email,
 		&i.Name,
 		&i.Password,
-		&i.Roles,
 		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsAdmin,
 	)
 	return i, err
 }
@@ -210,7 +220,7 @@ func (q *Queries) GetRefreshToken(ctx context.Context, token string) (RefreshTok
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, password, roles, email_verified_at, created_at, updated_at FROM users
+SELECT id, email, name, password, email_verified_at, created_at, updated_at, is_admin FROM users
 WHERE LOWER(email) = LOWER(?1) LIMIT 1
 `
 
@@ -222,16 +232,16 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Email,
 		&i.Name,
 		&i.Password,
-		&i.Roles,
 		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsAdmin,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, password, roles, email_verified_at, created_at, updated_at FROM users
+SELECT id, email, name, password, email_verified_at, created_at, updated_at, is_admin FROM users
 WHERE id = ? LIMIT 1
 `
 
@@ -243,30 +253,28 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (User, error) {
 		&i.Email,
 		&i.Name,
 		&i.Password,
-		&i.Roles,
 		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsAdmin,
 	)
 	return i, err
 }
 
-const listUsersByRole = `-- name: ListUsersByRole :many
-SELECT id, email, name, password, roles, email_verified_at, created_at, updated_at FROM users
-WHERE EXISTS (SELECT 1 FROM json_each(users.roles) WHERE json_each.value = CAST(?1 AS TEXT))
+const listUsers = `-- name: ListUsers :many
+SELECT id, email, name, password, email_verified_at, created_at, updated_at, is_admin FROM users
 ORDER BY id DESC
-LIMIT ?3 OFFSET ?2
+LIMIT ?2 OFFSET ?1
 `
 
-type ListUsersByRoleParams struct {
-	Role       string `db:"role" json:"role"`
-	PageOffset int64  `db:"page_offset" json:"page_offset"`
-	PageLimit  int64  `db:"page_limit" json:"page_limit"`
+type ListUsersParams struct {
+	PageOffset int64 `db:"page_offset" json:"page_offset"`
+	PageLimit  int64 `db:"page_limit" json:"page_limit"`
 }
 
 // Newest first, so an account that was just created is on the first page.
-func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams) ([]User, error) {
-	rows, err := q.db.QueryContext(ctx, listUsersByRole, arg.Role, arg.PageOffset, arg.PageLimit)
+func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listUsers, arg.PageOffset, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}
@@ -279,10 +287,10 @@ func (q *Queries) ListUsersByRole(ctx context.Context, arg ListUsersByRoleParams
 			&i.Email,
 			&i.Name,
 			&i.Password,
-			&i.Roles,
 			&i.EmailVerifiedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.IsAdmin,
 		); err != nil {
 			return nil, err
 		}
@@ -330,6 +338,22 @@ func (q *Queries) RevokeRefreshToken(ctx context.Context, token string) error {
 	return err
 }
 
+const setUserAdmin = `-- name: SetUserAdmin :exec
+UPDATE users
+SET is_admin = ?1, updated_at = CURRENT_TIMESTAMP
+WHERE id = ?2
+`
+
+type SetUserAdminParams struct {
+	IsAdmin bool  `db:"is_admin" json:"is_admin"`
+	ID      int64 `db:"id" json:"id"`
+}
+
+func (q *Queries) SetUserAdmin(ctx context.Context, arg SetUserAdminParams) error {
+	_, err := q.db.ExecContext(ctx, setUserAdmin, arg.IsAdmin, arg.ID)
+	return err
+}
+
 const updateUserPassword = `-- name: UpdateUserPassword :exec
 UPDATE users
 SET
@@ -358,7 +382,7 @@ SET
     name = ?3,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = ?4
-RETURNING id, email, name, password, roles, email_verified_at, created_at, updated_at
+RETURNING id, email, name, password, email_verified_at, created_at, updated_at, is_admin
 `
 
 type UpdateUserProfileParams struct {
@@ -382,10 +406,10 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.Email,
 		&i.Name,
 		&i.Password,
-		&i.Roles,
 		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsAdmin,
 	)
 	return i, err
 }

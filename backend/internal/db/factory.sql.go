@@ -56,19 +56,19 @@ func (q *Queries) FactoryCreateFolder(ctx context.Context, arg FactoryCreateFold
 
 const factoryCreateUser = `-- name: FactoryCreateUser :one
 
-INSERT INTO users (email, name, password, roles, email_verified_at)
+INSERT INTO users (email, name, password, is_admin, email_verified_at)
 VALUES (
     ?1, ?2, ?3, ?4,
     CASE WHEN CAST(?5 AS BOOLEAN) THEN CURRENT_TIMESTAMP END
 )
-RETURNING id, email, name, password, roles, email_verified_at, created_at, updated_at
+RETURNING id, email, name, password, email_verified_at, created_at, updated_at, is_admin
 `
 
 type FactoryCreateUserParams struct {
 	Email    string `db:"email" json:"email"`
 	Name     string `db:"name" json:"name"`
 	Password string `db:"password" json:"password"`
-	Roles    Roles  `db:"roles" json:"roles"`
+	IsAdmin  bool   `db:"is_admin" json:"is_admin"`
 	Verified bool   `db:"verified" json:"verified"`
 }
 
@@ -79,7 +79,7 @@ func (q *Queries) FactoryCreateUser(ctx context.Context, arg FactoryCreateUserPa
 		arg.Email,
 		arg.Name,
 		arg.Password,
-		arg.Roles,
+		arg.IsAdmin,
 		arg.Verified,
 	)
 	var i User
@@ -88,10 +88,10 @@ func (q *Queries) FactoryCreateUser(ctx context.Context, arg FactoryCreateUserPa
 		&i.Email,
 		&i.Name,
 		&i.Password,
-		&i.Roles,
 		&i.EmailVerifiedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsAdmin,
 	)
 	return i, err
 }

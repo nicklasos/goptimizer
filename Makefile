@@ -1,7 +1,7 @@
 # Words after `cli` are the console command, not Make targets. Flags start
 # with a dash, so they go after `--`:
 #   make cli migrate up
-#   make cli -- create-user --email admin@example.com --password password123
+#   make cli -- create-user --email admin@example.com --password password123 --admin
 ifeq ($(firstword $(MAKECMDGOALS)),cli)
   CLI_ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
   $(foreach arg,$(CLI_ARGS),$(eval $(arg):;@:))

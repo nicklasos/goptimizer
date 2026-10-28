@@ -572,12 +572,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -633,12 +627,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -686,12 +674,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
@@ -764,12 +746,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
-                        }
-                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -822,12 +798,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
@@ -901,12 +871,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
-                        }
-                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -945,12 +909,6 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
@@ -1010,12 +968,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1061,12 +1013,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1083,7 +1029,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Paginated list of users with the given role. Admins may only list role \"user\"; super admins may list any role.",
+                "description": "Paginated list of every account, admins and users. Admins only.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1093,20 +1039,8 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "List users by role",
+                "summary": "List users",
                 "parameters": [
-                    {
-                        "enum": [
-                            "super-admin",
-                            "admin",
-                            "user"
-                        ],
-                        "type": "string",
-                        "default": "user",
-                        "description": "Role to list",
-                        "name": "role",
-                        "in": "query"
-                    },
                     {
                         "type": "integer",
                         "default": 1,
@@ -1161,7 +1095,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a user with one role. Admins may only create role \"user\"; super admins may create any role.",
+                "description": "Create a user or, with is_admin, an admin. Admins only.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1224,7 +1158,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update name and email of a user the caller is allowed to manage",
+                "description": "Update name, email and admin flag. Admins only. An admin cannot remove their own admin flag, and the last admin cannot be demoted.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1284,6 +1218,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1298,7 +1238,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Delete a user the caller is allowed to manage. Cannot delete yourself.",
+                "description": "Delete any user. Admins only. Cannot delete yourself or the last admin.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1349,6 +1289,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
                     },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1365,7 +1311,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Set a new password for a user the caller is allowed to manage. Revokes the user's refresh tokens.",
+                "description": "Set a new password for any user. Admins only. Revokes the user's refresh tokens.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1838,8 +1784,8 @@ const docTemplate = `{
                 "email",
                 "email_verified",
                 "id",
-                "name",
-                "roles"
+                "is_admin",
+                "name"
             ],
             "properties": {
                 "email": {
@@ -1851,14 +1797,11 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "is_admin": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
-                },
-                "roles": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
@@ -2154,13 +2097,16 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
+                "is_admin",
                 "name",
-                "password",
-                "role"
+                "password"
             ],
             "properties": {
                 "email": {
                     "type": "string"
+                },
+                "is_admin": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -2168,14 +2114,6 @@ const docTemplate = `{
                 "password": {
                     "type": "string",
                     "minLength": 8
-                },
-                "role": {
-                    "type": "string",
-                    "enum": [
-                        "super-admin",
-                        "admin",
-                        "user"
-                    ]
                 }
             }
         },
@@ -2213,11 +2151,15 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "email",
+                "is_admin",
                 "name"
             ],
             "properties": {
                 "email": {
                     "type": "string"
+                },
+                "is_admin": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -2242,8 +2184,8 @@ const docTemplate = `{
                 "email",
                 "email_verified",
                 "id",
+                "is_admin",
                 "name",
-                "roles",
                 "updated_at"
             ],
             "properties": {
@@ -2259,14 +2201,11 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "is_admin": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
-                },
-                "roles": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 },
                 "updated_at": {
                     "type": "string"

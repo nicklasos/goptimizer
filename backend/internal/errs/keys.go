@@ -26,8 +26,9 @@ const (
 // Users error keys
 const (
 	ErrKeyUsersNotFound         = "users.not_found"
-	ErrKeyUsersForbiddenRole    = "users.forbidden_role"
 	ErrKeyUsersCannotDeleteSelf = "users.cannot_delete_self"
+	ErrKeyUsersCannotDemoteSelf = "users.cannot_demote_self"
+	ErrKeyUsersLastAdmin        = "users.last_admin"
 )
 
 // Folders error keys. All but not_found are field errors, under "name", "path" or "profile.*".

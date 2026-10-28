@@ -17,7 +17,7 @@ const KindLocal Kind = "local"
 
 // kind is what differs between the places a folder can live. SSH or S3 are new entries.
 type kind struct {
-	// resolve checks the path an admin typed and returns the form to store, or the errors of "path".
+	// resolve checks the path a user typed and returns the form to store, or the errors of "path".
 	resolve func(path string) (string, errs.Fields)
 }
 

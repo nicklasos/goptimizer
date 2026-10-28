@@ -9,7 +9,6 @@ import (
 	"app/internal/auth"
 	"app/internal/errs"
 	"app/internal/factory"
-	"app/internal/middleware"
 	"app/tests/testkit"
 
 	"github.com/stretchr/testify/assert"
@@ -36,7 +35,7 @@ func TestAuthAPI_Register(t *testing.T) {
 		assert.NotNil(t, response.Data.User)
 		assert.Equal(t, "newuser@example.com", response.Data.User.Email)
 		assert.Equal(t, "New User", response.Data.User.Name)
-		assert.Equal(t, []string{middleware.RoleUser}, response.Data.User.Roles)
+		assert.False(t, response.Data.User.IsAdmin)
 		assert.True(t, response.Data.User.ID > 0)
 	})
 
@@ -227,16 +226,11 @@ func TestAuthAPI_GetMe(t *testing.T) {
 	})
 }
 
-func TestAuthAPI_GetMe_Roles(t *testing.T) {
+func TestAuthAPI_GetMe_IsAdmin(t *testing.T) {
 	app := testkit.New(t)
-	user := app.Create.User(factory.WithRoles(middleware.RoleSuperAdmin))
-	token := app.Token(user)
 
-	resp := app.WithToken(token).GET("/api/v1/auth/me").AssertOK()
-
-	var response auth.UserDataResponse
-	resp.JSON(&response)
-	assert.Equal(t, []string{middleware.RoleSuperAdmin}, response.Data.Roles)
+	app.As(app.Create.User(factory.Admin())).GET("/api/v1/auth/me").AssertOK().AssertJSONPath("data.is_admin", true)
+	app.As(app.Create.User()).GET("/api/v1/auth/me").AssertOK().AssertJSONPath("data.is_admin", false)
 }
 
 func TestAuthAPI_UpdateMe(t *testing.T) {

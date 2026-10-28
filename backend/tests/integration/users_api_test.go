@@ -5,10 +5,8 @@ import (
 	"net/http"
 	"testing"
 
-	"app/internal/db"
 	"app/internal/errs"
 	"app/internal/factory"
-	"app/internal/middleware"
 	"app/internal/users"
 	"app/tests/testkit"
 
@@ -16,48 +14,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func createUserBody(email, role string) string {
-	return fmt.Sprintf(`{"email": %q, "name": "New User", "password": "password123", "role": %q}`, email, role)
+func createUserBody(email string, isAdmin bool) string {
+	return fmt.Sprintf(`{"email": %q, "name": "New User", "password": "password123", "is_admin": %t}`, email, isAdmin)
 }
 
 func TestUsersAPI_List(t *testing.T) {
-	t.Run("super admin lists users of each role with pagination meta", func(t *testing.T) {
+	t.Run("admin lists every account with pagination meta", func(t *testing.T) {
 		app := testkit.New(t)
-		superAdmin := app.Create.User(factory.SuperAdmin())
-		app.Create.User(factory.Admin())
-		app.Create.User(factory.Admin())
-		app.Create.User(factory.Admin())
+		admin := app.Create.User(factory.Admin())
+		app.Create.User()
+		app.Create.User()
 
-		resp := app.As(superAdmin).GET("/api/v1/users?role=admin&page=1&page_size=2").AssertOK()
+		resp := app.As(admin).GET("/api/v1/users?page=1&page_size=2").AssertOK()
 
 		var response users.PaginatedUsersResponse
 		resp.JSON(&response)
 		assert.Len(t, response.Data, 2)
-		assert.GreaterOrEqual(t, response.Pagination.Total, int64(3))
+		assert.Equal(t, int64(3), response.Pagination.Total)
 		assert.Equal(t, int32(2), response.Pagination.PerPage)
-		for _, item := range response.Data {
-			assert.Equal(t, []string{middleware.RoleAdmin}, item.Roles)
-		}
 
-		app.As(superAdmin).GET("/api/v1/users?role=super-admin").AssertOK()
-	})
-
-	t.Run("admin lists plain users but not admins or super admins", func(t *testing.T) {
-		app := testkit.New(t)
-		admin := app.Create.User(factory.Admin())
-		app.Create.User()
-
-		resp := app.As(admin).GET("/api/v1/users").AssertOK()
-
-		var response users.PaginatedUsersResponse
-		resp.JSON(&response)
-		assert.NotEmpty(t, response.Data)
-		for _, item := range response.Data {
-			assert.Equal(t, []string{middleware.RoleUser}, item.Roles)
-		}
-
-		app.As(admin).GET("/api/v1/users?role=admin").AssertError(http.StatusForbidden, errs.ErrKeyUsersForbiddenRole)
-		app.As(admin).GET("/api/v1/users?role=super-admin").AssertError(http.StatusForbidden, errs.ErrKeyUsersForbiddenRole)
+		app.As(admin).GET("/api/v1/users?page=2&page_size=2").AssertOK().
+			AssertJSONCount("data", 1).
+			AssertJSONPath("data.0.id", float64(admin.ID)).
+			AssertJSONPath("data.0.is_admin", true)
 	})
 
 	t.Run("plain user and anonymous are rejected", func(t *testing.T) {
@@ -67,177 +46,165 @@ func TestUsersAPI_List(t *testing.T) {
 		app.As(user).GET("/api/v1/users").AssertForbidden()
 		app.GET("/api/v1/users").AssertUnauthorized()
 	})
-
-	t.Run("unknown role is a bad request", func(t *testing.T) {
-		app := testkit.New(t)
-		superAdmin := app.Create.User(factory.SuperAdmin())
-
-		app.As(superAdmin).GET("/api/v1/users?role=owner").AssertBadRequest()
-	})
 }
 
 func TestUsersAPI_Create(t *testing.T) {
-	t.Run("super admin creates a super admin, an admin and a user", func(t *testing.T) {
-		app := testkit.New(t)
-		superAdmin := app.Create.User(factory.SuperAdmin())
-
-		for _, role := range middleware.Roles {
-			email := "new-" + role + "@example.com"
-			resp := app.As(superAdmin).POST("/api/v1/users", createUserBody(email, role)).AssertOK()
-
-			var response users.UserDataResponse
-			resp.JSON(&response)
-			assert.Equal(t, email, response.Data.Email)
-			assert.Equal(t, []string{role}, response.Data.Roles)
-		}
-	})
-
-	t.Run("admin creates a user but not an admin or super admin", func(t *testing.T) {
+	t.Run("admin creates an admin and a user", func(t *testing.T) {
 		app := testkit.New(t)
 		admin := app.Create.User(factory.Admin())
 
-		app.As(admin).POST("/api/v1/users", createUserBody("plain@example.com", middleware.RoleUser)).AssertOK()
+		app.As(admin).POST("/api/v1/users", createUserBody("boss@example.com", true)).AssertOK().
+			AssertJSONPath("data.email", "boss@example.com").
+			AssertJSONPath("data.is_admin", true)
+		app.As(admin).POST("/api/v1/users", createUserBody("plain@example.com", false)).AssertOK().
+			AssertJSONPath("data.is_admin", false)
 
-		app.As(admin).POST("/api/v1/users", createUserBody("a@example.com", middleware.RoleAdmin)).AssertError(http.StatusForbidden, errs.ErrKeyUsersForbiddenRole)
-		app.As(admin).POST("/api/v1/users", createUserBody("s@example.com", middleware.RoleSuperAdmin)).AssertError(http.StatusForbidden, errs.ErrKeyUsersForbiddenRole)
-
-		app.AssertDatabaseMissing("users", testkit.Row{"email": "s@example.com"})
+		app.AssertDatabaseHas("users", testkit.Row{"email": "boss@example.com", "is_admin": true})
+		app.AssertDatabaseHas("users", testkit.Row{"email": "plain@example.com", "is_admin": false})
 	})
 
 	t.Run("plain user cannot create anyone", func(t *testing.T) {
 		app := testkit.New(t)
 		user := app.Create.User()
 
-		app.As(user).POST("/api/v1/users", createUserBody("x@example.com", middleware.RoleUser)).AssertForbidden()
+		app.As(user).POST("/api/v1/users", createUserBody("x@example.com", true)).AssertForbidden()
+		app.AssertDatabaseMissing("users", testkit.Row{"email": "x@example.com"})
 	})
 
-	t.Run("rejects duplicate email, unknown role and short password", func(t *testing.T) {
+	t.Run("rejects a short password and a duplicate email", func(t *testing.T) {
 		app := testkit.New(t)
-		superAdmin := app.Create.User(factory.SuperAdmin())
+		admin := app.Create.User(factory.Admin())
 
-		app.As(superAdmin).POST("/api/v1/users", createUserBody("o@example.com", "owner")).AssertInvalid()
-
-		app.As(superAdmin).POST("/api/v1/users", `{"email": "p@example.com", "name": "P", "password": "short", "role": "user"}`).AssertInvalid()
-
-		// Last on purpose: the unique violation aborts the surrounding test transaction
-		app.As(superAdmin).POST("/api/v1/users", createUserBody(superAdmin.Email, middleware.RoleAdmin)).AssertError(http.StatusBadRequest, errs.ErrKeyAuthUserExists)
+		app.As(admin).POST("/api/v1/users", `{"email": "p@example.com", "name": "P", "password": "short", "is_admin": false}`).AssertInvalid("password")
+		app.As(admin).POST("/api/v1/users", createUserBody(admin.Email, false)).AssertError(http.StatusBadRequest, errs.ErrKeyAuthUserExists)
 	})
 }
 
 func TestUsersAPI_Update(t *testing.T) {
-	t.Run("super admin updates an admin", func(t *testing.T) {
-		app := testkit.New(t)
-		superAdmin := app.Create.User(factory.SuperAdmin())
-		target := app.Create.User(factory.Admin())
-
-		resp := app.As(superAdmin).PUT("/api/v1/users/%d", `{"email": "renamed@example.com", "name": "Renamed"}`, target.ID).AssertOK()
-
-		var response users.UserDataResponse
-		resp.JSON(&response)
-		assert.Equal(t, "renamed@example.com", response.Data.Email)
-		assert.Equal(t, "Renamed", response.Data.Name)
-		assert.Equal(t, []string{middleware.RoleAdmin}, response.Data.Roles)
-	})
-
-	t.Run("admin updates a user but not an admin or super admin", func(t *testing.T) {
+	t.Run("admin edits, promotes and demotes other accounts", func(t *testing.T) {
 		app := testkit.New(t)
 		admin := app.Create.User(factory.Admin())
 		plain := app.Create.User()
 		otherAdmin := app.Create.User(factory.Admin())
-		superAdmin := app.Create.User(factory.SuperAdmin())
-		mixed := app.Create.User(factory.WithRoles(middleware.RoleUser, middleware.RoleAdmin))
 
-		body := `{"email": "changed@example.com", "name": "Changed"}`
+		app.As(admin).PUT("/api/v1/users/%d", `{"email": "renamed@example.com", "name": "Renamed", "is_admin": true}`, plain.ID).AssertOK().
+			AssertJSONPath("data.email", "renamed@example.com").
+			AssertJSONPath("data.name", "Renamed").
+			AssertJSONPath("data.is_admin", true)
 
-		app.As(admin).PUT("/api/v1/users/%d", body, plain.ID).AssertOK()
+		app.As(admin).PUT("/api/v1/users/%d", `{"email": "demoted@example.com", "name": "Demoted", "is_admin": false}`, otherAdmin.ID).AssertOK().
+			AssertJSONPath("data.is_admin", false)
 
-		for _, target := range []*db.User{otherAdmin, superAdmin, mixed} {
-			app.As(admin).PUT("/api/v1/users/%d", body, target.ID).AssertError(http.StatusForbidden, errs.ErrKeyUsersForbiddenRole)
-		}
+		app.AssertDatabaseHas("users", testkit.Row{"id": plain.ID, "is_admin": true})
+		app.AssertDatabaseHas("users", testkit.Row{"id": otherAdmin.ID, "is_admin": false})
+	})
+
+	t.Run("admin edits themselves but cannot remove their own admin flag", func(t *testing.T) {
+		app := testkit.New(t)
+		admin := app.Create.User(factory.Admin())
+		app.Create.User(factory.Admin())
+
+		app.As(admin).PUT("/api/v1/users/%d", `{"email": "me@example.com", "name": "Me", "is_admin": true}`, admin.ID).AssertOK()
+		app.As(admin).PUT("/api/v1/users/%d", `{"email": "me@example.com", "name": "Me", "is_admin": false}`, admin.ID).
+			AssertError(http.StatusBadRequest, errs.ErrKeyUsersCannotDemoteSelf)
+
+		app.AssertDatabaseHas("users", testkit.Row{"id": admin.ID, "is_admin": true})
 	})
 
 	t.Run("returns 404 for an unknown user", func(t *testing.T) {
 		app := testkit.New(t)
-		superAdmin := app.Create.User(factory.SuperAdmin())
+		admin := app.Create.User(factory.Admin())
 
-		app.As(superAdmin).PUT("/api/v1/users/2147483647", `{"email": "x@example.com", "name": "X"}`).AssertError(http.StatusNotFound, errs.ErrKeyUsersNotFound)
+		app.As(admin).PUT("/api/v1/users/2147483647", `{"email": "x@example.com", "name": "X", "is_admin": false}`).AssertError(http.StatusNotFound, errs.ErrKeyUsersNotFound)
 	})
 }
 
 func TestUsersAPI_SetPassword(t *testing.T) {
-	t.Run("sets a new password and revokes refresh tokens", func(t *testing.T) {
-		app := testkit.New(t)
-		superAdmin := app.Create.User(factory.SuperAdmin())
-		target := app.Create.User(factory.Admin())
+	app := testkit.New(t)
+	admin := app.Create.User(factory.Admin())
+	target := app.Create.User(factory.Admin())
 
-		var session struct {
-			Data struct {
-				RefreshToken string `json:"refresh_token"`
-			} `json:"data"`
-		}
-		login(app, target.Email, "password123").JSON(&session)
-		require.NotEmpty(t, session.Data.RefreshToken)
+	var session struct {
+		Data struct {
+			RefreshToken string `json:"refresh_token"`
+		} `json:"data"`
+	}
+	login(app, target.Email, "password123").JSON(&session)
+	require.NotEmpty(t, session.Data.RefreshToken)
 
-		app.As(superAdmin).POST("/api/v1/users/%d/set-password", `{"password": "new-password-1"}`, target.ID).AssertOK()
+	app.As(admin).POST("/api/v1/users/%d/set-password", `{"password": "new-password-1"}`, target.ID).AssertOK()
 
-		login(app, target.Email, "password123").AssertUnauthorized()
-		login(app, target.Email, "new-password-1").AssertOK()
+	login(app, target.Email, "password123").AssertUnauthorized()
+	login(app, target.Email, "new-password-1").AssertOK()
 
-		app.POST("/api/v1/auth/refresh", fmt.Sprintf(`{"refresh_token": %q}`, session.Data.RefreshToken)).AssertUnauthorized()
-	})
-
-	t.Run("admin cannot set the password of an admin", func(t *testing.T) {
-		app := testkit.New(t)
-		admin := app.Create.User(factory.Admin())
-		target := app.Create.User(factory.SuperAdmin())
-
-		app.As(admin).POST("/api/v1/users/%d/set-password", `{"password": "new-password-1"}`, target.ID).AssertError(http.StatusForbidden, errs.ErrKeyUsersForbiddenRole)
-	})
+	app.POST("/api/v1/auth/refresh", fmt.Sprintf(`{"refresh_token": %q}`, session.Data.RefreshToken)).AssertUnauthorized()
 }
 
 func TestUsersAPI_Delete(t *testing.T) {
-	t.Run("super admin deletes another super admin but not themselves", func(t *testing.T) {
+	app := testkit.New(t)
+	admin := app.Create.User(factory.Admin())
+	plain := app.Create.User()
+	otherAdmin := app.Create.User(factory.Admin())
+
+	app.As(admin).DELETE("/api/v1/users/%d", plain.ID).AssertOK()
+	app.As(admin).DELETE("/api/v1/users/%d", otherAdmin.ID).AssertOK()
+	app.AssertDatabaseMissing("users", testkit.Row{"id": plain.ID})
+	app.AssertDatabaseMissing("users", testkit.Row{"id": otherAdmin.ID})
+
+	app.As(admin).DELETE("/api/v1/users/%d", admin.ID).AssertError(http.StatusBadRequest, errs.ErrKeyUsersCannotDeleteSelf)
+	app.AssertDatabaseHas("users", testkit.Row{"id": admin.ID})
+}
+
+// Two admins acting at once each see the other as an admin. The service runs their
+// requests one after the other; the second must not leave zero admins.
+func TestUserService_LastAdminSurvivesCrossedRequests(t *testing.T) {
+	t.Run("demotions", func(t *testing.T) {
 		app := testkit.New(t)
-		superAdmin := app.Create.User(factory.SuperAdmin())
-		target := app.Create.User(factory.SuperAdmin())
+		a := app.Create.User(factory.Admin())
+		b := app.Create.User(factory.Admin())
+		service := users.NewUserService(app.Queries, app.TxRunner)
 
-		app.As(superAdmin).DELETE("/api/v1/users/%d", target.ID).AssertOK()
-		app.AssertDatabaseMissing("users", testkit.Row{"id": target.ID})
+		_, err := service.Update(app.Ctx, testkit.Actor(a), b.ID, users.UpdateUserRequest{Email: b.Email, Name: b.Name, IsAdmin: false})
+		require.NoError(t, err)
+		_, err = service.Update(app.Ctx, testkit.Actor(b), a.ID, users.UpdateUserRequest{Email: a.Email, Name: a.Name, IsAdmin: false})
 
-		app.As(superAdmin).DELETE("/api/v1/users/%d", superAdmin.ID).AssertError(http.StatusBadRequest, errs.ErrKeyUsersCannotDeleteSelf)
+		assert.ErrorIs(t, err, users.ErrLastAdmin)
+		app.AssertDatabaseHas("users", testkit.Row{"id": a.ID, "is_admin": true})
 	})
 
-	t.Run("admin deletes a user but not an admin", func(t *testing.T) {
+	t.Run("deletions", func(t *testing.T) {
 		app := testkit.New(t)
-		admin := app.Create.User(factory.Admin())
-		plain := app.Create.User()
-		otherAdmin := app.Create.User(factory.Admin())
+		a := app.Create.User(factory.Admin())
+		b := app.Create.User(factory.Admin())
+		service := users.NewUserService(app.Queries, app.TxRunner)
 
-		app.As(admin).DELETE("/api/v1/users/%d", plain.ID).AssertOK()
+		require.NoError(t, service.Delete(app.Ctx, testkit.Actor(a), b.ID))
+		err := service.Delete(app.Ctx, testkit.Actor(b), a.ID)
 
-		app.As(admin).DELETE("/api/v1/users/%d", otherAdmin.ID).AssertError(http.StatusForbidden, errs.ErrKeyUsersForbiddenRole)
-		app.AssertDatabaseHas("users", testkit.Row{"id": otherAdmin.ID})
+		assert.ErrorIs(t, err, users.ErrLastAdmin)
+		app.AssertDatabaseHas("users", testkit.Row{"id": a.ID})
 	})
 }
 
-func TestUsersAPI_RoleRevocationIsImmediate(t *testing.T) {
+func TestUsersAPI_DemotionIsImmediate(t *testing.T) {
 	app := testkit.New(t)
 	admin := app.Create.User(factory.Admin())
-	app.As(admin).GET("/api/v1/users").AssertOK()
+	other := app.Create.User(factory.Admin())
+	app.As(other).GET("/api/v1/users").AssertOK()
 
-	_, err := app.DB.ExecContext(app.Ctx, `UPDATE users SET roles = '["user"]' WHERE id = ?`, admin.ID)
-	require.NoError(t, err)
+	app.As(admin).PUT("/api/v1/users/%d", fmt.Sprintf(`{"email": %q, "name": "Other", "is_admin": false}`, other.Email), other.ID).AssertOK()
 
-	app.As(admin).GET("/api/v1/users").AssertForbidden()
+	app.As(other).GET("/api/v1/users").AssertForbidden()
+	app.As(other).GET("/api/v1/folders").AssertOK()
 }
 
 func TestUsersAPI_DeletedUserTokenIsRejected(t *testing.T) {
 	app := testkit.New(t)
-	superAdmin := app.Create.User(factory.SuperAdmin())
+	admin := app.Create.User(factory.Admin())
 	target := app.Create.User(factory.Admin())
 	app.As(target).GET("/api/v1/auth/me").AssertOK()
 
-	app.As(superAdmin).DELETE("/api/v1/users/%d", target.ID).AssertOK()
+	app.As(admin).DELETE("/api/v1/users/%d", target.ID).AssertOK()
 
 	app.As(target).GET("/api/v1/auth/me").AssertError(http.StatusUnauthorized, errs.ErrKeyAuthInvalidToken)
 }

@@ -24,7 +24,6 @@ func TestTxRunner_WithTx(t *testing.T) {
 				Email:    "tx-commit@example.com",
 				Name:     "Tx Commit",
 				Password: "hash",
-				Roles:    []string{"user"},
 			})
 			return err
 		})
@@ -45,7 +44,6 @@ func TestTxRunner_WithTx(t *testing.T) {
 				Email:    "tx-rollback@example.com",
 				Name:     "Tx Rollback",
 				Password: "hash",
-				Roles:    []string{"user"},
 			})
 			require.NoError(t, err)
 			return boom

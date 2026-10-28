@@ -67,8 +67,8 @@ func ExtractUserIDFromJWT(c *gin.Context, verifier UserJWTVerifier) (*int64, err
 	return &claims.UserID, nil
 }
 
-// UserAuthMiddleware validates the JWT, then loads current roles from the database
-// onto the context. RequireRole reads those roles; do not trust JWT claims for them.
+// UserAuthMiddleware validates the JWT, then loads whether the user is an admin from the
+// database onto the context. RequireAdmin reads it; never trust JWT claims for it.
 func UserAuthMiddleware(auth UserAuth) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, err := ExtractUserIDFromJWT(c, auth)
@@ -83,18 +83,15 @@ func UserAuthMiddleware(auth UserAuth) gin.HandlerFunc {
 			return
 		}
 
-		roles, err := auth.GetUserRoles(c.Request.Context(), *userID)
+		isAdmin, err := auth.IsUserAdmin(c.Request.Context(), *userID)
 		if err != nil {
 			errs.RespondWithError(c, err)
 			c.Abort()
 			return
 		}
-		if roles == nil {
-			roles = []string{}
-		}
 
 		c.Set("user_id", *userID)
-		c.Set("user_roles", roles)
+		c.Set("user_is_admin", isAdmin)
 
 		c.Next()
 	}
@@ -115,16 +112,4 @@ func GetUserIDFromContext(c *gin.Context) (int64, error) {
 	}
 
 	return id, nil
-}
-
-// GetUserRolesFromContext returns roles loaded by UserAuthMiddleware.
-func GetUserRolesFromContext(c *gin.Context) []string {
-	roles, exists := c.Get("user_roles")
-	if !exists {
-		return nil
-	}
-	if list, ok := roles.([]string); ok {
-		return list
-	}
-	return nil
 }

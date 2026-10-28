@@ -9,7 +9,6 @@ import (
 
 	"app/cmd/cli/internal"
 	"app/internal/factory"
-	"app/internal/middleware"
 )
 
 const seedAdminEmail = "admin@example.com"
@@ -42,15 +41,12 @@ func RunSeed(app *internal.CLIApp, args []string) {
 
 	create := factory.New(seedReporter{}, app.Database)
 
-	create.User(factory.WithEmail(seedAdminEmail), factory.WithName("Super Admin"), factory.WithRoles(middleware.RoleSuperAdmin))
-	create.User(factory.WithEmail("manager@example.com"), factory.WithName("Manager"), factory.WithRoles(middleware.RoleAdmin))
-
+	create.User(factory.WithEmail(seedAdminEmail), factory.WithName("Admin"), factory.Admin())
 	create.User(factory.WithEmail("user@example.com"), factory.WithName("Demo User"))
 	create.User(factory.WithEmail("unverified@example.com"), factory.WithName("New Signup"), factory.Unverified())
 
 	fmt.Println("Seeded. Every account has the password:", factory.DefaultPassword)
-	fmt.Println("  super admin  ", seedAdminEmail)
-	fmt.Println("  admin         manager@example.com")
-	fmt.Println("  user          user@example.com")
-	fmt.Println("  user          unverified@example.com (email not confirmed)")
+	fmt.Println("  admin  ", seedAdminEmail)
+	fmt.Println("  user    user@example.com")
+	fmt.Println("  user    unverified@example.com (email not confirmed)")
 }

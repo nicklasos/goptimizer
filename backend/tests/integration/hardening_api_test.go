@@ -68,7 +68,7 @@ func TestAuthAPI_EmailsAreCaseInsensitive(t *testing.T) {
 
 	t.Run("admins create and edit users with normalised emails", func(t *testing.T) {
 		app := testkit.New(t)
-		admin := app.Create.User(factory.SuperAdmin())
+		admin := app.Create.User(factory.Admin())
 		token := app.Token(admin)
 
 		var created struct {
@@ -77,7 +77,7 @@ func TestAuthAPI_EmailsAreCaseInsensitive(t *testing.T) {
 				Email string `json:"email"`
 			} `json:"data"`
 		}
-		resp := app.WithToken(token).POST("/api/v1/users", `{"email": "New.Person@Example.com", "name": "New", "password": "password123", "role": "user"}`)
+		resp := app.WithToken(token).POST("/api/v1/users", `{"email": "New.Person@Example.com", "name": "New", "password": "password123", "is_admin": false}`)
 		resp.JSON(&created)
 		assert.Equal(t, "new.person@example.com", created.Data.Email)
 

@@ -1,15 +1,12 @@
 package folders
 
-import (
-	"app/internal"
-	"app/internal/middleware"
-)
+import "app/internal"
 
 func RegisterRoutes(app *internal.App) {
 	handler := NewHandler(NewFolderService(app.Queries))
 
 	folders := app.Api.Group("/folders")
-	folders.Use(app.AuthMiddleware, middleware.RequireRole(middleware.RoleAdmin))
+	folders.Use(app.AuthMiddleware)
 	{
 		folders.GET("", handler.ListFolders)
 		folders.POST("", handler.CreateFolder)

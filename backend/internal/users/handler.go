@@ -2,7 +2,6 @@ package users
 
 import (
 	"net/http"
-	"slices"
 
 	"app/internal"
 	"app/internal/db"
@@ -21,30 +20,25 @@ func NewHandler(service *UserService) *Handler {
 }
 
 func userResponseFromDB(user db.User) UserResponse {
-	roles := user.Roles
-	if roles == nil {
-		roles = []string{}
-	}
 	return UserResponse{
 		ID:            user.ID,
 		Email:         user.Email,
 		Name:          user.Name,
-		Roles:         roles,
+		IsAdmin:       user.IsAdmin,
 		EmailVerified: user.EmailVerifiedAt.Valid,
 		CreatedAt:     internal.FormatTime(user.CreatedAt),
 		UpdatedAt:     internal.FormatTime(user.UpdatedAt),
 	}
 }
 
-// ListUsers lists users that have the given role
+// ListUsers lists every account, newest first
 //
-//	@Summary		List users by role
-//	@Description	Paginated list of users with the given role. Admins may only list role "user"; super admins may list any role.
+//	@Summary		List users
+//	@Description	Paginated list of every account, admins and users. Admins only.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			role		query		string	false	"Role to list"	Enums(super-admin, admin, user)	default(user)
 //	@Param			page		query		int		false	"Page number"	default(1)
 //	@Param			page_size	query		int		false	"Page size"		default(20)
 //	@Success		200			{object}	PaginatedUsersResponse
@@ -54,22 +48,12 @@ func userResponseFromDB(user db.User) UserResponse {
 //	@Failure		500			{object}	errs.ErrorResponse
 //	@Router			/api/v1/users [get]
 func (h *Handler) ListUsers(c *gin.Context) {
-	actor, ok := middleware.CurrentActor(c)
-	if !ok {
-		return
-	}
-	role := c.DefaultQuery("role", middleware.RoleUser)
-	if !slices.Contains(middleware.Roles, role) {
-		errs.RespondWithBadRequest(c, errs.ErrKeyBadRequest, "Invalid role")
-		return
-	}
-
 	pagination, ok := middleware.Page(c)
 	if !ok {
 		return
 	}
 
-	result, err := h.service.ListByRole(c.Request.Context(), actor, role, pagination.Page, pagination.PageSize)
+	result, err := h.service.List(c.Request.Context(), pagination.Page, pagination.PageSize)
 	if err != nil {
 		errs.RespondWithError(c, err)
 		return
@@ -86,10 +70,10 @@ func (h *Handler) ListUsers(c *gin.Context) {
 	})
 }
 
-// CreateUser creates a user with the given role
+// CreateUser creates a user
 //
 //	@Summary		Create user
-//	@Description	Create a user with one role. Admins may only create role "user"; super admins may create any role.
+//	@Description	Create a user or, with is_admin, an admin. Admins only.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
@@ -102,17 +86,13 @@ func (h *Handler) ListUsers(c *gin.Context) {
 //	@Failure		500		{object}	errs.ErrorResponse
 //	@Router			/api/v1/users [post]
 func (h *Handler) CreateUser(c *gin.Context) {
-	actor, ok := middleware.CurrentActor(c)
-	if !ok {
-		return
-	}
 	var req CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		errs.RespondWithValidationError(c, err)
 		return
 	}
 
-	user, err := h.service.Create(c.Request.Context(), actor, req)
+	user, err := h.service.Create(c.Request.Context(), req)
 	if err != nil {
 		errs.RespondWithError(c, err)
 		return
@@ -121,10 +101,10 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, UserDataResponse{Data: userResponseFromDB(*user)})
 }
 
-// UpdateUser updates a user's name and email
+// UpdateUser updates a user's name, email and admin flag
 //
 //	@Summary		Update user
-//	@Description	Update name and email of a user the caller is allowed to manage
+//	@Description	Update name, email and admin flag. Admins only. An admin cannot remove their own admin flag, and the last admin cannot be demoted.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
@@ -136,6 +116,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 //	@Failure		401		{object}	errs.ErrorResponse
 //	@Failure		403		{object}	errs.ErrorResponse
 //	@Failure		404		{object}	errs.ErrorResponse
+//	@Failure		409		{object}	errs.ErrorResponse
 //	@Failure		500		{object}	errs.ErrorResponse
 //	@Router			/api/v1/users/{id} [put]
 func (h *Handler) UpdateUser(c *gin.Context) {
@@ -166,7 +147,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 // SetPassword sets a new password for a user
 //
 //	@Summary		Set user password
-//	@Description	Set a new password for a user the caller is allowed to manage. Revokes the user's refresh tokens.
+//	@Description	Set a new password for any user. Admins only. Revokes the user's refresh tokens.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
@@ -181,10 +162,6 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 //	@Failure		500		{object}	errs.ErrorResponse
 //	@Router			/api/v1/users/{id}/set-password [post]
 func (h *Handler) SetPassword(c *gin.Context) {
-	actor, ok := middleware.CurrentActor(c)
-	if !ok {
-		return
-	}
 	id, ok := middleware.PathID(c, "id")
 	if !ok {
 		return
@@ -196,7 +173,7 @@ func (h *Handler) SetPassword(c *gin.Context) {
 		return
 	}
 
-	if err := h.service.SetPassword(c.Request.Context(), actor, id, req.Password); err != nil {
+	if err := h.service.SetPassword(c.Request.Context(), id, req.Password); err != nil {
 		errs.RespondWithError(c, err)
 		return
 	}
@@ -207,7 +184,7 @@ func (h *Handler) SetPassword(c *gin.Context) {
 // DeleteUser deletes a user
 //
 //	@Summary		Delete user
-//	@Description	Delete a user the caller is allowed to manage. Cannot delete yourself.
+//	@Description	Delete any user. Admins only. Cannot delete yourself or the last admin.
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
@@ -218,6 +195,7 @@ func (h *Handler) SetPassword(c *gin.Context) {
 //	@Failure		401	{object}	errs.ErrorResponse
 //	@Failure		403	{object}	errs.ErrorResponse
 //	@Failure		404	{object}	errs.ErrorResponse
+//	@Failure		409	{object}	errs.ErrorResponse
 //	@Failure		500	{object}	errs.ErrorResponse
 //	@Router			/api/v1/users/{id} [delete]
 func (h *Handler) DeleteUser(c *gin.Context) {

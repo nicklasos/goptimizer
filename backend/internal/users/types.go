@@ -2,18 +2,19 @@ package users
 
 import "app/internal"
 
-// CreateUserRequest creates a user with a single role
+// CreateUserRequest creates a user, an admin when is_admin is true
 type CreateUserRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Name     string `json:"name" binding:"required"`
 	Password string `json:"password" binding:"required,min=8"`
-	Role     string `json:"role" binding:"required,oneof=super-admin admin user"`
+	IsAdmin  bool   `json:"is_admin"`
 }
 
-// UpdateUserRequest updates name and email
+// UpdateUserRequest updates name, email and the admin flag
 type UpdateUserRequest struct {
-	Email string `json:"email" binding:"required,email"`
-	Name  string `json:"name" binding:"required"`
+	Email   string `json:"email" binding:"required,email"`
+	Name    string `json:"name" binding:"required"`
+	IsAdmin bool   `json:"is_admin"`
 }
 
 // SetPasswordRequest sets a new password for a user
@@ -23,13 +24,13 @@ type SetPasswordRequest struct {
 
 // UserResponse is a user without the password
 type UserResponse struct {
-	ID            int64    `json:"id"`
-	Email         string   `json:"email"`
-	Name          string   `json:"name"`
-	Roles         []string `json:"roles"`
-	EmailVerified bool     `json:"email_verified"`
-	CreatedAt     string   `json:"created_at"`
-	UpdatedAt     string   `json:"updated_at"`
+	ID            int64  `json:"id"`
+	Email         string `json:"email"`
+	Name          string `json:"name"`
+	IsAdmin       bool   `json:"is_admin"`
+	EmailVerified bool   `json:"email_verified"`
+	CreatedAt     string `json:"created_at"`
+	UpdatedAt     string `json:"updated_at"`
 }
 
 // UserDataResponse wraps a user

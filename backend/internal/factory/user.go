@@ -2,7 +2,6 @@ package factory
 
 import (
 	"app/internal/db"
-	"app/internal/middleware"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -11,7 +10,7 @@ type userAttrs struct {
 	email    string
 	name     string
 	password string
-	roles    []string
+	isAdmin  bool
 	verified bool
 }
 
@@ -20,16 +19,14 @@ type UserOption func(*userAttrs)
 func WithEmail(email string) UserOption       { return func(a *userAttrs) { a.email = email } }
 func WithName(name string) UserOption         { return func(a *userAttrs) { a.name = name } }
 func WithPassword(password string) UserOption { return func(a *userAttrs) { a.password = password } }
-func WithRoles(roles ...string) UserOption    { return func(a *userAttrs) { a.roles = roles } }
 
-// Admin and SuperAdmin are the role states: create.User(factory.Admin()).
-func Admin() UserOption      { return WithRoles(middleware.RoleAdmin) }
-func SuperAdmin() UserOption { return WithRoles(middleware.RoleSuperAdmin) }
+// Admin makes the account an admin: create.User(factory.Admin()).
+func Admin() UserOption { return func(a *userAttrs) { a.isAdmin = true } }
 
 // Unverified leaves the email unconfirmed, as it is right after self-registration.
 func Unverified() UserOption { return func(a *userAttrs) { a.verified = false } }
 
-// User creates a user with the role "user", a verified email and DefaultPassword.
+// User creates a user who is not an admin, with a verified email and DefaultPassword.
 func (f *Factory) User(opts ...UserOption) *db.User {
 	f.t.Helper()
 
@@ -37,7 +34,6 @@ func (f *Factory) User(opts ...UserOption) *db.User {
 		email:    "user-" + unique() + "@example.com",
 		name:     "Test User",
 		password: DefaultPassword,
-		roles:    []string{"user"},
 		verified: true,
 	}
 	for _, opt := range opts {
@@ -54,7 +50,7 @@ func (f *Factory) User(opts ...UserOption) *db.User {
 		Email:    attrs.email,
 		Name:     attrs.name,
 		Password: string(hash),
-		Roles:    db.Roles(attrs.roles),
+		IsAdmin:  attrs.isAdmin,
 		Verified: attrs.verified,
 	})
 	if err != nil {

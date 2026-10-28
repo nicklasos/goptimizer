@@ -19,15 +19,11 @@ func NewAuthHandler(service *AuthService) *AuthHandler {
 }
 
 func userResponseFromDB(user *db.User) UserResponse {
-	roles := user.Roles
-	if roles == nil {
-		roles = []string{}
-	}
 	return UserResponse{
 		ID:            user.ID,
 		Email:         user.Email,
 		Name:          user.Name,
-		Roles:         roles,
+		IsAdmin:       user.IsAdmin,
 		EmailVerified: user.EmailVerifiedAt.Valid,
 	}
 }

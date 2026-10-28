@@ -13,7 +13,3 @@ sql:
         emit_interface: false
         emit_exact_table_names: false
         omit_unused_structs: true
-        overrides:
-          - column: "users.roles"
-            go_type:
-              type: "Roles"
