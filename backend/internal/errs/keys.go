@@ -30,6 +30,20 @@ const (
 	ErrKeyUsersCannotDeleteSelf = "users.cannot_delete_self"
 )
 
+// Folders error keys. All but not_found are field errors, under "name", "path" or "profile.*".
+const (
+	ErrKeyFoldersNotFound         = "folders.not_found"
+	ErrKeyFoldersNameTaken        = "folders.name_taken"
+	ErrKeyFoldersPathNotAbsolute  = "folders.path_not_absolute"
+	ErrKeyFoldersPathNotFound     = "folders.path_not_found"
+	ErrKeyFoldersPathNotDirectory = "folders.path_not_directory"
+	ErrKeyFoldersPathUnreadable   = "folders.path_unreadable"
+	ErrKeyFoldersPathSystem       = "folders.path_system"
+	ErrKeyFoldersPathOverlaps     = "folders.path_overlaps"
+	ErrKeyFoldersPNGQualityRange  = "folders.png_quality_range"
+	ErrKeyFoldersExcludeInvalid   = "folders.exclude_invalid"
+)
+
 // Validation error keys
 const (
 	ErrKeyValidationFailed       = "validation.failed"

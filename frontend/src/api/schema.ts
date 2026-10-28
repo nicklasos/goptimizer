@@ -100,6 +100,65 @@ export interface InternalAuthVerifyEmailRequest {
   token: string;
 }
 
+export interface InternalFoldersFolderDataResponse {
+  data: InternalFoldersFolderResponse;
+}
+
+export interface InternalFoldersFolderRequest {
+  /**
+   * @min 1
+   * @max 720
+   */
+  full_scan_interval_hours?: number;
+  kind?: "local";
+  /** @maxLength 100 */
+  name: string;
+  path: string;
+  profile?: InternalFoldersProfile;
+  /**
+   * @min 5
+   * @max 10080
+   */
+  scan_interval_minutes?: number;
+}
+
+export interface InternalFoldersFolderResponse {
+  created_at: string;
+  enabled: boolean;
+  full_scan_interval_hours: number;
+  id: number;
+  kind: "local";
+  name: string;
+  path: string;
+  profile: InternalFoldersProfile;
+  scan_interval_minutes: number;
+  updated_at: string;
+}
+
+export interface InternalFoldersFoldersResponse {
+  data: InternalFoldersFolderResponse[];
+}
+
+export type InternalFoldersKind = "local";
+
+export type InternalFoldersMode = "lossy" | "lossless";
+
+export interface InternalFoldersProfile {
+  excludes: string[];
+  gif_lossy: number;
+  jpeg_max_quality: number;
+  min_age_minutes: number;
+  min_saving_percent: number;
+  min_ssim: number;
+  mode: "lossy" | "lossless";
+  png_quality_max: number;
+  png_quality_min: number;
+}
+
+export interface InternalFoldersSetEnabledRequest {
+  enabled: boolean;
+}
+
 export interface InternalMessageData {
   message: string;
 }

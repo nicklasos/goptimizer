@@ -9,6 +9,51 @@ import (
 	"context"
 )
 
+const factoryCreateFolder = `-- name: FactoryCreateFolder :one
+INSERT INTO folders (name, kind, path, enabled, scan_interval_minutes, full_scan_interval_hours, profile)
+VALUES (
+    ?1, ?2, ?3, ?4,
+    ?5, ?6, ?7
+)
+RETURNING id, name, kind, path, enabled, scan_interval_minutes, full_scan_interval_hours, profile, created_at, updated_at
+`
+
+type FactoryCreateFolderParams struct {
+	Name                  string `db:"name" json:"name"`
+	Kind                  string `db:"kind" json:"kind"`
+	Path                  string `db:"path" json:"path"`
+	Enabled               bool   `db:"enabled" json:"enabled"`
+	ScanIntervalMinutes   int64  `db:"scan_interval_minutes" json:"scan_interval_minutes"`
+	FullScanIntervalHours int64  `db:"full_scan_interval_hours" json:"full_scan_interval_hours"`
+	Profile               string `db:"profile" json:"profile"`
+}
+
+func (q *Queries) FactoryCreateFolder(ctx context.Context, arg FactoryCreateFolderParams) (Folder, error) {
+	row := q.db.QueryRowContext(ctx, factoryCreateFolder,
+		arg.Name,
+		arg.Kind,
+		arg.Path,
+		arg.Enabled,
+		arg.ScanIntervalMinutes,
+		arg.FullScanIntervalHours,
+		arg.Profile,
+	)
+	var i Folder
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Kind,
+		&i.Path,
+		&i.Enabled,
+		&i.ScanIntervalMinutes,
+		&i.FullScanIntervalHours,
+		&i.Profile,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const factoryCreateUser = `-- name: FactoryCreateUser :one
 
 INSERT INTO users (email, name, password, roles, email_verified_at)

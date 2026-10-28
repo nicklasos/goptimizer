@@ -4,6 +4,7 @@ import (
 	"app/config"
 	"app/internal"
 	"app/internal/auth"
+	"app/internal/folders"
 	"app/internal/health"
 	"app/internal/logger"
 	"app/internal/middleware"
@@ -36,5 +37,6 @@ func NewEngine(cfg *config.Config, log *logger.Logger) *gin.Engine {
 func RegisterRoutes(r *gin.Engine, app *internal.App) {
 	auth.RegisterRoutes(app)
 	users.RegisterRoutes(app)
+	folders.RegisterRoutes(app)
 	health.RegisterRoutes(r, app)
 }

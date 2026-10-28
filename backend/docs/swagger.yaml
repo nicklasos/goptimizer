@@ -209,6 +209,143 @@ definitions:
     required:
     - token
     type: object
+  internal_folders.FolderDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_folders.FolderResponse'
+    required:
+    - data
+    type: object
+  internal_folders.FolderRequest:
+    properties:
+      full_scan_interval_hours:
+        maximum: 720
+        minimum: 1
+        type: integer
+      kind:
+        allOf:
+        - $ref: '#/definitions/internal_folders.Kind'
+        enum:
+        - local
+      name:
+        maxLength: 100
+        type: string
+      path:
+        type: string
+      profile:
+        $ref: '#/definitions/internal_folders.Profile'
+      scan_interval_minutes:
+        maximum: 10080
+        minimum: 5
+        type: integer
+    required:
+    - name
+    - path
+    type: object
+  internal_folders.FolderResponse:
+    properties:
+      created_at:
+        type: string
+      enabled:
+        type: boolean
+      full_scan_interval_hours:
+        type: integer
+      id:
+        type: integer
+      kind:
+        allOf:
+        - $ref: '#/definitions/internal_folders.Kind'
+        enum:
+        - local
+      name:
+        type: string
+      path:
+        type: string
+      profile:
+        $ref: '#/definitions/internal_folders.Profile'
+      scan_interval_minutes:
+        type: integer
+      updated_at:
+        type: string
+    required:
+    - created_at
+    - enabled
+    - full_scan_interval_hours
+    - id
+    - kind
+    - name
+    - path
+    - profile
+    - scan_interval_minutes
+    - updated_at
+    type: object
+  internal_folders.FoldersResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_folders.FolderResponse'
+        type: array
+    required:
+    - data
+    type: object
+  internal_folders.Kind:
+    enum:
+    - local
+    type: string
+    x-enum-varnames:
+    - KindLocal
+  internal_folders.Mode:
+    enum:
+    - lossy
+    - lossless
+    type: string
+    x-enum-varnames:
+    - ModeLossy
+    - ModeLossless
+  internal_folders.Profile:
+    properties:
+      excludes:
+        items:
+          type: string
+        type: array
+      gif_lossy:
+        type: integer
+      jpeg_max_quality:
+        type: integer
+      min_age_minutes:
+        type: integer
+      min_saving_percent:
+        type: integer
+      min_ssim:
+        type: number
+      mode:
+        allOf:
+        - $ref: '#/definitions/internal_folders.Mode'
+        enum:
+        - lossy
+        - lossless
+      png_quality_max:
+        type: integer
+      png_quality_min:
+        type: integer
+    required:
+    - excludes
+    - gif_lossy
+    - jpeg_max_quality
+    - min_age_minutes
+    - min_saving_percent
+    - min_ssim
+    - mode
+    - png_quality_max
+    - png_quality_min
+    type: object
+  internal_folders.SetEnabledRequest:
+    properties:
+      enabled:
+        type: boolean
+    required:
+    - enabled
+    type: object
   internal_users.CreateUserRequest:
     properties:
       email:
@@ -645,6 +782,251 @@ paths:
       summary: Verify email
       tags:
       - auth
+  /api/v1/folders:
+    get:
+      description: Every folder, ordered by name. Not paginated.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_folders.FoldersResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List folders
+      tags:
+      - folders
+    post:
+      consumes:
+      - application/json
+      description: Add a folder. The path must be an absolute, readable directory
+        outside the system directories that overlaps no other folder; symlinks are
+        resolved and the real path is stored. Omitted profile fields take their defaults.
+      parameters:
+      - description: Folder
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_folders.FolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_folders.FolderDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create folder
+      tags:
+      - folders
+  /api/v1/folders/{id}:
+    delete:
+      description: Forget a folder. Its files on disk are not touched.
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete folder
+      tags:
+      - folders
+    get:
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_folders.FolderDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get folder
+      tags:
+      - folders
+    put:
+      consumes:
+      - application/json
+      description: Replace name, path, intervals and profile, with the same rules
+        as create. Does not change whether it is paused.
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Folder
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_folders.FolderRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_folders.FolderDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update folder
+      tags:
+      - folders
+  /api/v1/folders/{id}/enabled:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Enabled
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_folders.SetEnabledRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_folders.FolderDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Pause or resume folder
+      tags:
+      - folders
   /api/v1/users:
     get:
       consumes:

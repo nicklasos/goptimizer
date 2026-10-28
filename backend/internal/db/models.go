@@ -9,6 +9,19 @@ import (
 	"time"
 )
 
+type Folder struct {
+	ID                    int64        `db:"id" json:"id"`
+	Name                  string       `db:"name" json:"name"`
+	Kind                  string       `db:"kind" json:"kind"`
+	Path                  string       `db:"path" json:"path"`
+	Enabled               bool         `db:"enabled" json:"enabled"`
+	ScanIntervalMinutes   int64        `db:"scan_interval_minutes" json:"scan_interval_minutes"`
+	FullScanIntervalHours int64        `db:"full_scan_interval_hours" json:"full_scan_interval_hours"`
+	Profile               string       `db:"profile" json:"profile"`
+	CreatedAt             sql.NullTime `db:"created_at" json:"created_at"`
+	UpdatedAt             sql.NullTime `db:"updated_at" json:"updated_at"`
+}
+
 type RefreshToken struct {
 	ID        int64        `db:"id" json:"id"`
 	UserID    int64        `db:"user_id" json:"user_id"`
@@ -16,6 +29,14 @@ type RefreshToken struct {
 	ExpiresAt time.Time    `db:"expires_at" json:"expires_at"`
 	CreatedAt sql.NullTime `db:"created_at" json:"created_at"`
 	IsRevoked sql.NullBool `db:"is_revoked" json:"is_revoked"`
+}
+
+type Setting struct {
+	ID          int64        `db:"id" json:"id"`
+	Workers     int64        `db:"workers" json:"workers"`
+	ScanWorkers int64        `db:"scan_workers" json:"scan_workers"`
+	Nice        bool         `db:"nice" json:"nice"`
+	UpdatedAt   sql.NullTime `db:"updated_at" json:"updated_at"`
 }
 
 type User struct {
