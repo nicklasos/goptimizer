@@ -27,16 +27,12 @@ func TestNoRawSQLOutsideAllowlist(t *testing.T) {
 	}
 
 	// internal/db holds every sqlc-generated query plus tx.go and connection.go: the one place
-	// hand-written SQL is the point. The three files are the documented exceptions: probe.go and
-	// restore_databases.go talk to the databases Gogobackup backs up or restores into, which
-	// sqlc knows nothing about, and testkit/database.go builds SQL for any table and columns by
-	// design (AssertDatabaseHas).
+	// hand-written SQL is the point. testkit/database.go is the documented exception: it builds
+	// SQL for any table and columns by design (AssertDatabaseHas).
 	allowedDirs := []string{
 		filepath.Join(root, "internal", "db"),
 	}
 	allowedFiles := []string{
-		filepath.Join(root, "internal", "plans", "probe.go"),
-		filepath.Join(root, "internal", "plans", "restore_databases.go"),
 		filepath.Join(root, "tests", "testkit", "database.go"),
 	}
 

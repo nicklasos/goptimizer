@@ -2,10 +2,9 @@
 // seeding a development database. Every factory takes options for the fields a caller
 // cares about and fills in the rest:
 //
-//	create := factory.New(t, conn, secrets)
+//	create := factory.New(t, conn)
 //	user := create.User()
 //	admin := create.User(factory.WithRoles("admin"), factory.WithEmail("boss@example.com"))
-//	storage := create.Storage(factory.LocalStorage("/var/backups"))
 //
 // In a test the factory is already there as app.Create (see tests/testkit).
 // A failure stops the caller through TB, so there is no error to check.
@@ -18,7 +17,6 @@ import (
 	"time"
 
 	"app/internal/db"
-	"app/internal/secretbox"
 )
 
 // DefaultPassword is the password of every user a factory creates, unless WithPassword is used.
@@ -30,16 +28,14 @@ type TB interface {
 	Fatalf(format string, args ...any)
 }
 
-// Factory creates records on one connection and reports failures to one TB. secrets seals
-// the credentials of the storages it creates, as the API does.
+// Factory creates records on one connection and reports failures to one TB.
 type Factory struct {
 	t       TB
 	queries *db.Queries
-	secrets *secretbox.Box
 }
 
-func New(t TB, conn db.DBTX, secrets *secretbox.Box) *Factory {
-	return &Factory{t: t, queries: db.New(conn), secrets: secrets}
+func New(t TB, conn db.DBTX) *Factory {
+	return &Factory{t: t, queries: db.New(conn)}
 }
 
 var sequence atomic.Int64

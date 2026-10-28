@@ -1,15 +1,11 @@
 package unit
 
 import (
-	"bytes"
-	"encoding/base64"
 	"testing"
 
 	"app/config"
-	"app/internal/secretbox"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestConfig_ValidateJWTSecret(t *testing.T) {
@@ -69,55 +65,4 @@ func TestConfig_LoadAuthDefaults(t *testing.T) {
 	t.Setenv("JWT_ACCESS_TOKEN_TTL", "soon")
 	cfg, _ = config.Load()
 	assert.Equal(t, "1h0m0s", cfg.AccessTokenTTL.String(), "an unparsable duration falls back to the default")
-}
-
-func TestConfig_EncryptionKey(t *testing.T) {
-	key := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{7}, 32))
-
-	t.Setenv("ENCRYPTION_KEY", key)
-	cfg, err := config.Load()
-	require.NoError(t, err)
-	assert.Equal(t, bytes.Repeat([]byte{7}, 32), cfg.EncryptionKey)
-	assert.False(t, cfg.EncryptionKeyIsInsecure())
-	cfg.Environment = "production"
-	assert.NoError(t, cfg.ValidateEncryptionKey())
-
-	for _, bad := range []string{"not base64!", base64.StdEncoding.EncodeToString([]byte("too short"))} {
-		t.Setenv("ENCRYPTION_KEY", bad)
-		_, err := config.Load()
-		assert.Error(t, err, "a malformed key stops every process at load: %q", bad)
-	}
-
-	t.Setenv("ENCRYPTION_KEY", "")
-	cfg, err = config.Load()
-	require.NoError(t, err)
-	assert.True(t, cfg.EncryptionKeyIsInsecure(), "unset falls back to the development key")
-	cfg.Environment = "development"
-	assert.NoError(t, cfg.ValidateEncryptionKey())
-	cfg.Environment = "production"
-	assert.Error(t, cfg.ValidateEncryptionKey(), "production refuses the development key")
-}
-
-func TestSecretbox(t *testing.T) {
-	box, err := secretbox.New(bytes.Repeat([]byte{1}, 32))
-	require.NoError(t, err)
-	other, err := secretbox.New(bytes.Repeat([]byte{2}, 32))
-	require.NoError(t, err)
-
-	sealed := box.Seal([]byte("secret"))
-	assert.NotEqual(t, sealed, box.Seal([]byte("secret")), "every seal has its own nonce")
-	plain, err := box.Open(sealed)
-	require.NoError(t, err)
-	assert.Equal(t, "secret", string(plain))
-
-	_, err = other.Open(sealed)
-	assert.ErrorIs(t, err, secretbox.ErrUnreadable)
-	sealed[len(sealed)-1] ^= 1
-	_, err = box.Open(sealed)
-	assert.ErrorIs(t, err, secretbox.ErrUnreadable)
-	_, err = box.Open([]byte("short"))
-	assert.ErrorIs(t, err, secretbox.ErrUnreadable)
-
-	_, err = secretbox.New([]byte("short"))
-	assert.Error(t, err)
 }

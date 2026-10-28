@@ -7,7 +7,7 @@ import (
 
 // Row is the columns a row must have, for the database assertions:
 //
-//	app.AssertDatabaseHas("storages", testkit.Row{"name": "Nightly", "kind": "local"})
+//	app.AssertDatabaseHas("users", testkit.Row{"name": "Ada", "email": "ada@example.com"})
 //
 // A nil value matches NULL.
 type Row map[string]any

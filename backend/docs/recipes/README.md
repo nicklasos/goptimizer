@@ -10,7 +10,7 @@ how to check the result. They are written for coding agents and work as checklis
 | [add-migration.md](add-migration.md) | The schema or a query changes |
 | [add-scheduled-job.md](add-scheduled-job.md) | Something has to run on a timer |
 
-`internal/storages` is the reference module: when a recipe and the code disagree, the code wins,
+`internal/users` is the reference module: when a recipe and the code disagree, the code wins,
 and the recipe should be fixed in the same change.
 
 Rules that apply to every recipe:

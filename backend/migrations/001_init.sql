@@ -23,17 +23,6 @@ CREATE TABLE refresh_tokens (
 );
 CREATE INDEX idx_refresh_token_user_id ON refresh_tokens(user_id);
 
-CREATE TABLE examples (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title TEXT NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_examples_user_id ON examples(user_id);
-CREATE INDEX idx_examples_created_at ON examples(created_at DESC);
-
 -- Single-use tokens sent by email (password reset, email verification).
 -- Only the SHA-256 hash is stored, so a database leak does not hand out usable links.
 CREATE TABLE auth_tokens (
@@ -51,7 +40,6 @@ CREATE INDEX idx_auth_tokens_user_purpose ON auth_tokens(user_id, purpose);
 -- +goose Down
 -- +goose StatementBegin
 DROP TABLE IF EXISTS auth_tokens;
-DROP TABLE IF EXISTS examples;
 DROP TABLE IF EXISTS refresh_tokens;
 DROP TABLE IF EXISTS users;
 -- +goose StatementEnd

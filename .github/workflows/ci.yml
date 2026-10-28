@@ -15,30 +15,6 @@ jobs:
       run:
         working-directory: backend
 
-    # Servers for the tests that dump a real database (tests/integration/database_dumps_test.go)
-    # The tests check these passwords never reach a log, so they must not be words a log uses.
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_PASSWORD: pg-ci-secret-41f9
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s --health-timeout 5s --health-retries 20
-      mysql:
-        image: mysql:8
-        env:
-          MYSQL_ROOT_PASSWORD: my-ci-secret-8c2e
-        ports: ["3306:3306"]
-        options: >-
-          --health-cmd "mysqladmin ping -h 127.0.0.1 -pmy-ci-secret-8c2e"
-          --health-interval 5s --health-timeout 5s --health-retries 30
-
-    env:
-      TEST_POSTGRES_URL: postgres://postgres:pg-ci-secret-41f9@127.0.0.1:5432/postgres?sslmode=disable
-      TEST_MYSQL_URL: mysql://root:my-ci-secret-8c2e@127.0.0.1:3306/
-
     steps:
       - uses: actions/checkout@v4
 
@@ -46,20 +22,6 @@ jobs:
         with:
           go-version-file: backend/go.mod
           cache-dependency-path: backend/go.sum
-
-      # pg_dump must be at least the server's major version, so 17 from the PostgreSQL apt
-      # repository, first on PATH ahead of the runner's own. sqlite3 runs the SQLite dumps.
-      - name: Dump tools
-        run: |
-          sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
-          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client-17 mysql-client sqlite3
-          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
-
-      - name: Dump tool versions
-        run: pg_dump --version && pg_restore --version && mysqldump --version && mysql --version && sqlite3 --version
 
       - name: Formatting
         run: test -z "$(gofmt -l cmd config internal tests | grep -v '^internal/db/.*\.sql\.go$')"
@@ -101,7 +63,6 @@ jobs:
           DATABASE_PATH=$TEST_DATABASE_PATH
           TEST_DATABASE_PATH=$TEST_DATABASE_PATH
           JWT_SECRET=ci-only-secret-not-used-anywhere-else
-          ENCRYPTION_KEY=Y2ktb25seS1lbmNyeXB0aW9uLWtleS0zMi1ieXRlcyE=
           APP_ENV=test
           LOG_OUTPUT=stdout
           ENV
@@ -117,10 +78,6 @@ jobs:
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
-
-      # The E2E suite tests a SQLite plan, whose connection test looks for sqlite3 on PATH
-      - name: Install sqlite3
-        run: command -v sqlite3 || (sudo apt-get update && sudo apt-get install -y sqlite3)
 
       - name: Typecheck, lint, unit and E2E tests
         run: make test

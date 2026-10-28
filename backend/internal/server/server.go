@@ -7,9 +7,6 @@ import (
 	"app/internal/health"
 	"app/internal/logger"
 	"app/internal/middleware"
-	"app/internal/plans"
-	"app/internal/runs"
-	"app/internal/storages"
 	"app/internal/users"
 
 	"github.com/gin-gonic/gin"
@@ -39,8 +36,5 @@ func NewEngine(cfg *config.Config, log *logger.Logger) *gin.Engine {
 func RegisterRoutes(r *gin.Engine, app *internal.App) {
 	auth.RegisterRoutes(app)
 	users.RegisterRoutes(app)
-	storages.RegisterRoutes(app)
-	plans.RegisterRoutes(app)
-	runs.RegisterRoutes(app)
 	health.RegisterRoutes(r, app)
 }

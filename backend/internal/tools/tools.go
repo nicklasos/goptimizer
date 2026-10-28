@@ -1,6 +1,6 @@
-// Package tools finds the command-line programs backups run on this server (pg_dump,
-// mysqldump, sqlite3) and reports their versions. The runner and the connection tests take
-// a Finder, so tests swap in a Fake instead of depending on what is installed.
+// Package tools finds command-line programs on this server and reports their versions. Code
+// that runs them takes a Finder, so tests swap in a Fake instead of depending on what is
+// installed.
 package tools
 
 import (
@@ -51,8 +51,8 @@ func (System) Find(ctx context.Context, name string) (Tool, error) {
 }
 
 // Fake answers Find from the programs it was given; a name it does not have is not installed.
-// A program given only a version has a path that does not exist: enough for a source test, not
-// for a dump. Install gives it a real program to run.
+// A program given only a version has a path that does not exist: enough to report it, not to
+// run it. Install gives it a real program to run.
 type Fake struct {
 	mu    sync.Mutex
 	tools map[string]Tool

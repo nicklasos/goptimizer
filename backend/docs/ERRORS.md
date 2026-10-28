@@ -7,40 +7,40 @@ Simple guide for using the `errs` package for consistent error handling.
 ### 1. Define Errors in Services
 
 ```go
-package storages
+package users
 
 import "app/internal/errs"
 
 var (
-    ErrStorageNotFound = errs.NewNotFoundError(errs.ErrKeyStoragesNotFound, "Storage not found")
+    ErrUserNotFound = errs.NewNotFoundError(errs.ErrKeyUsersNotFound, "User not found")
 )
 ```
 
 ### 2. Return Errors from Services
 
 ```go
-func (s *StorageService) GetStorage(ctx context.Context, id int64) (*db.Storage, error) {
-    storage, err := s.queries.GetStorageByID(ctx, id)
+func (s *UserService) Get(ctx context.Context, id int64) (*db.User, error) {
+    user, err := s.queries.GetUserByID(ctx, id)
     if errors.Is(err, sql.ErrNoRows) {
-        return nil, ErrStorageNotFound
+        return nil, ErrUserNotFound
     }
     if err != nil {
         return nil, errs.WrapDatabaseError(err)
     }
-    return &storage, nil
+    return &user, nil
 }
 ```
 
 ### 3. Handle Errors in Handlers
 
 ```go
-func (h *Handler) GetStorage(c *gin.Context) {
-    storage, err := h.service.GetStorage(c.Request.Context(), id)
+func (h *Handler) GetUser(c *gin.Context) {
+    user, err := h.service.Get(c.Request.Context(), id)
     if err != nil {
         errs.RespondWithError(c, err)
         return
     }
-    h.respondStorage(c, storage)
+    c.JSON(http.StatusOK, UserDataResponse{Data: userResponseFromDB(*user)})
 }
 ```
 
@@ -69,33 +69,11 @@ Add error keys in `internal/errs/keys.go`:
 
 ```go
 const (
-    ErrKeyStoragesNotFound = "storages.not_found"
+    ErrKeyUsersNotFound = "users.not_found"
 )
 ```
 
-Keys are grouped by module (`auth.*`, `users.*`, `storages.*`, `plans.*`, `runs.*`, `archives.*`, `restores.*`, `validation.*`). Clients translate them, so treat a key as part of the API contract.
-
-| Key | Status | When |
-|---|---|---|
-| `storages.not_found` | 404 | No storage with this ID |
-| `storages.name_taken` | 400, as a field error on `name` | Another storage has this name (case-insensitive) |
-| `storages.invalid_prefix` | 400 | `?prefix=` of a listing climbs out with `..` or is absolute |
-| `storages.unreachable` | 502 | Listing a storage failed; `details.reason` says why |
-| `storages.in_use` | 409 | Deleting a storage that plans upload to; `details.plans` lists them as `{id, name}` |
-| `plans.not_found` | 404 | No plan with this ID |
-| `plans.name_taken` | 400, as a field error on `name` | Another plan has this name (case-insensitive) |
-| `plans.storage_not_found` | 400, as a field error on `storage_ids` | One of the storage IDs does not exist |
-| `plans.duplicate_schedule` | 400, as a field error on `schedules.N` | Row N repeats an earlier time and set of days |
-| `plans.keep_needs_max_age` | 400, as a field error on `keep_weekly` / `keep_monthly` | Keeping weekly or monthly archives needs `max_age_days` |
-| `plans.run_in_progress` | 409 | Run now while the plan already has a queued or running run |
-| `runs.not_found` | 404 | No run with this ID |
-| `archives.not_found` | 404 | No archive with this ID, or retention deleted it (download, restore) |
-| `archives.invalid_link` | 403 | A download link that is malformed or expired |
-| `restores.not_found` | 404 | No restore with this ID |
-| `restores.in_progress` | 409 | Restoring an archive of a plan that already has a restore queued or running |
-| `restores.kind_changed` | 409 | Restoring an archive made while the plan backed up another kind of source |
-| `restores.confirm_mismatch` | 400, as a field error on `confirm` | The target is the plan's own source and `confirm` is not its database name, its path or `original locations` |
-| `restores.own_database` | 400, as a field error on `sqlite.path` | The SQLite target is this service's own database, which it cannot replace while it runs |
+Keys are grouped by module (`auth.*`, `users.*`, `validation.*`). Clients translate them, so treat a key as part of the API contract.
 
 Validation failures have their own shape and always return 400:
 
@@ -110,11 +88,11 @@ Validation failures have their own shape and always return 400:
 A service reports such a failure itself with `errs.Fields`, which `RespondWithError` answers in the same shape:
 
 ```go
-return nil, errs.FieldError("local.path", "invalid")         // validation.local.path.invalid
-return nil, errs.Fields{"name": {errs.ErrKeyStoragesNameTaken}}
+return nil, errs.FieldError("email", "invalid")              // validation.email.invalid
+return nil, errs.Fields{"email": {errs.ErrKeyAuthUserExists}}
 ```
 
-A field inside a nested block is named by its path, `s3.bucket`, both from binding and from `errs.Fields`.
+A field inside a nested block is named by its path, such as `address.city`, both from binding and from `errs.Fields`.
 
 ## Handler Helpers
 
@@ -152,8 +130,8 @@ All errors return:
 
 ```json
 {
-  "error_key": "storages.not_found",
-  "message": "Storage not found",
+  "error_key": "users.not_found",
+  "message": "User not found",
   "status": 404,
   "timestamp": "2024-01-01T00:00:00Z"
 }
@@ -161,4 +139,4 @@ All errors return:
 
 ## Reference
 
-`internal/storages/storage_service.go` and `internal/storages/handler.go` use all of the above.
+`internal/users/user_service.go` and `internal/users/handler.go` use most of the above.

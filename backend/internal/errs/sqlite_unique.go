@@ -16,7 +16,7 @@ func DomainErrorFromUniqueViolation(err error) *DomainError {
 	return nil
 }
 
-// IsUniqueViolation reports a unique constraint failure on a column ("storages.name") or, for
+// IsUniqueViolation reports a unique constraint failure on a column ("refresh_tokens.token") or, for
 // an expression index, on the index: SQLite names one or the other in the message.
 func IsUniqueViolation(err error, column string) bool {
 	var sqliteErr *sqlite.Error

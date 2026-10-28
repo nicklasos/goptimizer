@@ -5,7 +5,7 @@
 <h1 align="center">Gogobackup API</h1>
 
 <p align="center">
-  The Go API behind Gogobackup: storages, backup plans, the runner and restores.<br>
+  The Go API behind Gogobackup.<br>
   Gin, SQLite, sqlc, Goose, JWT auth with roles.
 </p>
 
@@ -30,8 +30,6 @@
 
 There is no ORM and no repository layer. Services call type-safe sqlc queries directly, and every test runs against its own freshly migrated SQLite file. The admin panel is in [../frontend](../frontend), and the [root README](../README.md) covers running and deploying the whole service.
 
-![The dashboard of the admin panel](../docs/images/dashboard.png)
-
 ## Quick Start
 
 ### Prerequisites
@@ -54,7 +52,7 @@ make up
 # Creates the database file at DATABASE_PATH (./data/gogobackup.db)
 make migrate-up
 
-# Accounts and sample data (admin@example.com / password123, and more)
+# Sample accounts (admin@example.com / password123, and more)
 make seed
 
 # Run with hot reload
@@ -79,9 +77,6 @@ Run the tests with `make test`. They need no database setup: each test gets its 
 - **Safe defaults**: registration closed unless `ALLOW_REGISTRATION=true`, and a weak `JWT_SECRET` is refused in production
 - **Roles**: `super-admin`, `admin`, `user` with `RequireRole` middleware; roles are read from the database on every request
 - **User management**: super admins manage super admins and admins, admins manage users
-- **Backup plans**: what to back up (Postgres, MySQL, SQLite or files), when (UTC times on chosen weekdays), where to (storages) and how long to keep it, with a source test that also checks the dump program on PATH
-- **Runner**: plans run on their schedules and by "Run now". One dump streams to every storage of the plan at once, each run keeps its log, retention prunes old archives, and a failed run emails the admins
-- **Storages**: where backups go (a local directory, S3-compatible or Google Cloud Storage), with a connection test and a browser. Credentials are encrypted with `ENCRYPTION_KEY` and never returned
 - **Mail**: SMTP service (`app.Mail`), logged instead of sent in debug mode, with an in-memory sender for tests
 - **Policies**: who may do what to a record, one small `policy.go` per module
 - **Factories and seed data**: `app.Create.User(factory.Admin())` in tests, `make seed` for a development database
@@ -94,7 +89,7 @@ Run the tests with `make test`. They need no database setup: each test gets its 
 - **Swagger**: Auto-generated API documentation
 - **Docker and CI**: `docker-compose.yml` for local services, a production `Dockerfile`, and a GitHub Actions workflow
 - **Healthcheck**: `/health` checks the database and answers 503 when it is down
-- **Scheduler**: cron jobs and the backup worker inside the API process, or in `cmd/cron` with `ENABLE_SCHEDULER=false` (queueing scheduled runs, refresh-token cleanup)
+- **Scheduler**: cron jobs inside the API process, or in `cmd/cron` with `ENABLE_SCHEDULER=false` (refresh-token cleanup)
 
 ## Tech Stack
 
@@ -110,17 +105,13 @@ Run the tests with `make test`. They need no database setup: each test gets its 
 ```
 gogo/
 ├── cmd/api/main.go              # Application entry point (--port, --test-db)
-├── cmd/cli/main.go              # CLI (migrate, create-user, self-backup, seed, mail, test)
+├── cmd/cli/main.go              # CLI (migrate, create-user, seed, mail, test)
 ├── internal/
 │   ├── app.go                   # App context with DB, Tx, Cache, Logger, Mail
 │   ├── server/                  # Engine middleware + the list of modules
 │   ├── auth/                    # Authentication module
 │   ├── users/                   # User management
-│   ├── plans/                   # Backup plans: sources registry, schedules, source tests
-│   ├── tools/                   # Dump programs on PATH, and a fake for tests
-│   ├── storages/                # Storages: kinds registry, service, handlers
-│   │   └── driver/              # Local, S3 and GCS drivers: Put, Open, List, Delete, Probe
-│   ├── secretbox/               # AES-256-GCM for credentials at rest
+│   ├── tools/                   # Finds programs on PATH, and a fake for tests
 │   ├── db/queries/              # SQL queries (sqlc)
 │   ├── middleware/              # JWT, roles, CORS, request ID, pagination, recovery
 │   ├── cache/                   # In-process cache with TTLs
@@ -174,25 +165,6 @@ make swagger          # Generate API docs
 
 Admins can only manage accounts whose role is `user`; anything else returns 403 `users.forbidden_role`.
 
-### Backup plans (admins)
-- `GET /api/v1/plans` - List plans, without source passwords, with their storages and `next_run_at`
-- `POST /api/v1/plans` - Create a plan: `{name, source_kind, postgres|mysql|sqlite|files: {...}, schedules, max_age_days, keep_weekly, keep_monthly, storage_ids, enabled}`
-- `GET /api/v1/plans/:id` - Get a plan (`secret_set` says whether a password is stored)
-- `PUT /api/v1/plans/:id` - Update; a blank password keeps the stored one
-- `DELETE /api/v1/plans/:id` - Delete a plan; its storages and archives stay
-- `POST /api/v1/plans/test` - Test an unsaved source (`?plan_id=` reuses that plan's password)
-- `POST /api/v1/plans/:id/test` - Test a saved plan's source: connect, and find the dump program on PATH
-
-### Storages (admins)
-- `GET /api/v1/storages` - List storages, without credentials
-- `POST /api/v1/storages` - Create a storage: `{name, kind, local|s3|gcs: {...}}`, the block named by `kind`
-- `GET /api/v1/storages/:id` - Get a storage (`secret_set` says whether credentials are stored)
-- `PUT /api/v1/storages/:id` - Update; blank credentials keep the stored ones
-- `DELETE /api/v1/storages/:id` - Delete (the files in it are not touched)
-- `POST /api/v1/storages/test` - Test an unsaved form (`?storage_id=` to use a saved storage's credentials)
-- `POST /api/v1/storages/:id/test` - Test a saved storage: write, read back and delete a probe file
-- `GET /api/v1/storages/:id/objects?prefix=` - List one folder
-
 ### Other
 - `GET /health` - Health check (database); 503 with a per-dependency `checks` map when one is down
 - `GET /api/v1/health` - Same health check under API prefix
@@ -234,7 +206,7 @@ page, ok := middleware.Page(c)              // 400 when ?page / ?page_size are i
 
 ### Types.go Pattern
 - All request/response types go in `types.go` within each module
-- Services define internal types (e.g., `PaginatedStoragesResult`) in service files
+- Services define internal types (e.g., `PaginatedUsers`) in service files
 - Handlers convert service types to response types from `types.go`
 
 ### Cache Pattern
@@ -289,11 +261,7 @@ make docker-build  # production image: api and cli binaries
 docker compose --profile app up --build   # everything, API included
 ```
 
-The image keeps the database at `/data/db/gogobackup.db` (mount a volume there) and runs `cli migrate up` before the API starts (`RUN_MIGRATIONS=false` turns that off). The API runs the scheduled jobs itself unless `ENABLE_SCHEDULER=false`, in which case run `/app/cron` as a second container. The image has `sqlite3`, `pg_dump` 18 and `mysqldump` (MariaDB), so plans of every source kind run in it.
-
-## Backing up Gogobackup itself
-
-`make cli -- self-backup --dir /var/backups/gogobackup` makes sure the plan "Gogobackup itself" backs up `DATABASE_PATH` every day at 03:15 UTC to a local storage in that directory, keeping 30 days, then 8 weekly and 12 monthly archives (`--time`, `--max-age-days`, `--keep-weekly`, `--keep-monthly`). It is safe to run on every deploy: a plan that already backs up `DATABASE_PATH` is found by its source, whatever it is called now, and is left exactly as it is. `deploy/` runs it after migrations. The local copy shares the server's disk, so add an S3 or GCS storage to the plan; and keep `ENCRYPTION_KEY` somewhere off the server, because the stored credentials in a restored database cannot be opened without it.
+The image keeps the database at `/data/db/gogobackup.db` (mount a volume there) and runs `cli migrate up` before the API starts (`RUN_MIGRATIONS=false` turns that off). The API runs the scheduled jobs itself unless `ENABLE_SCHEDULER=false`, in which case run `/app/cron` as a second container.
 
 ## Test database
 
@@ -309,12 +277,12 @@ The project uses structured error handling with the `errs` package. See `docs/ER
 - Services return domain errors: `errs.NewNotFoundError(key, message)`
 - Handlers use: `errs.RespondWithError(c, err)` or `errs.RespondWithValidationError(c, err)`
 - DB helpers: `errs.WrapDatabaseError`, `errs.DomainErrorFromUniqueViolation`
-- See `internal/storages/` for a complete module
+- See `internal/users/` for a complete module
 
 ## Links
 
 - **API Docs**: `/swagger/index.html` when running
 - **Error Handling**: See `docs/ERRORS.md` for error handling guide
 - **Architecture**: See `AGENTS.md` for detailed patterns
-- **Deployment**: See `DEPLOYMENT.md` for supervisord setup
+- **Deployment**: See `../deploy/README.md`
 - **Roadmap**: See `ROADMAP.md` for what is worth adding next

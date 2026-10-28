@@ -45,8 +45,6 @@ func main() {
 		commands.RunCreateUser(app, args)
 	case "seed":
 		commands.RunSeed(app, args)
-	case "self-backup":
-		commands.RunSelfBackup(app, args)
 	case "mail":
 		commands.RunMail(app, args)
 	case "test":
@@ -107,8 +105,7 @@ func printUsage() {
 	fmt.Println("Available Commands:")
 	fmt.Println("  migrate              Run database migrations")
 	fmt.Println("  create-user          Create a user (default role: super-admin)")
-	fmt.Println("  seed                 Fill an empty development database with accounts and sample data")
-	fmt.Println("  self-backup          Make sure a plan backs up this service's own database")
+	fmt.Println("  seed                 Fill an empty development database with sample accounts")
 	fmt.Println("  mail                 Send a test email through the configured SMTP server")
 	fmt.Println("  test                 Check the database connection")
 	fmt.Println("  help                 Show this help message")
@@ -117,7 +114,6 @@ func printUsage() {
 	fmt.Println("  make cli migrate up")
 	fmt.Println("  make cli -- --test migrate status")
 	fmt.Println("  make cli -- create-user --email admin@example.com --password password123")
-	fmt.Println("  make cli -- self-backup --dir /var/backups/gogobackup")
 	fmt.Println()
 	fmt.Println("For more information on a specific command:")
 	fmt.Println("  make cli -- <command> --help")

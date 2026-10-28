@@ -30,45 +30,6 @@ const (
 	ErrKeyUsersCannotDeleteSelf = "users.cannot_delete_self"
 )
 
-// Storages error keys
-const (
-	ErrKeyStoragesNotFound      = "storages.not_found"
-	ErrKeyStoragesNameTaken     = "storages.name_taken"
-	ErrKeyStoragesInvalidPrefix = "storages.invalid_prefix"
-	ErrKeyStoragesUnreachable   = "storages.unreachable"
-	ErrKeyStoragesInUse         = "storages.in_use"
-)
-
-// Plans error keys
-const (
-	ErrKeyPlansNotFound          = "plans.not_found"
-	ErrKeyPlansNameTaken         = "plans.name_taken"
-	ErrKeyPlansStorageNotFound   = "plans.storage_not_found"
-	ErrKeyPlansDuplicateSchedule = "plans.duplicate_schedule"
-	ErrKeyPlansKeepNeedsMaxAge   = "plans.keep_needs_max_age"
-	ErrKeyPlansRunInProgress     = "plans.run_in_progress"
-)
-
-// Runs error keys
-const (
-	ErrKeyRunsNotFound = "runs.not_found"
-)
-
-// Archives error keys
-const (
-	ErrKeyArchivesNotFound    = "archives.not_found"
-	ErrKeyArchivesInvalidLink = "archives.invalid_link"
-)
-
-// Restores error keys
-const (
-	ErrKeyRestoresNotFound    = "restores.not_found"
-	ErrKeyRestoresInProgress  = "restores.in_progress"
-	ErrKeyRestoresConfirm     = "restores.confirm_mismatch"
-	ErrKeyRestoresOwnDatabase = "restores.own_database"
-	ErrKeyRestoresKindChanged = "restores.kind_changed"
-)
-
 // Validation error keys
 const (
 	ErrKeyValidationFailed       = "validation.failed"

@@ -10,11 +10,7 @@ import (
 	"app/config"
 	"app/internal/db"
 	"app/internal/logger"
-	"app/internal/mail"
-	"app/internal/runs"
 	"app/internal/scheduler"
-	"app/internal/secretbox"
-	"app/internal/tools"
 )
 
 func main() {
@@ -33,15 +29,6 @@ func main() {
 			log.Fatal(err)
 		}
 		log.Println("Using TEST_DATABASE_PATH for the database")
-	}
-
-	// The worker opens storage credentials and source passwords, sealed with ENCRYPTION_KEY.
-	if err := cfg.ValidateEncryptionKey(); err != nil {
-		log.Fatal(err)
-	}
-	secrets, err := secretbox.New(cfg.EncryptionKey)
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	appLogger, err := logger.New(logger.Config{
@@ -74,15 +61,6 @@ func main() {
 		Queries: queries,
 		Tx:      tx,
 		Logger:  appLogger,
-		Worker: runs.NewWorker(runs.Deps{
-			Config:  cfg,
-			Queries: queries,
-			Tx:      tx,
-			Secrets: secrets,
-			Tools:   tools.System{},
-			Mail:    mail.NewService(cfg, appLogger),
-			Logger:  appLogger,
-		}),
 	}
 
 	cronScheduler := scheduler.NewScheduler(deps)

@@ -8,10 +8,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /out/api ./cmd/api \
   && CGO_ENABLED=0 GOOS=linux go build -o /out/cron ./cmd/cron \
   && CGO_ENABLED=0 GOOS=linux go build -o /out/cli ./cmd/cli
 
-# The newest pg_dump Alpine ships, because it must be at least the server's major version.
-# Versioned clients install into /usr/libexec, hence the PATH.
 FROM alpine:3.24
-RUN apk add --no-cache ca-certificates curl sqlite postgresql18-client mariadb-client \
+RUN apk add --no-cache ca-certificates curl \
   && adduser -D -u 10001 app \
   && mkdir -p /data/db /app/logs \
   && chown -R app /data /app
@@ -20,8 +18,7 @@ COPY --from=build /out/api /out/cron /out/cli /app/
 COPY docker/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 USER app
-ENV PATH=/usr/libexec/postgresql18:$PATH \
-    DATABASE_PATH=/data/db/gogobackup.db \
+ENV DATABASE_PATH=/data/db/gogobackup.db \
     LOG_OUTPUT=stdout \
     LOG_FORMAT=json
 EXPOSE 8181

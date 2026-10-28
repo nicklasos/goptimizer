@@ -18,11 +18,8 @@ import (
 	"app/internal/db"
 	"app/internal/logger"
 	"app/internal/mail"
-	"app/internal/runs"
 	"app/internal/scheduler"
-	"app/internal/secretbox"
 	"app/internal/server"
-	"app/internal/tools"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -30,7 +27,7 @@ import (
 
 // @title           Gogo API Template
 // @version         1.0
-// @description     Gogobackup: storages, backup plans and the accounts that manage them
+// @description     Gogobackup: the accounts that manage it
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
@@ -74,13 +71,6 @@ func main() {
 	if err := cfg.ValidateJWTSecret(); err != nil {
 		log.Fatal(err)
 	}
-	if err := cfg.ValidateEncryptionKey(); err != nil {
-		log.Fatal(err)
-	}
-	secrets, err := secretbox.New(cfg.EncryptionKey)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	logger, err := logger.New(logger.Config{
 		Level:     cfg.LogLevel,
@@ -103,9 +93,6 @@ func main() {
 	if cfg.JWTSecretIsWeak() {
 		logger.Warn("JWT_SECRET is weak: fine for local development, refused when APP_ENV=production")
 	}
-	if cfg.EncryptionKeyIsInsecure() {
-		logger.Warn("ENCRYPTION_KEY is not set: storage credentials are sealed with the public development key. Set it before storing real credentials (openssl rand -base64 32); refused when APP_ENV=production")
-	}
 
 	database, err := db.NewConnection(cfg)
 	if err != nil {
@@ -126,30 +113,17 @@ func main() {
 		Cache:   cache.NewMemoryCache(),
 		Logger:  logger,
 		Mail:    mail.NewService(cfg, logger),
-		Secrets: secrets,
-		Tools:   tools.System{},
 		Api:     r.Group("/api/v1"),
 	}
 
-	// ENABLE_SCHEDULER=false when bin/gogo-cron runs the jobs and the backups as its own process instead
+	// ENABLE_SCHEDULER=false when bin/gogo-cron runs the jobs as its own process instead
 	if cfg.EnableScheduler {
-		worker := runs.NewWorker(runs.Deps{
-			Config:  cfg,
-			Queries: app.Queries,
-			Tx:      app.Tx,
-			Secrets: secrets,
-			Tools:   app.Tools,
-			Mail:    app.Mail,
-			Logger:  logger,
-		})
-		app.WakeWorker = worker.Wake
 		cronScheduler := scheduler.NewScheduler(&scheduler.Dependencies{
 			Config:  cfg,
 			DB:      database,
 			Queries: app.Queries,
 			Tx:      app.Tx,
 			Logger:  logger,
-			Worker:  worker,
 		})
 		if err := cronScheduler.RegisterJobs(); err != nil {
 			logger.Error("Failed to register scheduler jobs", "error", err)
@@ -183,7 +157,7 @@ func main() {
 	}()
 
 	// Without this a stop signal kills the process at once: in-flight requests are cut off
-	// and the deferred scheduler stop, which records running backups as stopped, never runs.
+	// and the deferred scheduler stop, which waits for running jobs, never runs.
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

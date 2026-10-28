@@ -14,7 +14,7 @@ import (
 // Response is what a request returned. Its Assert methods stop the test on failure and
 // return the response, so they chain:
 //
-//	app.As(admin).GET("/api/v1/storages").AssertOK().AssertJSONCount("data", 3)
+//	app.As(admin).GET("/api/v1/users").AssertOK().AssertJSONCount("data", 3)
 type Response struct {
 	StatusCode int
 	Body       []byte
@@ -144,8 +144,8 @@ func (r *Response) AssertJSONMissing(path string) *Response {
 
 // JSON decodes the body into v, which is a pointer:
 //
-//	var page storages.PaginatedStoragesResponse
-//	app.As(admin).GET("/api/v1/storages").AssertOK().JSON(&page)
+//	var page users.PaginatedUsersResponse
+//	app.As(admin).GET("/api/v1/users").AssertOK().JSON(&page)
 func (r *Response) JSON(v any) *Response {
 	r.t.Helper()
 	if err := json.Unmarshal(r.Body, v); err != nil {
@@ -160,7 +160,7 @@ func (r *Response) String() string {
 
 // Decode is JSON for when a variable declaration is in the way:
 //
-//	page := testkit.Decode[storages.PaginatedStoragesResponse](resp)
+//	page := testkit.Decode[users.PaginatedUsersResponse](resp)
 func Decode[T any](r *Response) T {
 	r.t.Helper()
 	var v T

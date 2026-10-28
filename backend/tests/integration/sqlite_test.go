@@ -10,7 +10,6 @@ import (
 
 	"app/internal/db"
 	"app/internal/errs"
-	"app/internal/factory"
 	"app/tests/testkit"
 
 	"github.com/stretchr/testify/assert"
@@ -101,18 +100,20 @@ func TestSQLite_TimestampsCompareTheSameWhoeverWroteThem(t *testing.T) {
 // any connection the pool opens misses the pragma.
 func TestSQLite_ForeignKeysHoldOnEveryConnection(t *testing.T) {
 	app := testkit.New(t)
-	storage := app.Create.Storage()
-	kept := app.Create.Plan(factory.WithStorages(storage))
-	removed := app.Create.Plan(factory.WithStorages(storage, app.Create.Storage()))
+	kept := app.Create.User()
+	removed := app.Create.User()
+	for _, user := range []*db.User{kept, removed} {
+		_, err := app.Queries.CreateRefreshToken(app.Ctx, db.CreateRefreshTokenParams{
+			UserID: user.ID, Token: sha256Hex(user.Email), ExpiresAt: time.Now().Add(time.Hour),
+		})
+		require.NoError(t, err)
+	}
 
 	app.DB.SetMaxIdleConns(0)
-	require.NoError(t, app.Queries.DeletePlan(app.Ctx, removed.ID))
-	app.AssertDatabaseCount("plan_storages", 0, testkit.Row{"plan_id": removed.ID})
-	app.AssertDatabaseCount("plan_storages", 1, testkit.Row{"plan_id": kept.ID})
+	require.NoError(t, app.Queries.DeleteUser(app.Ctx, removed.ID))
+	app.AssertDatabaseCount("refresh_tokens", 0, testkit.Row{"user_id": removed.ID})
+	app.AssertDatabaseCount("refresh_tokens", 1, testkit.Row{"user_id": kept.ID})
 
-	err := app.Queries.DeleteStorage(app.Ctx, storage.ID)
-	assert.True(t, errs.IsForeignKeyViolation(err), "a storage a plan uses is kept: %v", err)
-
-	_, err = app.DB.ExecContext(app.Ctx, "INSERT INTO plan_storages (plan_id, storage_id) VALUES (?, ?)", removed.ID, storage.ID)
-	assert.Error(t, err, "a link to a missing plan is refused")
+	_, err := app.DB.ExecContext(app.Ctx, "INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)", removed.ID, "orphan", time.Now().Add(time.Hour))
+	assert.True(t, errs.IsForeignKeyViolation(err), "a token for a missing user is refused: %v", err)
 }

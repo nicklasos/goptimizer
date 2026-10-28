@@ -11,34 +11,35 @@ Everything starts from `testkit.New(t)`. There is nothing to close and no contex
 An API test (`tests/integration`):
 
 ```go
-func TestStoragesAPI_CreateStorage(t *testing.T) {
+func TestUsersAPI_CreateUser(t *testing.T) {
     app := testkit.New(t)
     admin := app.Create.User(factory.Admin())
-    body := storages.StorageRequest{Name: "Nightly", Kind: storages.KindLocal, Local: &storages.LocalInput{Path: t.TempDir()}}
+    body := users.CreateUserRequest{Name: "Ada", Email: "ada@example.com", Password: "password123", Role: middleware.RoleUser}
 
-    app.As(admin).POST("/api/v1/storages", body).
+    app.As(admin).POST("/api/v1/users", body).
         AssertOK().
-        AssertJSONPath("data.name", "Nightly")
+        AssertJSONPath("data.name", "Ada")
 
-    app.POST("/api/v1/storages", body).AssertUnauthorized()
-    app.As(admin).POST("/api/v1/storages", `{}`).AssertInvalid("name")
+    app.POST("/api/v1/users", body).AssertUnauthorized()
+    app.As(admin).POST("/api/v1/users", `{}`).AssertInvalid("name")
 
-    app.AssertDatabaseHas("storages", testkit.Row{"name": "Nightly", "kind": "local"})
+    app.AssertDatabaseHas("users", testkit.Row{"name": "Ada", "email": "ada@example.com"})
 }
 ```
 
 A service test (`tests/unit`):
 
 ```go
-func TestStorageService_GetStorage(t *testing.T) {
+func TestUserService_Update(t *testing.T) {
     app := testkit.New(t)
-    record := app.Create.Storage()
-    service := storages.NewStorageService(app.Queries, app.Secrets)
+    admin := app.Create.User(factory.Admin())
+    record := app.Create.User()
+    service := users.NewUserService(app.Queries, app.TxRunner)
 
-    result, err := service.GetStorage(app.Ctx, record.ID)
+    result, err := service.Update(app.Ctx, testkit.Actor(admin), record.ID, users.UpdateUserRequest{Name: "Ada", Email: record.Email})
 
     require.NoError(t, err)
-    assert.Equal(t, record.Name, result.Name)
+    assert.Equal(t, "Ada", result.Name)
 }
 ```
 
@@ -49,13 +50,13 @@ func TestStorageService_GetStorage(t *testing.T) {
 | `use RefreshDatabase` | `app := testkit.New(t)` |
 | `User::factory()->create()` | `app.Create.User()` |
 | `User::factory()->admin()->create(['email' => $e])` | `app.Create.User(factory.Admin(), factory.WithEmail(e))` |
-| `$this->getJson($url)` | `app.GET("/api/v1/storages/%d", id)` |
-| `$this->actingAs($user)->postJson($url, $data)` | `app.As(user).POST("/api/v1/storages", data)` |
+| `$this->getJson($url)` | `app.GET("/api/v1/users?page=%d", page)` |
+| `$this->actingAs($user)->postJson($url, $data)` | `app.As(user).POST("/api/v1/users", data)` |
 | `->assertOk()`, `->assertForbidden()` | `.AssertOK()`, `.AssertForbidden()` |
 | `->assertJsonPath('data.0.name', 'Hi')` | `.AssertJSONPath("data.0.name", "Hi")` |
 | `->assertJsonCount(3, 'data')` | `.AssertJSONCount("data", 3)` |
 | `->assertJsonValidationErrors(['name'])` | `.AssertInvalid("name")` |
-| `$this->assertDatabaseHas('storages', [...])` | `app.AssertDatabaseHas("storages", testkit.Row{...})` |
+| `$this->assertDatabaseHas('users', [...])` | `app.AssertDatabaseHas("users", testkit.Row{...})` |
 | `Mail::fake()` / `Mail::assertSent` | `app.Mail.Sent()` |
 | `config(['app.x' => false])` | `testkit.New(t, func(cfg *config.Config) { cfg.X = false })` |
 
@@ -64,9 +65,6 @@ func TestStorageService_GetStorage(t *testing.T) {
 - `app.Create` — the factories, below
 - `app.Ctx`, `app.Queries`, `app.DB` (`*sql.DB`, for raw SQL with `?` placeholders), `app.TxRunner`, `app.Config`, `app.Logger`, `app.Cache` — what a service constructor asks for
 - `app.Mail.Sent()` — every email the application sent during the test
-- `app.Secrets` — seals and opens stored credentials with the test key; `testkit.NewFakeS3(t)` and `testkit.NewFakeGCS(t)` are offline storage servers
-- `app.Tools` — the dump programs the API finds on PATH: all of `testkit.FakeToolVersions` until `app.Tools.Remove("sqlite3")`. They do not exist; for a run that dumps, `app.UseRealTool("sqlite3")` puts in the real one and `app.Tools.Install(name, scriptPath, version)` a script
-- `app.Worker()` — the backup runner on the test's database, not started: `app.Worker().Drain(app.Ctx)` runs everything queued, synchronously
 - `app.Token(user)`, `testkit.Actor(user)`
 
 ### Requests (`tests/testkit/request.go`)
@@ -76,7 +74,7 @@ func TestStorageService_GetStorage(t *testing.T) {
 - `app.As(user)` — the same verbs, logged in as the user
 - `app.WithToken(token)`, `app.WithHeader(key, value)`
 
-The path takes `fmt.Sprintf` arguments: `app.PUT("/api/v1/storages/%d", body, id)`.
+The path takes `fmt.Sprintf` arguments: `app.PUT("/api/v1/users/%d", body, id)`.
 
 ### Response (`tests/testkit/response.go`)
 
@@ -99,10 +97,6 @@ Every `Assert` stops the test on failure, prints the response body, and returns 
 | Factory | Options |
 |---|---|
 | `app.Create.User()` | `WithEmail`, `WithName`, `WithPassword`, `WithRoles`, `Admin()`, `SuperAdmin()`, `Unverified()` |
-| `app.Create.Storage()` | `WithStorageName`, `LocalStorage(path)`, `S3Storage(config, keyID, secret)`, `GCSStorage(config, credentialsJSON)` |
-| `app.Create.Plan()` | `WithPlanName`, `FilesSource(paths...)`, `FilesSourceExcluding(paths, excludes)`, `SQLiteSource(path)`, `PostgresSource(config, password)`, `MySQLSource(config, password)`, `WithSchedules(...)`, `WithRetention(days, weeks, months)`, `WithStorages(...)`, `CreatedAt(t)`, `Disabled()` |
-| `app.Create.Run(plan)` | `WithRunStatus(runs.StatusRunning)`, `ScheduledFor(slot)` |
-| `app.Create.Archive(run, storage)` | `ArchiveKey(key)`, `ArchiveContent(bytes)`, `ArchiveCreatedAt(t)` |
 
 A user has the password `factory.DefaultPassword`. Tests never write `INSERT` by hand, and neither
 does a factory: every factory writes through a `Factory*` query in `internal/db/queries/factory.sql`,
@@ -119,7 +113,7 @@ INSERT INTO orders (user_id, status) VALUES (sqlc.arg(user_id), sqlc.arg(status)
 RETURNING *;
 ```
 
-One file in `internal/factory`, shaped like `storage.go`:
+One file in `internal/factory`, shaped like `user.go`:
 
 ```go
 type orderAttrs struct {
