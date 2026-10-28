@@ -130,11 +130,11 @@ Transactions take SQLite's write lock when they begin (`_txlock=immediate`), so 
 
 ## Scheduler
 - By default the API process runs the cron jobs: `cmd/api/main.go` starts `internal/scheduler` on boot and stops it on shutdown.
-- `ENABLE_SCHEDULER=false` turns that off, and `cmd/cron` (`bin/gogo-cron`) runs the same jobs as its own process. Run one or the other, never both.
+- `ENABLE_SCHEDULER=false` turns that off, and `cmd/cron` (`bin/goptimizer-cron`) runs the same jobs as its own process. Run one or the other, never both.
 - `testkit` never starts it; test a job by calling its `Execute` (`docs/recipes/add-scheduled-job.md`).
 
 ## Database
-- One SQLite file at `DATABASE_PATH` (default `./data/gogobackup.db`). Every connection turns on foreign keys, WAL and a 5 s busy timeout (`internal/db/connection.go`).
+- One SQLite file at `DATABASE_PATH` (default `./data/goptimizer.db`). Every connection turns on foreign keys, WAL and a 5 s busy timeout (`internal/db/connection.go`).
 - Timestamps are TEXT in UTC. Compare a stored timestamp with now through `datetime()` on both sides (`datetime(expires_at) > datetime('now')`): Go and `CURRENT_TIMESTAMP` write different formats.
 - Nullable columns are `sql.NullString`, `sql.NullTime`, `sql.NullBool`; IDs are `int64`; a missing row is `sql.ErrNoRows`.
 - Pass the request context into services so queries are cancelled with the request.

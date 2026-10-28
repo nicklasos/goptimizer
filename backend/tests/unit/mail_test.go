@@ -35,7 +35,7 @@ func TestMailService_Send_skipsWhenDebug(t *testing.T) {
 		MailPort:        1, // would fail if dialed
 		MailScheme:      "none",
 		MailFromAddress: "noreply@example.com",
-		MailFromName:    "Gogobackup",
+		MailFromName:    "Goptimizer",
 	}, testMailLogger(t))
 
 	err := svc.Send(context.Background(), mail.Message{
@@ -94,7 +94,7 @@ func TestMailService_SendLive_fakeSMTP(t *testing.T) {
 		MailPort:        port,
 		MailScheme:      "none",
 		MailFromAddress: "noreply@example.com",
-		MailFromName:    "Gogobackup",
+		MailFromName:    "Goptimizer",
 	}, testMailLogger(t))
 
 	err = svc.SendLive(context.Background(), mail.Message{

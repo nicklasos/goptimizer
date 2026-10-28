@@ -4,7 +4,7 @@ import dbHelper, { type TestRole, type TestUser } from './db-helper'
 const TEST_BACKEND_PORT = process.env.TEST_BACKEND_PORT || '8184'
 export const API_BASE = process.env.VITE_E2E_API_BASE_URL || `http://localhost:${TEST_BACKEND_PORT}/api/v1`
 
-export const AUTH_STORAGE_KEY = 'gogo-auth'
+export const AUTH_STORAGE_KEY = 'goptimizer-auth'
 
 /** Signs the page in without the login form: the session is put into localStorage before the app loads. */
 export async function loginViaAPI(page: Page, email: string, password: string): Promise<void> {

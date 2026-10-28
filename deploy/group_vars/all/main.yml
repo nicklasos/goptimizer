@@ -3,14 +3,14 @@
 # --- The application --------------------------------------------------------
 # Short name: used for the database file, log and config names.
 # Lower-case letters, digits and dashes.
-app_name: gogobackup
+app_name: goptimizer
 
 # Shown in emails
-app_display_name: Gogobackup
+app_display_name: Goptimizer
 
 # Where the code comes from. For a private repository use the SSH URL and add the
 # deploy key the first run prints to the repository on GitHub.
-repo_url: git@github.com:nicklasos/gogobackup.git
+repo_url: git@github.com:nicklasos/goptimizer.git
 repo_branch: main
 
 # --- Hostnames and TLS ------------------------------------------------------

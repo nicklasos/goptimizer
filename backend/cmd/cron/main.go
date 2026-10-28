@@ -41,7 +41,7 @@ func main() {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 
-	appLogger.Info("Starting Gogo Cron Server")
+	appLogger.Info("Starting Goptimizer cron")
 
 	database, err := db.NewConnection(cfg)
 	if err != nil {
@@ -84,5 +84,5 @@ func main() {
 	appLogger.Info("Shutdown signal received, stopping scheduler...")
 
 	cronScheduler.Stop()
-	appLogger.Info("Gogo Cron Server stopped successfully")
+	appLogger.Info("Goptimizer cron stopped")
 }

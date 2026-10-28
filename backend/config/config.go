@@ -62,11 +62,11 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	return &Config{
-		AppName:    getEnv("APP_NAME", "Gogobackup"),
+		AppName:    getEnv("APP_NAME", "Goptimizer"),
 		AppVersion: "1.0.0",
 
-		DatabasePath:     getEnv("DATABASE_PATH", "./data/gogobackup.db"),
-		TestDatabasePath: getEnv("TEST_DATABASE_PATH", "./data/gogobackup_test.db"),
+		DatabasePath:     getEnv("DATABASE_PATH", "./data/goptimizer.db"),
+		TestDatabasePath: getEnv("TEST_DATABASE_PATH", "./data/goptimizer_test.db"),
 		Port:             getEnv("PORT", "8181"),
 		Environment:      getEnv("APP_ENV", "development"),
 		Debug:            getEnvBool("APP_DEBUG", false),

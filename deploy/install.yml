@@ -146,6 +146,6 @@
         msg: |
           Installed. If there are no accounts yet, create the first super admin on the server:
 
-            cd {{ backend_dir }} && ./bin/gogo-cli create-user --email you@example.com --password "a-long-password"
+            cd {{ backend_dir }} && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password"
 
           Then sign in at {{ site_url }}. Later releases: cd {{ app_root }} && make deploy

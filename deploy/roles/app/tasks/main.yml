@@ -89,13 +89,13 @@
   become_user: "{{ app_user }}"
   loop:
     - { cmd: api, out: api }
-    - { cmd: cron, out: gogo-cron }
-    - { cmd: cli, out: gogo-cli }
+    - { cmd: cron, out: goptimizer-cron }
+    - { cmd: cli, out: goptimizer-cli }
   when: rebuild_backend
   changed_when: true
 
 - name: Apply database migrations
-  ansible.builtin.command: ./bin/gogo-cli migrate up
+  ansible.builtin.command: ./bin/goptimizer-cli migrate up
   args:
     chdir: "{{ backend_dir }}"
   become: true
@@ -169,7 +169,7 @@
     msg: |
       The application is up and has no accounts yet. Create the first super admin on the server:
 
-        sudo -u {{ app_user }} sh -c 'cd {{ backend_dir }} && ./bin/gogo-cli create-user --email you@example.com --password "a-long-password"'
+        sudo -u {{ app_user }} sh -c 'cd {{ backend_dir }} && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password"'
 
       Then sign in at {{ site_url }}
   when: accounts.stdout | int == 0

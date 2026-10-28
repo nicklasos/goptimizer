@@ -16,10 +16,10 @@ services:
     profiles: ["app"]
     build: .
     environment:
-      DATABASE_PATH: /data/db/gogobackup.db
+      DATABASE_PATH: /data/db/goptimizer.db
       JWT_SECRET: ${JWT_SECRET:-local-development-secret-not-for-production}
       APP_ENV: development
-      APP_NAME: ${APP_NAME:-Gogobackup}
+      APP_NAME: ${APP_NAME:-Goptimizer}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       MAIL_HOST: mailpit
       MAIL_PORT: "1025"

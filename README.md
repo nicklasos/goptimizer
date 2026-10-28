@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/images/logo-wordmark-dark.svg">
-    <img src="docs/images/logo-wordmark.svg" alt="Gogobackup" width="420">
+    <img src="docs/images/logo-wordmark.svg" alt="Goptimizer" width="420">
   </picture>
 </p>
 
@@ -10,8 +10,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/nicklasos/gogobackup/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/nicklasos/gogobackup/actions/workflows/ci.yml/badge.svg"></a>
-  <img alt="Go version" src="https://img.shields.io/github/go-mod/go-version/nicklasos/gogobackup?filename=backend%2Fgo.mod&style=flat">
+  <a href="https://github.com/nicklasos/goptimizer/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/nicklasos/goptimizer/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Go version" src="https://img.shields.io/github/go-mod/go-version/nicklasos/goptimizer?filename=backend%2Fgo.mod&style=flat">
   <img alt="React 19" src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black&style=flat">
   <img alt="SQLite" src="https://img.shields.io/badge/SQLite-one%20file-003B57?logo=sqlite&logoColor=white&style=flat">
   <a href="LICENSE"><img alt="License: WTFPL" src="https://img.shields.io/badge/license-WTFPL-lightgrey?style=flat"></a>
@@ -20,7 +20,7 @@
 
 ![The dashboard: one card per backup plan, coloured by its health, with the last 30 days of runs](docs/images/dashboard.png)
 
-Gogobackup is a web app that runs on your server. It backs up the Postgres, MySQL and SQLite databases and
+Goptimizer is a web app that runs on your server. It backs up the Postgres, MySQL and SQLite databases and
 the folders on that server to a local directory, S3-compatible storage or Google Cloud Storage. It runs each
 backup plan on a schedule, deletes old archives by your retention rules, and restores an archive when you ask.
 
@@ -28,7 +28,7 @@ backup plan on a schedule, deletes old archives by your retention rules, and res
 
 One server often runs many projects, development and production side by side. A shell script and a cron line
 per project works until there are a dozen of them, each copied from the last and slightly different, and
-nobody notices when one stops working. Gogobackup replaces those scripts with a web page. You add a storage
+nobody notices when one stops working. Goptimizer replaces those scripts with a web page. You add a storage
 once and a backup plan per database or folder, and the dashboard shows which plans failed or missed a run.
 
 ## Features
@@ -53,7 +53,7 @@ once and a backup plan per database or folder, and the dashboard shows which pla
 - **Email on failure.** A failed run or restore emails every admin the error, the last 40 log lines and a link.
 - **Encrypted credentials.** Storage keys and database passwords are encrypted with AES-256-GCM under
   `ENCRYPTION_KEY`. The API never returns them, and dump programs never get a password in their arguments.
-- **It backs itself up.** Every deploy makes sure a plan backs up Gogobackup's own database.
+- **It backs itself up.** Every deploy makes sure a plan backs up Goptimizer's own database.
 - **Small footprint.** A Go API and one SQLite file. No Redis and no database server. nginx serves the
   admin panel's static build.
 
@@ -114,11 +114,11 @@ You need Go 1.25 or newer, Node.js 22 or newer, and Make. To back up a database,
 on your `PATH` (see [Requirements on the server](#requirements-on-the-server)).
 
 ```bash
-git clone https://github.com/nicklasos/gogobackup.git && cd gogobackup
+git clone https://github.com/nicklasos/goptimizer.git && cd goptimizer
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 
-make cli migrate up             # creates backend/data/gogobackup.db
+make cli migrate up             # creates backend/data/goptimizer.db
 make seed                       # admin@example.com / password123, a local storage and one plan
 
 cd backend && make run          # API on http://localhost:8181
@@ -126,7 +126,7 @@ cd frontend && npm install && npm run dev   # from the root, in a second termina
 ```
 
 Sign in at http://localhost:5173 as `admin@example.com` with the password `password123`. The seed adds the
-storage "Local backups" at `backend/data/backups` and the plan "Gogobackup database", which backs up the
+storage "Local backups" at `backend/data/backups` and the plan "Goptimizer database", which backs up the
 development database. Press **Run now** on its card to see a run. The API documentation is at
 http://localhost:8181/swagger/index.html.
 
@@ -150,12 +150,12 @@ make provision
 Generate `jwt_secret` with `openssl rand -hex 32` and `encryption_key` with `openssl rand -base64 32`.
 `make provision` installs Go, Node.js, nginx, supervisor, a firewall and the dump programs (`sqlite3`,
 `pg_dump` and `pg_restore`, `mysqldump` and `mysql`). It then builds the API and the admin panel, gets a TLS
-certificate, and creates the plan "Gogobackup itself", which backs up Gogobackup's own database to
+certificate, and creates the plan "Goptimizer itself", which backs up Goptimizer's own database to
 `shared/backups/` every night. Release new code with `make deploy-remote`.
 
 > [!WARNING]
 > Keep a copy of `encryption_key` somewhere other than the server. The storage keys and database passwords
-> in a restored database cannot be decrypted without it. Add an S3 or GCS storage to "Gogobackup itself" too,
+> in a restored database cannot be decrypted without it. Add an S3 or GCS storage to "Goptimizer itself" too,
 > because a local copy is lost with the server's disk.
 
 A server that already runs other applications gets `make install-remote` instead, which installs no
@@ -169,7 +169,7 @@ comments, is in [backend/.env.example](backend/.env.example).
 
 | Variable | Default | What it does |
 |---|---|---|
-| `DATABASE_PATH` | `./data/gogobackup.db` | Gogobackup's own SQLite file. |
+| `DATABASE_PATH` | `./data/goptimizer.db` | Goptimizer's own SQLite file. |
 | `JWT_SECRET` | none, required | Signs sign-in tokens. With `APP_ENV=production`, at least 32 characters. |
 | `ENCRYPTION_KEY` | a public development key, with a warning | 32 random bytes in base64 that encrypt storage keys and database passwords. Required with `APP_ENV=production`. |
 | `ENABLE_SCHEDULER` | `true` | Runs the scheduler and the worker in the API process. Set `false` to run them in `cmd/cron` instead. |
@@ -183,14 +183,14 @@ comments, is in [backend/.env.example](backend/.env.example).
 
 ## Requirements on the server
 
-Dump programs run on the server Gogobackup runs on, as the API's user.
+Dump programs run on the server Goptimizer runs on, as the API's user.
 
 - **Postgres.** `pg_dump` and `pg_restore` of at least the database server's major version, because `pg_dump`
   refuses to dump a newer server. Ubuntu 24.04 ships version 16, so a Postgres 17 server needs the client from the
   PostgreSQL apt repository ([deploy/README.md](deploy/README.md#dump-tools) has the commands).
 - **MySQL and MariaDB.** `mysqldump`, and `mysql` for restores.
 - **SQLite.** `sqlite3`.
-- **Folders.** Nothing. Gogobackup writes and reads `tar.gz` itself.
+- **Folders.** Nothing. Goptimizer writes and reads `tar.gz` itself.
 
 A plan's **Test connection** button shows the version of the dump program it finds and, for databases, the
 server's version.
@@ -219,17 +219,17 @@ or README with its conventions.
 ## Status
 
 CI dumps and restores real Postgres 17 and MySQL 8 servers on every pull request and every push to `main`. The S3 and GCS drivers are tested
-against in-process fakes (gofakes3 and fake-gcs-server), not real buckets. Gogobackup has not been
+against in-process fakes (gofakes3 and fake-gcs-server), not real buckets. Goptimizer has not been
 battle-tested in production yet, and the Ansible playbooks have not yet run against a real server, so try
 your first deploy on a server you can throw away.
 
 ## Credits
 
-Gogobackup is built on [Gogokit](https://github.com/nicklasos/gogokit), a Go API and React admin panel
+Goptimizer is built on [Gogokit](https://github.com/nicklasos/gogokit), a Go API and React admin panel
 starter kit.
 
 The Go gopher was designed by Renée French and is licensed under
-[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The Gogobackup gopher is an original drawing of
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The Goptimizer gopher is an original drawing of
 that character.
 
 ## License

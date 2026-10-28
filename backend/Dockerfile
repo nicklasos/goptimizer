@@ -18,7 +18,7 @@ COPY --from=build /out/api /out/cron /out/cli /app/
 COPY docker/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 USER app
-ENV DATABASE_PATH=/data/db/gogobackup.db \
+ENV DATABASE_PATH=/data/db/goptimizer.db \
     LOG_OUTPUT=stdout \
     LOG_FORMAT=json
 EXPOSE 8181

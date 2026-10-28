@@ -5,7 +5,7 @@ import { isApiError } from '@/api/errors'
 import type { MessageResponse } from '@/api/types'
 import type { AuthTokens, LoginResponse, User } from './types'
 
-export const AUTH_STORAGE_KEY = 'gogo-auth'
+export const AUTH_STORAGE_KEY = 'goptimizer-auth'
 
 export type AuthError =
   | { type: 'api'; errorKey: string; message: string }

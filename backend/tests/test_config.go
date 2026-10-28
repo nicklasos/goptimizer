@@ -45,7 +45,7 @@ func NewTestDB(t testing.TB) *sql.DB {
 // migrateTemplate returns the bytes of a freshly migrated database. Closing the last
 // connection checkpoints the WAL, so the single file holds the whole schema.
 func migrateTemplate() ([]byte, error) {
-	dir, err := os.MkdirTemp("", "gogobackup-template-")
+	dir, err := os.MkdirTemp("", "goptimizer-template-")
 	if err != nil {
 		return nil, err
 	}

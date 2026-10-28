@@ -1,6 +1,6 @@
-# Gogobackup – Agent Guide
+# Goptimizer – Agent Guide
 
-Gogobackup is built on [Gogokit](https://github.com/nicklasos/gogokit): a Go API, a React admin panel
+Goptimizer is built on [Gogokit](https://github.com/nicklasos/gogokit): a Go API, a React admin panel
 and server provisioning in one repository.
 
 ## Layout

@@ -20,7 +20,7 @@ stopwaitsecs=45
 {% if not scheduler_in_api %}
 
 [program:{{ app_name }}-cron]
-command={{ backend_dir }}/bin/gogo-cron
+command={{ backend_dir }}/bin/goptimizer-cron
 directory={{ backend_dir }}
 user={{ app_user }}
 autostart=true

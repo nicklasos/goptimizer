@@ -300,12 +300,12 @@ info:
     email: support@swagger.io
     name: API Support
     url: http://www.swagger.io/support
-  description: 'Gogobackup: the accounts that manage it'
+  description: 'Goptimizer: optimizes the images in folders on this server'
   license:
     name: WTFPL
     url: http://www.wtfpl.net/
   termsOfService: http://swagger.io/terms/
-  title: Gogo API Template
+  title: Goptimizer API
   version: "1.0"
 paths:
   /api/v1/auth/forgot-password:

@@ -10,26 +10,26 @@ The migrations create the SQLite database in `shared/database/`.
 Once, as root:
 
 ```bash
-git clone git@github.com:nicklasos/gogobackup.git /var/www/gogobackup
-cd /var/www/gogobackup
+git clone git@github.com:nicklasos/goptimizer.git /var/www/goptimizer
+cd /var/www/goptimizer
 
-mkdir -p shared/database /var/log/gogobackup
+mkdir -p shared/database /var/log/goptimizer
 chown www-data: shared/database
 
 cp backend/.env.example backend/.env        # then apply deploy/examples/backend.env
 chgrp www-data backend/.env && chmod 640 backend/.env
-printf 'VITE_API_BASE_URL=\nVITE_APP_NAME="Gogobackup"\n' > frontend/.env
+printf 'VITE_API_BASE_URL=\nVITE_APP_NAME="Goptimizer"\n' > frontend/.env
 
 make deploy SUPERVISOR_PROGRAM=             # first build and migrations; nothing to restart yet
 
-cp deploy/examples/supervisor.conf /etc/supervisor/conf.d/gogobackup.conf
+cp deploy/examples/supervisor.conf /etc/supervisor/conf.d/goptimizer.conf
 supervisorctl update
 
-cp deploy/examples/nginx.conf /etc/nginx/sites-available/gogobackup.conf
-ln -s /etc/nginx/sites-available/gogobackup.conf /etc/nginx/sites-enabled/
+cp deploy/examples/nginx.conf /etc/nginx/sites-available/goptimizer.conf
+ln -s /etc/nginx/sites-available/goptimizer.conf /etc/nginx/sites-enabled/
 nginx -t && systemctl reload nginx
 
-cd backend && ./bin/gogo-cli create-user --email you@example.com --password "a-long-password"
+cd backend && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password"
 ```
 
 The empty `VITE_API_BASE_URL` makes the panel call its own origin, where nginx forwards `/api` to the API.
@@ -39,8 +39,8 @@ both `backend/.env` and `nginx.conf`.
 ## Releasing
 
 ```bash
-cd /var/www/gogobackup && make deploy
+cd /var/www/goptimizer && make deploy
 ```
 
-It pulls, builds the API and the CLI, applies new migrations, builds the panel and restarts `gogobackup-api`.
-The API runs the scheduled jobs itself (`ENABLE_SCHEDULER=true`). To run them as their own process, set it to false, build `bin/gogo-cron` and add a second supervisor program for it.
+It pulls, builds the API and the CLI, applies new migrations, builds the panel and restarts `goptimizer-api`.
+The API runs the scheduled jobs itself (`ENABLE_SCHEDULER=true`). To run them as their own process, set it to false, build `bin/goptimizer-cron` and add a second supervisor program for it.

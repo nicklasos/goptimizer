@@ -20,10 +20,10 @@ build:
 	go build -o bin/api ./cmd/api
 
 build-cron:
-	go build -o bin/gogo-cron ./cmd/cron
+	go build -o bin/goptimizer-cron ./cmd/cron
 
 build-cli:
-	go build -o bin/gogo-cli ./cmd/cli
+	go build -o bin/goptimizer-cli ./cmd/cli
 
 run-cron:
 	go run ./cmd/cron
@@ -42,7 +42,7 @@ down:
 	docker compose down
 
 docker-build:
-	docker build -t gogo-api .
+	docker build -t goptimizer-api .
 
 sqlc:
 	sqlc generate
@@ -146,16 +146,16 @@ air-install:
 
 # Supervisord commands
 supervisor-restart:
-	sudo supervisorctl restart gogo-api
+	sudo supervisorctl restart goptimizer-api
 
 supervisor-status:
-	sudo supervisorctl status gogo-api
+	sudo supervisorctl status goptimizer-api
 
 supervisor-stop:
-	sudo supervisorctl stop gogo-api
+	sudo supervisorctl stop goptimizer-api
 
 supervisor-start:
-	sudo supervisorctl start gogo-api
+	sudo supervisorctl start goptimizer-api
 
 supervisor-logs:
 	sudo tail -f /var/log/app/app.log
@@ -164,7 +164,7 @@ supervisor-error-logs:
 	sudo tail -f /var/log/app/app-error.log
 
 help:
-	@echo "Gogo API Template - available targets:"
+	@echo "Goptimizer API - available targets:"
 	@echo ""
 	@echo "  Development:"
 	@echo "    up                  Start Mailpit in Docker"

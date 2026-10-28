@@ -14,11 +14,11 @@ func TestAssertTestDatabasePath(t *testing.T) {
 		path    string
 		wantErr bool
 	}{
-		{"relative test database", "./data/gogobackup_test.db", false},
+		{"relative test database", "./data/goptimizer_test.db", false},
 		{"absolute test database", "/var/lib/app/e2e_test.db", false},
-		{"real database", "./data/gogobackup.db", true},
-		{"suffix only in a directory name", "./data_test.db/gogobackup.db", true},
-		{"missing extension", "./data/gogobackup_test", true},
+		{"real database", "./data/goptimizer.db", true},
+		{"suffix only in a directory name", "./data_test.db/goptimizer.db", true},
+		{"missing extension", "./data/goptimizer_test", true},
 		{"in-memory database", ":memory:", true},
 		{"empty path", "", true},
 	}
@@ -36,11 +36,11 @@ func TestAssertTestDatabasePath(t *testing.T) {
 }
 
 func TestUseTestDatabase(t *testing.T) {
-	cfg := &config.Config{DatabasePath: "./data/gogobackup.db", TestDatabasePath: "./data/gogobackup_test.db"}
+	cfg := &config.Config{DatabasePath: "./data/goptimizer.db", TestDatabasePath: "./data/goptimizer_test.db"}
 	assert.NoError(t, cfg.UseTestDatabase())
-	assert.Equal(t, "./data/gogobackup_test.db", cfg.DatabasePath)
+	assert.Equal(t, "./data/goptimizer_test.db", cfg.DatabasePath)
 
-	unsafe := &config.Config{DatabasePath: "./data/gogobackup.db", TestDatabasePath: "./data/gogobackup.db"}
+	unsafe := &config.Config{DatabasePath: "./data/goptimizer.db", TestDatabasePath: "./data/goptimizer.db"}
 	assert.Error(t, unsafe.UseTestDatabase())
-	assert.Equal(t, "./data/gogobackup.db", unsafe.DatabasePath, "a refused path leaves the real one in place")
+	assert.Equal(t, "./data/goptimizer.db", unsafe.DatabasePath, "a refused path leaves the real one in place")
 }

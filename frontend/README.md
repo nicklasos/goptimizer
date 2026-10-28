@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="public/favicon.svg" alt="Gogobackup" width="72">
+  <img src="public/favicon.svg" alt="Goptimizer" width="72">
 </p>
 
-<h1 align="center">Gogobackup admin panel</h1>
+<h1 align="center">Goptimizer admin panel</h1>
 
 <p align="center">
-  The React admin panel of Gogobackup, for the Go API in <a href="../backend">../backend</a>.<br>
+  The React admin panel of Goptimizer, for the Go API in <a href="../backend">../backend</a>.<br>
   Sign-in, users and a dashboard, typed end to end and covered by tests.
 </p>
 
@@ -113,7 +113,7 @@ The E2E ports are specific to this project so Playwright never attaches to anoth
 src/
   app/        App, providers, queryClient, router, theme, i18n
   api/        client (fetch + refresh-on-401), ApiError, shared types, query keys
-  auth/       authStore (persist key: gogo-auth), roles, guards, LoginPage
+  auth/       authStore (persist key: goptimizer-auth), roles, guards, LoginPage
   layout/     AppShell, nav registry
   shared/     components, hooks, utils, lib/unsavedChanges
   features/   dashboard, users, account
@@ -134,8 +134,8 @@ Follow [docs/recipes/add-feature.md](docs/recipes/add-feature.md), or [full-stac
 ## Docker
 
 ```bash
-docker build -t gogo-front .
-docker run -p 8080:80 -e API_UPSTREAM=http://host.docker.internal:8181 gogo-front
+docker build -t goptimizer-frontend .
+docker run -p 8080:80 -e API_UPSTREAM=http://host.docker.internal:8181 goptimizer-frontend
 ```
 
 The image is the production build behind nginx. With `VITE_API_BASE_URL` left empty at build time the app calls its own origin, and nginx forwards `/api` and `/health` to `API_UPSTREAM`.

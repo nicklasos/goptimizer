@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-// Every query against Gogobackup's own database goes through sqlc (internal/db), so a schema
+// Every query against Goptimizer's own database goes through sqlc (internal/db), so a schema
 // change breaks the build instead of a test at runtime. This reads the AST of every non-test
 // .go file and fails on a call that runs a query outside the allowlist below.
 //

@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="../docs/images/logo.svg" alt="Gogobackup" width="120">
+  <img src="../docs/images/logo.svg" alt="Goptimizer" width="120">
 </p>
 
-<h1 align="center">Gogobackup API</h1>
+<h1 align="center">Goptimizer API</h1>
 
 <p align="center">
-  The Go API behind Gogobackup.<br>
+  The Go API behind Goptimizer.<br>
   Gin, SQLite, sqlc, Goose, JWT auth with roles.
 </p>
 
@@ -49,7 +49,7 @@ cp .env.example .env
 # A mail catcher in Docker. Skip this if you do not need to read sent mail.
 make up
 
-# Creates the database file at DATABASE_PATH (./data/gogobackup.db)
+# Creates the database file at DATABASE_PATH (./data/goptimizer.db)
 make migrate-up
 
 # Sample accounts (admin@example.com / password123, and more)
@@ -173,8 +173,8 @@ Admins can only manage accounts whose role is `user`; anything else returns 403 
 ## Environment Variables
 
 ```bash
-DATABASE_PATH=./data/gogobackup.db            # SQLite file; the directory is created on start
-TEST_DATABASE_PATH=./data/gogobackup_test.db  # for --test-db and cli --test; must end in _test.db
+DATABASE_PATH=./data/goptimizer.db            # SQLite file; the directory is created on start
+TEST_DATABASE_PATH=./data/goptimizer_test.db  # for --test-db and cli --test; must end in _test.db
 JWT_SECRET=your-secret-key-here   # production needs 32+ random characters: openssl rand -hex 32
 JWT_ACCESS_TOKEN_TTL=1h
 JWT_REFRESH_TOKEN_TTL=720h
@@ -184,7 +184,7 @@ FRONTEND_URL=http://localhost:5173   # base of the links in emails
 TRUSTED_PROXIES=127.0.0.1,::1     # whose X-Forwarded-For to believe for the client IP
 PORT=8181
 APP_ENV=development
-APP_NAME=Gogobackup
+APP_NAME=Goptimizer
 CORS_ALLOWED_ORIGINS=          # comma-separated; empty or * allows any origin
 MAIL_HOST=                     # plus MAIL_PORT, MAIL_SCHEME, MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM_ADDRESS, MAIL_FROM_NAME
 LOG_LEVEL=info
@@ -261,7 +261,7 @@ make docker-build  # production image: api and cli binaries
 docker compose --profile app up --build   # everything, API included
 ```
 
-The image keeps the database at `/data/db/gogobackup.db` (mount a volume there) and runs `cli migrate up` before the API starts (`RUN_MIGRATIONS=false` turns that off). The API runs the scheduled jobs itself unless `ENABLE_SCHEDULER=false`, in which case run `/app/cron` as a second container.
+The image keeps the database at `/data/db/goptimizer.db` (mount a volume there) and runs `cli migrate up` before the API starts (`RUN_MIGRATIONS=false` turns that off). The API runs the scheduled jobs itself unless `ENABLE_SCHEDULER=false`, in which case run `/app/cron` as a second container.
 
 ## Test database
 

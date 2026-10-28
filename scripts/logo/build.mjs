@@ -14,9 +14,9 @@ const { chromium } = createRequire(path.join(root, 'frontend/package.json'))('pl
 const logo = fs.readFileSync(path.join(images, 'logo.svg'), 'utf8')
 const mark = logo.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '')
 
-const wordmark = (ink) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 256" role="img" aria-label="Gogobackup">
+const wordmark = (ink) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 256" role="img" aria-label="Goptimizer">
   <svg x="0" y="0" width="256" height="256" viewBox="0 0 256 256">${mark}</svg>
-  <text x="284" y="164" textLength="636" lengthAdjust="spacingAndGlyphs" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="108" font-weight="700"><tspan fill="#00ADD8">Gogo</tspan><tspan fill="${ink}">backup</tspan></text>
+  <text x="284" y="164" textLength="636" lengthAdjust="spacingAndGlyphs" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="108" font-weight="700"><tspan fill="#00ADD8">Go</tspan><tspan fill="${ink}">ptimizer</tspan></text>
 </svg>
 `
 fs.writeFileSync(path.join(images, 'logo-wordmark.svg'), wordmark('#16313D'))

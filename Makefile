@@ -47,12 +47,12 @@ deploy-remote: ## Release the current code to the server with Ansible, from your
 
 # For a server set up with install.yml or by hand (deploy/MANUAL_INSTALL.md). The program name is the one
 # in /etc/supervisor/conf.d: make deploy SUPERVISOR_PROGRAM=other-api. Empty skips the restart.
-SUPERVISOR_PROGRAM ?= gogobackup-api
+SUPERVISOR_PROGRAM ?= goptimizer-api
 
 deploy: ## Run on the server: pull, build, migrate, restart
 	git pull --ff-only
-	cd backend && go build -o bin/api ./cmd/api && go build -o bin/gogo-cli ./cmd/cli
-	cd backend && ./bin/gogo-cli migrate up
+	cd backend && go build -o bin/api ./cmd/api && go build -o bin/goptimizer-cli ./cmd/cli
+	cd backend && ./bin/goptimizer-cli migrate up
 	cd frontend && npm ci --no-audit --no-fund && npm run build
 	@if [ -n "$(SUPERVISOR_PROGRAM)" ]; then sudo supervisorctl restart $(SUPERVISOR_PROGRAM); fi
 

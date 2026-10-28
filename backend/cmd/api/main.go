@@ -25,9 +25,9 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
-// @title           Gogo API Template
+// @title           Goptimizer API
 // @version         1.0
-// @description     Gogobackup: the accounts that manage it
+// @description     Goptimizer: optimizes the images in folders on this server
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
@@ -116,7 +116,7 @@ func main() {
 		Api:     r.Group("/api/v1"),
 	}
 
-	// ENABLE_SCHEDULER=false when bin/gogo-cron runs the jobs as its own process instead
+	// ENABLE_SCHEDULER=false when bin/goptimizer-cron runs the jobs as its own process instead
 	if cfg.EnableScheduler {
 		cronScheduler := scheduler.NewScheduler(&scheduler.Dependencies{
 			Config:  cfg,

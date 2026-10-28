@@ -1,7 +1,7 @@
 .PHONY: help install dev build preview api-types api-types-check typecheck lint lint-fix test test-unit test-e2e test-e2e-ui test-e2e-headed clean playwright-browsers env-check db-test-setup
 
 help: ## Show available commands
-	@echo "Gogo Front - Available Commands:"
+	@echo "Goptimizer frontend - Available Commands:"
 	@echo ""
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
 

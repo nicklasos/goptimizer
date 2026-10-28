@@ -6,7 +6,7 @@ on:
   pull_request:
 
 env:
-  TEST_DATABASE_PATH: ./data/gogobackup_test.db
+  TEST_DATABASE_PATH: ./data/goptimizer_test.db
 
 jobs:
   backend:

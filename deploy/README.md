@@ -98,7 +98,7 @@ The Cloudflare address ranges are in `roles/nginx/defaults/main.yml`; refresh th
 sudo supervisorctl status                       # is it running
 sudo supervisorctl restart <app>-api
 sudo tail -f /var/log/<app>/api.log             # application log (JSON)
-sudo -u deploy sh -c 'cd /var/www/<app>/backend && ./bin/gogo-cli help'
+sudo -u deploy sh -c 'cd /var/www/<app>/backend && ./bin/goptimizer-cli help'
 ```
 
 ## On a server that already has everything

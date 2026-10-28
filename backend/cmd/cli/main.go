@@ -93,7 +93,7 @@ func initializeApp(useTestDB bool) (*internal.CLIApp, error) {
 }
 
 func printUsage() {
-	fmt.Println("Gogo CLI - Command line interface for app management")
+	fmt.Println("Goptimizer CLI - Command line interface for app management")
 	fmt.Println()
 	fmt.Println("Usage:")
 	fmt.Println("  make cli <command> [options]")
