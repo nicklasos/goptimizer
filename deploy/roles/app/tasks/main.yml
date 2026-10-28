@@ -173,24 +173,3 @@
 
       Then sign in at {{ site_url }}
   when: accounts.stdout | int == 0
-
-# Outside repo/, so a fresh clone keeps the archives
-- name: Create the self-backup directory
-  ansible.builtin.file:
-    path: "{{ self_backup_dir }}"
-    state: directory
-    owner: "{{ app_user }}"
-    group: "{{ app_user }}"
-    mode: "0750"
-  when: self_backup_enabled
-
-- name: Make sure Gogobackup backs up its own database
-  ansible.builtin.command:
-    argv: [./bin/gogo-cli, self-backup, --dir, "{{ self_backup_dir }}"]
-  args:
-    chdir: "{{ backend_dir }}"
-  become: true
-  become_user: "{{ app_user }}"
-  register: self_backup
-  changed_when: "'Created' in self_backup.stdout"
-  when: self_backup_enabled

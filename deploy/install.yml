@@ -18,15 +18,13 @@
       ansible.builtin.assert:
         that:
           - jwt_secret is defined and jwt_secret != 'CHANGE_ME' and jwt_secret | length >= 32
-          - encryption_key is defined and encryption_key is match('^[A-Za-z0-9+/]{43}=$')
           - app_name is match('^[a-z][a-z0-9-]*$')
           - domain != 'example.com'
           - "'your-account' not in repo_url"
           - tls_mode in ['cloudflare', 'none']
           - install_nginx | default('write') in ['write', 'print']
         fail_msg: >-
-          Set jwt_secret (32+ characters) and encryption_key (openssl rand -base64 32) in
-          group_vars/all/secrets.yml, and
+          Set jwt_secret (32+ characters) in group_vars/all/secrets.yml, and
           app_name, domain, repo_url and tls_mode (cloudflare or none) in group_vars/all/main.yml or
           for the host in inventory/hosts.yml.
         quiet: true
@@ -108,26 +106,6 @@
       until: health.status == 200
       retries: 20
       delay: 2
-
-    - name: Create the self-backup directory
-      ansible.builtin.file:
-        path: "{{ self_backup_dir }}"
-        state: directory
-        owner: "{{ app_user }}"
-        group: "{{ app_user }}"
-        mode: "0750"
-      when: self_backup_enabled
-
-    - name: Make sure Gogobackup backs up its own database
-      ansible.builtin.command:
-        argv: [./bin/gogo-cli, self-backup, --dir, "{{ self_backup_dir }}"]
-      args:
-        chdir: "{{ backend_dir }}"
-      become: true
-      become_user: "{{ app_user }}"
-      register: self_backup
-      changed_when: "'Created' in self_backup.stdout"
-      when: self_backup_enabled
 
     # install_nginx: write (default) puts the site in sites-available and reloads nginx;
     # print only shows it, to paste into a file nginx already loads.

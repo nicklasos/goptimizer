@@ -22,7 +22,7 @@ up: ## Start Mailpit in Docker for local development
 down: ## Stop them
 	$(MAKE) -C backend down
 
-seed: ## Fill an empty development database with accounts and sample data
+seed: ## Fill an empty development database with sample accounts
 	$(MAKE) -C backend seed
 
 test: test-backend test-frontend ## Run every test

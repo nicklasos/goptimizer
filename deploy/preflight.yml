@@ -3,7 +3,6 @@
   ansible.builtin.assert:
     that:
       - jwt_secret is defined
-      - encryption_key is defined
     fail_msg: "Secrets are missing. Copy secrets.example.yml to group_vars/all/secrets.yml and fill it in."
     quiet: true
 
@@ -11,7 +10,6 @@
   ansible.builtin.assert:
     that:
       - jwt_secret != 'CHANGE_ME' and jwt_secret | length >= 32
-      - encryption_key is defined and encryption_key is match('^[A-Za-z0-9+/]{43}=$')
       - app_name is match('^[a-z][a-z0-9-]*$')
       - domain != 'example.com'
       - "'your-account' not in repo_url"
@@ -20,5 +18,5 @@
     fail_msg: >-
       A setting still has its placeholder value or is invalid. Check app_name, domain, repo_url,
       tls_mode and letsencrypt_email in group_vars/all/main.yml, and that jwt_secret (32+ characters)
-      and encryption_key (openssl rand -base64 32) in group_vars/all/secrets.yml are replaced.
+      in group_vars/all/secrets.yml is replaced.
     quiet: true

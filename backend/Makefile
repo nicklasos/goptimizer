@@ -187,7 +187,7 @@ help:
 	@echo "    migrate-create      Create a new migration"
 	@echo "    sqlc                Generate sqlc code"
 	@echo "    sqlc-install        Install sqlc CLI"
-	@echo "    seed                Accounts and sample data for an empty development database"
+	@echo "    seed                Sample accounts for an empty development database"
 	@echo "    cli                 Run a console command (make cli migrate up)"
 	@echo "    cli-create-user     Create a user (EMAIL=, PASSWORD=, NAME=, ROLE=)"
 	@echo "    cli-mail            Send a test email (TO=)"

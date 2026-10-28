@@ -15,8 +15,7 @@ stdout_logfile_backups=10
 stderr_logfile_maxbytes=10MB
 stderr_logfile_backups=10
 stopsignal=TERM
-; The API finishes in-flight requests for up to 20 seconds, then stops the backups in progress
-; and records them as failed, before it exits
+; The API finishes in-flight requests for up to 20 seconds and waits for running jobs before it exits
 stopwaitsecs=45
 {% if not scheduler_in_api %}
 
@@ -35,6 +34,5 @@ stdout_logfile_backups=10
 stderr_logfile_maxbytes=10MB
 stderr_logfile_backups=10
 stopsignal=TERM
-; Stopping kills the dumps in progress and records them as failed
 stopwaitsecs=30
 {% endif %}

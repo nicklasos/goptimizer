@@ -23,8 +23,8 @@ This project owns all three folders: edit them directly. There is no sync with t
   are in `backend/docs/recipes/`.
 - The frontend's E2E suite starts the API from `../backend`, so `make test` in `frontend/` tests both halves together.
 - `deploy/` reads nothing from the other folders except their structure: `backend/cmd/{api,cron,cli}`,
-  `backend/migrations` and `frontend/dist`, and the `gogo-cli self-backup` command it runs on every
-  deploy. Renaming any of those means updating `deploy/roles/` and `deploy/install.yml`.
+  `backend/migrations` and `frontend/dist`. Renaming any of those means updating `deploy/roles/` and
+  `deploy/install.yml`.
 
 ## Commands
 
@@ -37,7 +37,6 @@ make provision       # set up a new server (see deploy/README.md)
 make install-remote  # add the app to a server that already has everything (deploy/install.yml)
 make deploy-remote   # release the current code to the server with Ansible
 make deploy          # run on the server (install.yml or by hand): pull, build, migrate, restart
-node scripts/screenshots/shoot.mjs   # regenerate the README screenshots after a UI change
 ```
 
 ## Rules

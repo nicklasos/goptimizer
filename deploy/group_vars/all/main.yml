@@ -41,21 +41,8 @@ node_major: 22
 # --- API --------------------------------------------------------------------
 api_port: 8181
 
-# The API runs the scheduled jobs and the backups. false runs them in a separate <app>-cron
-# supervisor program instead.
+# The API runs the scheduled jobs. false runs them in a separate <app>-cron supervisor program instead.
 scheduler_in_api: true
-
-# How many backups and restores run at once. A plan runs one at a time.
-runner_concurrency: 2
-
-# Parallel jobs of pg_restore. Up to the server's cores helps a large database.
-restore_jobs: 4
-
-# The dump programs backups of PostgreSQL and MySQL sources run, from the distribution. pg_dump
-# must be at least the major version of every server it dumps; for a newer server than the
-# distribution's client, see "Dump tools" in deploy/README.md. Turn one off when no plan needs it.
-install_postgres_client: true
-install_mysql_client: true
 
 # Open POST /auth/register to anyone
 allow_registration: false
@@ -75,19 +62,9 @@ mail_username: ""
 mail_from_address: "noreply@{{ domain }}"
 mail_from_name: "{{ app_display_name }}"
 
-# --- Backing up Gogobackup itself ---------------------------------------------
-# Every deploy makes sure the plan "Gogobackup itself" backs up the database, daily at 03:15 UTC, to
-# a local storage in self_backup_dir. A plan that already backs up the database is left as you edited
-# it. false stops creating it, for example after you deleted the plan on purpose.
-self_backup_enabled: true
-self_backup_dir: "{{ app_root }}/shared/backups"
-
 # --- Derived (no need to change) --------------------------------------------
 # Outside the checkout, in a folder of its own: SQLite writes -wal and -shm files next to the database
 database_path: "{{ app_root }}/shared/database/{{ app_name }}.db"
-# Where restores download archives and extract files by default. A Postgres restore downloads
-# the whole archive here first, so it needs room for the largest one.
-work_dir: "{{ app_root }}/shared/work"
 site_scheme: "{{ 'http' if tls_mode == 'none' else 'https' }}"
 site_url: "{{ site_scheme }}://{{ domain }}"
 log_dir: "/var/log/{{ app_name }}"
