@@ -28,3 +28,15 @@ func (q *Queries) SQLiteVersion(ctx context.Context) (string, error) {
 	err := row.Scan(&sqlite_version)
 	return sqlite_version, err
 }
+
+const totalChanges = `-- name: TotalChanges :one
+SELECT total_changes()
+`
+
+// Rows inserted, updated or deleted on this connection since it opened. cmd/scanbench counts writes with it.
+func (q *Queries) TotalChanges(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, totalChanges)
+	var total_changes int64
+	err := row.Scan(&total_changes)
+	return total_changes, err
+}
