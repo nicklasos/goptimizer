@@ -18,7 +18,7 @@ export const NEW_FOLDER: FolderFormValues = {
     png_quality_max: 80,
     gif_lossy: 30,
     min_saving_percent: 3,
-    min_ssim: 0.98,
+    min_ssim: 0.85,
     min_age_minutes: 5,
     excludes: [],
   },

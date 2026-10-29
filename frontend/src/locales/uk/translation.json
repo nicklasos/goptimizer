@@ -137,6 +137,22 @@
       "images_few": "{{images}} зображення",
       "images_many": "{{images}} зображень",
       "images_other": "{{images}} зображення"
+    },
+    "optimize": {
+      "summary_one": "{{images}} оптимізовано, заощаджено {{saved}}",
+      "summary_few": "{{images}} оптимізовано, заощаджено {{saved}}",
+      "summary_many": "{{images}} оптимізовано, заощаджено {{saved}}",
+      "summary_other": "{{images}} оптимізовано, заощаджено {{saved}}",
+      "none": "Ще нічого не оптимізовано",
+      "failed_one": "Не вдалося: {{images}}",
+      "failed_few": "Не вдалося: {{images}}",
+      "failed_many": "Не вдалося: {{images}}",
+      "failed_other": "Не вдалося: {{images}}",
+      "missingTools_one": "{{tools}} не встановлено. Зображення, яким вона потрібна, чекають на неї.",
+      "missingTools_few": "{{tools}} не встановлено. Зображення, яким вони потрібні, чекають на них.",
+      "missingTools_many": "{{tools}} не встановлено. Зображення, яким вони потрібні, чекають на них.",
+      "missingTools_other": "{{tools}} не встановлено. Зображення, яким вони потрібні, чекають на них.",
+      "install": "Як встановити"
     }
   },
   "settings": {

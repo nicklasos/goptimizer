@@ -551,7 +551,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Every folder, ordered by name, with its latest scan and its image counts by status. Not paginated.",
+                "description": "Every folder, ordered by name, with its latest scan, its image counts by status, the bytes its optimizations saved and the programs its profile needs that are not installed. Not paginated.",
                 "produces": [
                     "application/json"
                 ],
@@ -2085,6 +2085,7 @@ const docTemplate = `{
         "internal_folders.FolderResponse": {
             "type": "object",
             "required": [
+                "bytes_saved",
                 "created_at",
                 "enabled",
                 "full_scan_interval_hours",
@@ -2092,6 +2093,7 @@ const docTemplate = `{
                 "image_counts",
                 "kind",
                 "last_scan",
+                "missing_tools",
                 "name",
                 "path",
                 "profile",
@@ -2099,6 +2101,9 @@ const docTemplate = `{
                 "updated_at"
             ],
             "properties": {
+                "bytes_saved": {
+                    "type": "integer"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2134,6 +2139,12 @@ const docTemplate = `{
                         }
                     ],
                     "x-nullable": true
+                },
+                "missing_tools": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "name": {
                     "type": "string"

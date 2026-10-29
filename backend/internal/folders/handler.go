@@ -1,7 +1,6 @@
 package folders
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"app/internal"
@@ -21,9 +20,6 @@ func NewHandler(service *FolderService) *Handler {
 }
 
 func folderResponse(folder Folder) FolderResponse {
-	// The column is only ever written from a validated Profile.
-	var profile Profile
-	_ = json.Unmarshal([]byte(folder.Profile), &profile)
 	var lastScan *scans.ScanResponse
 	if folder.LastScan != nil {
 		scan := scans.ResponseFromDB(*folder.LastScan)
@@ -37,9 +33,11 @@ func folderResponse(folder Folder) FolderResponse {
 		Enabled:               folder.Enabled,
 		ScanIntervalMinutes:   folder.ScanIntervalMinutes,
 		FullScanIntervalHours: folder.FullScanIntervalHours,
-		Profile:               profile,
+		Profile:               folder.Profile,
 		LastScan:              lastScan,
 		ImageCounts:           folder.ImageCounts,
+		BytesSaved:            folder.BytesSaved,
+		MissingTools:          folder.MissingTools,
 		CreatedAt:             internal.FormatTime(folder.CreatedAt),
 		UpdatedAt:             internal.FormatTime(folder.UpdatedAt),
 	}
@@ -48,7 +46,7 @@ func folderResponse(folder Folder) FolderResponse {
 // ListFolders lists every folder
 //
 //	@Summary		List folders
-//	@Description	Every folder, ordered by name, with its latest scan and its image counts by status. Not paginated.
+//	@Description	Every folder, ordered by name, with its latest scan, its image counts by status, the bytes its optimizations saved and the programs its profile needs that are not installed. Not paginated.
 //	@Tags			folders
 //	@Produce		json
 //	@Security		BearerAuth

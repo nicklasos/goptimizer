@@ -3,7 +3,7 @@ package folders
 import "app/internal"
 
 func RegisterRoutes(app *internal.App) {
-	handler := NewHandler(NewFolderService(app.Queries))
+	handler := NewHandler(NewFolderService(app.Queries, app.ToolReport))
 
 	folders := app.Api.Group("/folders")
 	folders.Use(app.AuthMiddleware)

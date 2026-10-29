@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { indexedImages, isScanActive } from './scans'
+import { imagesIn, indexedImages, isScanActive } from './scans'
 import type { Scan } from './types'
 
 const scan = (status: Scan['status']) => ({ status }) as Scan
@@ -25,5 +25,15 @@ describe('indexedImages', () => {
 
   it('is 0 before the first scan', () => {
     assert.equal(indexedImages({ image_counts: {} }), 0)
+  })
+})
+
+describe('imagesIn', () => {
+  it('is the count of one status', () => {
+    assert.equal(imagesIn({ image_counts: { optimized: 312, failed: 4 } }, 'optimized'), 312)
+  })
+
+  it('is 0 for a status the folder has none of', () => {
+    assert.equal(imagesIn({ image_counts: { pending: 3 } }, 'failed'), 0)
   })
 })

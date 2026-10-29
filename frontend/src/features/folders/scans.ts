@@ -11,3 +11,8 @@ export function indexedImages(folder: Pick<Folder, 'image_counts'>): number {
     .filter(([status]) => status !== 'gone')
     .reduce((sum, [, count]) => sum + count, 0)
 }
+
+/** How many of the folder's images are in one status. */
+export function imagesIn(folder: Pick<Folder, 'image_counts'>, status: string): number {
+  return folder.image_counts[status] ?? 0
+}

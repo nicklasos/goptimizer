@@ -10,27 +10,33 @@ import (
 
 	"app/internal/db"
 	"app/internal/errs"
+	"app/internal/tools"
 )
 
 var ErrFolderNotFound = errs.NewNotFoundError(errs.ErrKeyFoldersNotFound, "Folder not found")
 
 type FolderService struct {
-	queries *db.Queries
+	queries  *db.Queries
+	reporter *tools.Reporter
 }
 
-func NewFolderService(queries *db.Queries) *FolderService {
-	return &FolderService{queries: queries}
+func NewFolderService(queries *db.Queries, reporter *tools.Reporter) *FolderService {
+	return &FolderService{queries: queries, reporter: reporter}
 }
 
-// Folder is a folder with the state of its index: its latest scan, nil before the first, and how
-// many images it has in each status.
+// Folder is a folder with the state of its index: its latest scan, nil before the first, how many
+// images it has in each status, the bytes its optimizations saved, and the programs its profile
+// needs that are not installed.
 type Folder struct {
 	db.Folder
-	LastScan    *db.Scan
-	ImageCounts map[string]int64
+	Profile      Profile
+	LastScan     *db.Scan
+	ImageCounts  map[string]int64
+	BytesSaved   int64
+	MissingTools []string
 }
 
-// List returns every folder with its index state, in three queries whatever the number of folders.
+// List returns every folder with its index state, in four queries whatever the number of folders.
 func (s *FolderService) List(ctx context.Context) ([]Folder, error) {
 	folders, err := s.queries.ListFolders(ctx)
 	if err != nil {
@@ -44,6 +50,15 @@ func (s *FolderService) List(ctx context.Context) ([]Folder, error) {
 	if err != nil {
 		return nil, errs.WrapDatabaseError(err)
 	}
+	savings, err := s.queries.SumBytesSavedByFolder(ctx)
+	if err != nil {
+		return nil, errs.WrapDatabaseError(err)
+	}
+	saved := make(map[int64]int64, len(savings))
+	for _, row := range savings {
+		saved[row.FolderID] = row.Saved
+	}
+	report := s.reporter.Report(ctx)
 	scans := make(map[int64]*db.Scan, len(latest))
 	for i := range latest {
 		scans[latest[i].FolderID] = &latest[i]
@@ -57,12 +72,20 @@ func (s *FolderService) List(ctx context.Context) ([]Folder, error) {
 	}
 	result := make([]Folder, len(folders))
 	for i, folder := range folders {
-		result[i] = Folder{Folder: folder, LastScan: scans[folder.ID], ImageCounts: byFolder[folder.ID]}
+		result[i] = withProfile(Folder{Folder: folder, LastScan: scans[folder.ID], ImageCounts: byFolder[folder.ID], BytesSaved: saved[folder.ID]}, report)
 		if result[i].ImageCounts == nil {
 			result[i].ImageCounts = map[string]int64{}
 		}
 	}
 	return result, nil
+}
+
+// withProfile parses the stored profile, which is only ever written from a validated one, and
+// names the programs it needs that are missing.
+func withProfile(f Folder, report tools.Report) Folder {
+	_ = json.Unmarshal([]byte(f.Folder.Profile), &f.Profile)
+	f.MissingTools = f.Profile.MissingTools(report)
+	return f
 }
 
 func (s *FolderService) Get(ctx context.Context, id int64) (*Folder, error) {
@@ -185,7 +208,7 @@ func (s *FolderService) overlapsAnother(ctx context.Context, id int64, path stri
 }
 
 func (s *FolderService) withIndex(ctx context.Context, folder db.Folder) (*Folder, error) {
-	result := Folder{Folder: folder, ImageCounts: map[string]int64{}}
+	result := withProfile(Folder{Folder: folder, ImageCounts: map[string]int64{}}, s.reporter.Report(ctx))
 	scan, err := s.queries.GetLatestScanOfFolder(ctx, folder.ID)
 	switch {
 	case err == nil:
@@ -199,6 +222,9 @@ func (s *FolderService) withIndex(ctx context.Context, folder db.Folder) (*Folde
 	}
 	for _, c := range counts {
 		result.ImageCounts[c.Status] = c.Count
+	}
+	if result.BytesSaved, err = s.queries.SumBytesSavedOfFolder(ctx, folder.ID); err != nil {
+		return nil, errs.WrapDatabaseError(err)
 	}
 	return &result, nil
 }

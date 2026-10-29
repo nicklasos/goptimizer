@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"app/internal/errs"
 	"app/internal/factory"
@@ -216,4 +217,41 @@ func TestFoldersAPI_EverySignedInUser(t *testing.T) {
 	app.As(user).PUT("/api/v1/folders/%d/enabled", map[string]any{"enabled": false}, folder.ID).AssertOK()
 	app.As(user).DELETE("/api/v1/folders/%d", folder.ID).AssertOK()
 	app.AssertDatabaseCount("folders", 1)
+}
+
+func TestFoldersAPI_ShowWhatOptimizingSaved(t *testing.T) {
+	app := testkit.New(t)
+	user := app.Create.User()
+	shop := app.Create.Folder(factory.WithFolderName("A shop"))
+	app.Create.Image(shop, factory.Optimized(5000), factory.AsOnDisk(3000, 1))
+	app.Create.Image(shop, factory.Failed(3, time.Time{}))
+	app.Create.DailyStat(shop, time.Now().AddDate(0, 0, -1), 3, 9000, 5000)
+	app.Create.DailyStat(shop, time.Now(), 1, 5000, 3000)
+	app.Create.Folder(factory.WithFolderName("B blog"))
+
+	app.As(user).GET("/api/v1/folders").
+		AssertOK().
+		AssertJSONPath("data.0.bytes_saved", 6000).
+		AssertJSONPath("data.0.image_counts", map[string]int{"optimized": 1, "failed": 1}).
+		AssertJSONPath("data.0.missing_tools", []string{}).
+		AssertJSONPath("data.1.bytes_saved", 0)
+	app.As(user).GET("/api/v1/folders/%d", shop.ID).
+		AssertOK().
+		AssertJSONPath("data.bytes_saved", 6000)
+}
+
+func TestFoldersAPI_NameTheToolsAFolderWaitsFor(t *testing.T) {
+	app := testkit.New(t)
+	user := app.Create.User()
+	app.Tools.Remove("pngquant")
+	app.Tools.Remove("oxipng")
+	lossless := folders.DefaultProfile()
+	lossless.Mode = folders.ModeLossless
+	app.Create.Folder(factory.WithFolderName("A lossy"))
+	app.Create.Folder(factory.WithFolderName("B lossless"), factory.WithProfile(lossless))
+
+	app.As(user).GET("/api/v1/folders").
+		AssertOK().
+		AssertJSONPath("data.0.missing_tools", []string{"pngquant"}).
+		AssertJSONPath("data.1.missing_tools", []string{})
 }

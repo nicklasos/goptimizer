@@ -14,6 +14,8 @@ const folder: Folder = {
   profile: { ...NEW_FOLDER.profile, mode: 'lossless', excludes: ['cache/**'] },
   last_scan: null,
   image_counts: {},
+  bytes_saved: 0,
+  missing_tools: [],
   created_at: '2026-10-28T10:00:00Z',
   updated_at: '2026-10-28T10:00:00Z',
 }

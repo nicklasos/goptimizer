@@ -154,6 +154,7 @@ export interface InternalFoldersFolderRequest {
 }
 
 export interface InternalFoldersFolderResponse {
+  bytes_saved: number;
   created_at: string;
   enabled: boolean;
   full_scan_interval_hours: number;
@@ -161,6 +162,7 @@ export interface InternalFoldersFolderResponse {
   image_counts: Record<string, number>;
   kind: "local";
   last_scan?: ScanResponse | null;
+  missing_tools: string[];
   name: string;
   path: string;
   profile: InternalFoldersProfile;

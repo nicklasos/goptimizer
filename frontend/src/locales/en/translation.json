@@ -127,6 +127,16 @@
       "failed": "{{kind}} scan failed {{ago}}: {{error}}",
       "images_one": "{{images}} image",
       "images_other": "{{images}} images"
+    },
+    "optimize": {
+      "summary_one": "{{images}} optimized, {{saved}} saved",
+      "summary_other": "{{images}} optimized, {{saved}} saved",
+      "none": "Nothing optimized yet",
+      "failed_one": "{{images}} failed",
+      "failed_other": "{{images}} failed",
+      "missingTools_one": "{{tools}} is not installed. The images that need it wait until it is.",
+      "missingTools_other": "{{tools}} are not installed. The images that need them wait until they are.",
+      "install": "How to install"
     }
   },
   "settings": {

@@ -1,15 +1,15 @@
-import { Button, Card, Col, Dropdown, Empty, Row, Space, Switch, Tag, Typography, theme } from 'antd'
+import { Alert, Button, Card, Col, Dropdown, Empty, Row, Space, Switch, Tag, Typography, theme } from 'antd'
 import { DownOutlined, EditOutlined, FolderOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/shared/components/PageHeader'
 import { PageError, PageLoading } from '@/shared/components/PageState'
 import { PageStack } from '@/shared/components/PageStack'
 import { enumLabel } from '@/shared/utils/enums'
-import { formatNumber, formatRelative } from '@/shared/utils/format'
+import { formatBytes, formatNumber, formatRelative } from '@/shared/utils/format'
 import type { Translate } from '@/shared/utils/serverErrors'
 import { useFolders, useSetFolderEnabled, useStartScan } from '../hooks'
-import { indexedImages, isScanActive } from '../scans'
+import { imagesIn, indexedImages, isScanActive } from '../scans'
 import { SCAN_KINDS, type Folder, type Scan, type ScanKind } from '../types'
 
 /** The dashboard: one card per folder. */
@@ -74,6 +74,9 @@ function FolderCard({ folder }: { folder: Folder }) {
   const scan = folder.last_scan
   const scanning = isScanActive(scan)
   const images = indexedImages(folder)
+  const optimized = imagesIn(folder, 'optimized')
+  const failed = imagesIn(folder, 'failed')
+  const missingTools = folder.missing_tools
 
   return (
     <Card
@@ -151,6 +154,31 @@ function FolderCard({ folder }: { folder: Folder }) {
         >
           {scanLine(t, scan)}
         </Typography.Text>
+        <Space size={token.marginXS} wrap>
+          <Typography.Text data-testid={`folder-optimized-${folder.id}`} data-count={optimized} data-bytes={folder.bytes_saved}>
+            {optimized > 0 || folder.bytes_saved > 0
+              ? t('folders.optimize.summary', { count: optimized, images: formatNumber(optimized, 0), saved: formatBytes(folder.bytes_saved) })
+              : t('folders.optimize.none')}
+          </Typography.Text>
+          {failed > 0 && (
+            <Typography.Text type="danger" data-testid={`folder-failed-${folder.id}`} data-count={failed}>
+              {t('folders.optimize.failed', { count: failed, images: formatNumber(failed, 0) })}
+            </Typography.Text>
+          )}
+        </Space>
+        {missingTools.length > 0 && (
+          <Alert
+            type="warning"
+            showIcon
+            data-testid={`folder-missing-tools-${folder.id}`}
+            message={t('folders.optimize.missingTools', { count: missingTools.length, tools: missingTools.join(', ') })}
+            action={
+              <Link to="/settings" data-testid={`folder-missing-tools-link-${folder.id}`}>
+                {t('folders.optimize.install')}
+              </Link>
+            }
+          />
+        )}
       </Space>
     </Card>
   )
