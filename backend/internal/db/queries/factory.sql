@@ -30,9 +30,18 @@ VALUES (
 RETURNING *;
 
 -- name: FactoryCreateImage :one
-INSERT INTO images (folder_id, dir, name, format, size, mtime_ns, status, original_size, discovered_at, updated_at)
+INSERT INTO images (
+    folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts,
+    next_attempt_at, output_sha256, optimized_at, discovered_at, updated_at
+)
 VALUES (
     sqlc.arg(folder_id), sqlc.arg(dir), sqlc.arg(name), sqlc.arg(format), sqlc.arg(size), sqlc.arg(mtime_ns),
-    sqlc.arg(status), sqlc.arg(original_size), sqlc.arg(now), sqlc.arg(now)
+    sqlc.arg(status), sqlc.arg(original_size), sqlc.arg(optimized_size), sqlc.arg(mode), sqlc.arg(reason), sqlc.arg(attempts),
+    sqlc.arg(next_attempt_at), sqlc.arg(output_sha256), sqlc.arg(optimized_at), sqlc.arg(now), sqlc.arg(now)
 )
+RETURNING *;
+
+-- name: FactoryCreateDailyStat :one
+INSERT INTO daily_stats (folder_id, day, optimized, bytes_before, bytes_after)
+VALUES (sqlc.arg(folder_id), sqlc.arg(day), sqlc.arg(optimized), sqlc.arg(bytes_before), sqlc.arg(bytes_after))
 RETURNING *;

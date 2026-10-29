@@ -9,6 +9,14 @@ import (
 	"time"
 )
 
+type DailyStat struct {
+	FolderID    int64  `db:"folder_id" json:"folder_id"`
+	Day         string `db:"day" json:"day"`
+	Optimized   int64  `db:"optimized" json:"optimized"`
+	BytesBefore int64  `db:"bytes_before" json:"bytes_before"`
+	BytesAfter  int64  `db:"bytes_after" json:"bytes_after"`
+}
+
 type Folder struct {
 	ID                    int64        `db:"id" json:"id"`
 	Name                  string       `db:"name" json:"name"`
@@ -39,6 +47,8 @@ type Image struct {
 	DiscoveredAt  time.Time      `db:"discovered_at" json:"discovered_at"`
 	OptimizedAt   sql.NullTime   `db:"optimized_at" json:"optimized_at"`
 	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
+	OutputSha256  []byte         `db:"output_sha256" json:"output_sha256"`
+	NextAttemptAt sql.NullTime   `db:"next_attempt_at" json:"next_attempt_at"`
 }
 
 type RefreshToken struct {

@@ -7,8 +7,73 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"time"
 )
+
+const addDailyStat = `-- name: AddDailyStat :exec
+INSERT INTO daily_stats (folder_id, day, optimized, bytes_before, bytes_after)
+VALUES (?1, ?2, 1, ?3, ?4)
+ON CONFLICT (folder_id, day) DO UPDATE SET
+    optimized = optimized + 1,
+    bytes_before = bytes_before + excluded.bytes_before,
+    bytes_after = bytes_after + excluded.bytes_after
+`
+
+type AddDailyStatParams struct {
+	FolderID    int64  `db:"folder_id" json:"folder_id"`
+	Day         string `db:"day" json:"day"`
+	BytesBefore int64  `db:"bytes_before" json:"bytes_before"`
+	BytesAfter  int64  `db:"bytes_after" json:"bytes_after"`
+}
+
+func (q *Queries) AddDailyStat(ctx context.Context, arg AddDailyStatParams) error {
+	_, err := q.db.ExecContext(ctx, addDailyStat,
+		arg.FolderID,
+		arg.Day,
+		arg.BytesBefore,
+		arg.BytesAfter,
+	)
+	return err
+}
+
+const claimImage = `-- name: ClaimImage :one
+UPDATE images
+SET status = 'optimizing', updated_at = ?1
+WHERE id = ?2 AND status = 'pending'
+RETURNING id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at, output_sha256, next_attempt_at
+`
+
+type ClaimImageParams struct {
+	Now time.Time `db:"now" json:"now"`
+	ID  int64     `db:"id" json:"id"`
+}
+
+func (q *Queries) ClaimImage(ctx context.Context, arg ClaimImageParams) (Image, error) {
+	row := q.db.QueryRowContext(ctx, claimImage, arg.Now, arg.ID)
+	var i Image
+	err := row.Scan(
+		&i.ID,
+		&i.FolderID,
+		&i.Dir,
+		&i.Name,
+		&i.Format,
+		&i.Size,
+		&i.MtimeNs,
+		&i.Status,
+		&i.OriginalSize,
+		&i.OptimizedSize,
+		&i.Mode,
+		&i.Reason,
+		&i.Attempts,
+		&i.DiscoveredAt,
+		&i.OptimizedAt,
+		&i.UpdatedAt,
+		&i.OutputSha256,
+		&i.NextAttemptAt,
+	)
+	return i, err
+}
 
 const countImagesByStatus = `-- name: CountImagesByStatus :many
 SELECT folder_id, status, COUNT(*) AS count FROM images
@@ -78,6 +143,41 @@ func (q *Queries) CountImagesOfFolderByStatus(ctx context.Context, folderID int6
 	return items, nil
 }
 
+const countOptimizingByFolder = `-- name: CountOptimizingByFolder :many
+SELECT folder_id, COUNT(*) AS count FROM images
+WHERE status = 'optimizing'
+GROUP BY folder_id
+`
+
+type CountOptimizingByFolderRow struct {
+	FolderID int64 `db:"folder_id" json:"folder_id"`
+	Count    int64 `db:"count" json:"count"`
+}
+
+// Served by idx_images_optimizing, which holds only the images in flight.
+func (q *Queries) CountOptimizingByFolder(ctx context.Context) ([]CountOptimizingByFolderRow, error) {
+	rows, err := q.db.QueryContext(ctx, countOptimizingByFolder)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountOptimizingByFolderRow
+	for rows.Next() {
+		var i CountOptimizingByFolderRow
+		if err := rows.Scan(&i.FolderID, &i.Count); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteDirsUnder = `-- name: DeleteDirsUnder :exec
 DELETE FROM dirs
 WHERE folder_id = ?1
@@ -95,6 +195,39 @@ type DeleteDirsUnderParams struct {
 func (q *Queries) DeleteDirsUnder(ctx context.Context, arg DeleteDirsUnderParams) error {
 	_, err := q.db.ExecContext(ctx, deleteDirsUnder, arg.FolderID, arg.RelPath)
 	return err
+}
+
+const failImage = `-- name: FailImage :execrows
+UPDATE images
+SET status = 'failed', reason = ?1, attempts = ?2, next_attempt_at = ?3,
+    size = ?4, mtime_ns = ?5, updated_at = ?6
+WHERE id = ?7 AND status = 'optimizing'
+`
+
+type FailImageParams struct {
+	Reason        sql.NullString `db:"reason" json:"reason"`
+	Attempts      int64          `db:"attempts" json:"attempts"`
+	NextAttemptAt sql.NullTime   `db:"next_attempt_at" json:"next_attempt_at"`
+	Size          int64          `db:"size" json:"size"`
+	MtimeNs       int64          `db:"mtime_ns" json:"mtime_ns"`
+	Now           time.Time      `db:"now" json:"now"`
+	ID            int64          `db:"id" json:"id"`
+}
+
+func (q *Queries) FailImage(ctx context.Context, arg FailImageParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, failImage,
+		arg.Reason,
+		arg.Attempts,
+		arg.NextAttemptAt,
+		arg.Size,
+		arg.MtimeNs,
+		arg.Now,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const insertImage = `-- name: InsertImage :exec
@@ -126,6 +259,49 @@ func (q *Queries) InsertImage(ctx context.Context, arg InsertImageParams) error 
 		arg.Now,
 	)
 	return err
+}
+
+const isOptimizerOutput = `-- name: IsOptimizerOutput :one
+SELECT EXISTS (SELECT 1 FROM images WHERE output_sha256 = ?1) AS found
+`
+
+// Served by idx_images_output. Any row counts: a moved or copied output is still output.
+func (q *Queries) IsOptimizerOutput(ctx context.Context, outputSha256 []byte) (bool, error) {
+	row := q.db.QueryRowContext(ctx, isOptimizerOutput, outputSha256)
+	var found bool
+	err := row.Scan(&found)
+	return found, err
+}
+
+const leaveImage = `-- name: LeaveImage :execrows
+UPDATE images
+SET status = ?1, reason = ?2, size = ?3, mtime_ns = ?4, updated_at = ?5
+WHERE id = ?6 AND status = 'optimizing'
+`
+
+type LeaveImageParams struct {
+	Status  string         `db:"status" json:"status"`
+	Reason  sql.NullString `db:"reason" json:"reason"`
+	Size    int64          `db:"size" json:"size"`
+	MtimeNs int64          `db:"mtime_ns" json:"mtime_ns"`
+	Now     time.Time      `db:"now" json:"now"`
+	ID      int64          `db:"id" json:"id"`
+}
+
+// Kept, skipped or gone: the file was not touched. size and mtime_ns are the file as it was read.
+func (q *Queries) LeaveImage(ctx context.Context, arg LeaveImageParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, leaveImage,
+		arg.Status,
+		arg.Reason,
+		arg.Size,
+		arg.MtimeNs,
+		arg.Now,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const listDirs = `-- name: ListDirs :many
@@ -213,38 +389,61 @@ const markImageGone = `-- name: MarkImageGone :exec
 UPDATE images
 SET status = 'gone', updated_at = ?1
 WHERE id = ?2
+  AND status = ?3 AND size = ?4 AND mtime_ns = ?5
+  AND status != 'optimizing'
 `
 
 type MarkImageGoneParams struct {
-	Now time.Time `db:"now" json:"now"`
-	ID  int64     `db:"id" json:"id"`
+	Now         time.Time `db:"now" json:"now"`
+	ID          int64     `db:"id" json:"id"`
+	ReadStatus  string    `db:"read_status" json:"read_status"`
+	ReadSize    int64     `db:"read_size" json:"read_size"`
+	ReadMtimeNs int64     `db:"read_mtime_ns" json:"read_mtime_ns"`
 }
 
+// Compare-and-set on the row as the scan read it, as MarkImagePending.
 func (q *Queries) MarkImageGone(ctx context.Context, arg MarkImageGoneParams) error {
-	_, err := q.db.ExecContext(ctx, markImageGone, arg.Now, arg.ID)
+	_, err := q.db.ExecContext(ctx, markImageGone,
+		arg.Now,
+		arg.ID,
+		arg.ReadStatus,
+		arg.ReadSize,
+		arg.ReadMtimeNs,
+	)
 	return err
 }
 
 const markImagePending = `-- name: MarkImagePending :exec
 UPDATE images
-SET status = 'pending', size = ?1, mtime_ns = ?2, updated_at = ?3
+SET status = 'pending', size = ?1, mtime_ns = ?2, attempts = 0, next_attempt_at = NULL,
+    updated_at = ?3
 WHERE id = ?4
+  AND status = ?5 AND size = ?6 AND mtime_ns = ?7
+  AND status != 'optimizing'
 `
 
 type MarkImagePendingParams struct {
-	Size    int64     `db:"size" json:"size"`
-	MtimeNs int64     `db:"mtime_ns" json:"mtime_ns"`
-	Now     time.Time `db:"now" json:"now"`
-	ID      int64     `db:"id" json:"id"`
+	Size        int64     `db:"size" json:"size"`
+	MtimeNs     int64     `db:"mtime_ns" json:"mtime_ns"`
+	Now         time.Time `db:"now" json:"now"`
+	ID          int64     `db:"id" json:"id"`
+	ReadStatus  string    `db:"read_status" json:"read_status"`
+	ReadSize    int64     `db:"read_size" json:"read_size"`
+	ReadMtimeNs int64     `db:"read_mtime_ns" json:"read_mtime_ns"`
 }
 
-// The file is new on disk again. What the optimizer recorded before stays.
+// The file is new on disk again. What the optimizer recorded before stays, but a new file gets its
+// attempts back. The scan writes only when the row is still as it read it, so a stale write never
+// undoes a swap the optimizer recorded since, and a row being optimized is never touched.
 func (q *Queries) MarkImagePending(ctx context.Context, arg MarkImagePendingParams) error {
 	_, err := q.db.ExecContext(ctx, markImagePending,
 		arg.Size,
 		arg.MtimeNs,
 		arg.Now,
 		arg.ID,
+		arg.ReadStatus,
+		arg.ReadSize,
+		arg.ReadMtimeNs,
 	)
 	return err
 }
@@ -255,7 +454,7 @@ SET status = 'gone', updated_at = ?1
 WHERE folder_id = ?2
   AND dir >= ?3 AND dir < ?3 || '0'
   AND (dir = ?3 OR dir >= ?3 || '/')
-  AND status != 'gone'
+  AND status NOT IN ('gone', 'optimizing')
 `
 
 type MarkImagesGoneUnderParams struct {
@@ -265,12 +464,226 @@ type MarkImagesGoneUnderParams struct {
 }
 
 // Every image in the directory and below it, with the range of DeleteDirsUnder on idx_images_path.
+// An image being optimized is left to the optimizer, which finds the file missing.
 func (q *Queries) MarkImagesGoneUnder(ctx context.Context, arg MarkImagesGoneUnderParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, markImagesGoneUnder, arg.Now, arg.FolderID, arg.Dir)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const oldestClaimableImage = `-- name: OldestClaimableImage :one
+SELECT id, mtime_ns FROM images
+WHERE folder_id = ?1 AND status = 'pending' AND format = ?2 AND mtime_ns <= ?3
+ORDER BY mtime_ns
+LIMIT 1
+`
+
+type OldestClaimableImageParams struct {
+	FolderID int64  `db:"folder_id" json:"folder_id"`
+	Format   string `db:"format" json:"format"`
+	Cutoff   int64  `db:"cutoff" json:"cutoff"`
+}
+
+type OldestClaimableImageRow struct {
+	ID      int64 `db:"id" json:"id"`
+	MtimeNs int64 `db:"mtime_ns" json:"mtime_ns"`
+}
+
+// The pending image of one folder and format with the oldest mtime that is at most cutoff: one
+// seek on idx_images_claim, however many images the folder has.
+func (q *Queries) OldestClaimableImage(ctx context.Context, arg OldestClaimableImageParams) (OldestClaimableImageRow, error) {
+	row := q.db.QueryRowContext(ctx, oldestClaimableImage, arg.FolderID, arg.Format, arg.Cutoff)
+	var i OldestClaimableImageRow
+	err := row.Scan(&i.ID, &i.MtimeNs)
+	return i, err
+}
+
+const recordOptimized = `-- name: RecordOptimized :execrows
+UPDATE images
+SET status = 'optimized', updated_at = ?1, optimized_at = ?1, size = ?2,
+    mtime_ns = ?3, original_size = ?4, optimized_size = ?2,
+    mode = ?5, output_sha256 = ?6, reason = NULL, attempts = 0, next_attempt_at = NULL
+WHERE id = ?7 AND status = 'optimizing'
+`
+
+type RecordOptimizedParams struct {
+	Now          time.Time      `db:"now" json:"now"`
+	Size         int64          `db:"size" json:"size"`
+	MtimeNs      int64          `db:"mtime_ns" json:"mtime_ns"`
+	OriginalSize sql.NullInt64  `db:"original_size" json:"original_size"`
+	Mode         sql.NullString `db:"mode" json:"mode"`
+	OutputSha256 []byte         `db:"output_sha256" json:"output_sha256"`
+	ID           int64          `db:"id" json:"id"`
+}
+
+func (q *Queries) RecordOptimized(ctx context.Context, arg RecordOptimizedParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, recordOptimized,
+		arg.Now,
+		arg.Size,
+		arg.MtimeNs,
+		arg.OriginalSize,
+		arg.Mode,
+		arg.OutputSha256,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const recoverOptimizingImages = `-- name: RecoverOptimizingImages :execrows
+UPDATE images
+SET status = 'pending', updated_at = ?1
+WHERE status = 'optimizing'
+`
+
+func (q *Queries) RecoverOptimizingImages(ctx context.Context, now time.Time) (int64, error) {
+	result, err := q.db.ExecContext(ctx, recoverOptimizingImages, now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const releaseImage = `-- name: ReleaseImage :execrows
+UPDATE images
+SET status = 'pending', size = ?1, mtime_ns = ?2, reason = ?3, updated_at = ?4
+WHERE id = ?5 AND status = 'optimizing'
+`
+
+type ReleaseImageParams struct {
+	Size    int64          `db:"size" json:"size"`
+	MtimeNs int64          `db:"mtime_ns" json:"mtime_ns"`
+	Reason  sql.NullString `db:"reason" json:"reason"`
+	Now     time.Time      `db:"now" json:"now"`
+	ID      int64          `db:"id" json:"id"`
+}
+
+// Back to pending with the file as it is now: it changed, is too new, or the work was interrupted.
+func (q *Queries) ReleaseImage(ctx context.Context, arg ReleaseImageParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, releaseImage,
+		arg.Size,
+		arg.MtimeNs,
+		arg.Reason,
+		arg.Now,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const requeueDueImages = `-- name: RequeueDueImages :execrows
+UPDATE images
+SET status = 'pending', next_attempt_at = NULL, updated_at = ?1
+WHERE status = 'failed' AND next_attempt_at IS NOT NULL AND datetime(next_attempt_at) <= datetime(?1)
+`
+
+// A failed image whose retry time has come is pending again. idx_images_retry holds only those waiting.
+func (q *Queries) RequeueDueImages(ctx context.Context, now time.Time) (int64, error) {
+	result, err := q.db.ExecContext(ctx, requeueDueImages, now)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const restoreOptimized = `-- name: RestoreOptimized :execrows
+UPDATE images
+SET status = 'optimized', size = ?1, mtime_ns = ?2, reason = NULL, updated_at = ?3
+WHERE id = ?4 AND status = 'optimizing'
+`
+
+type RestoreOptimizedParams struct {
+	Size    int64     `db:"size" json:"size"`
+	MtimeNs int64     `db:"mtime_ns" json:"mtime_ns"`
+	Now     time.Time `db:"now" json:"now"`
+	ID      int64     `db:"id" json:"id"`
+}
+
+// The file is still the optimizer's output, only touched: optimized again, with the new mtime.
+func (q *Queries) RestoreOptimized(ctx context.Context, arg RestoreOptimizedParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, restoreOptimized,
+		arg.Size,
+		arg.MtimeNs,
+		arg.Now,
+		arg.ID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const setImageOutputHash = `-- name: SetImageOutputHash :execrows
+UPDATE images
+SET output_sha256 = ?1, updated_at = ?2
+WHERE id = ?3 AND status = 'optimizing'
+`
+
+type SetImageOutputHashParams struct {
+	OutputSha256 []byte    `db:"output_sha256" json:"output_sha256"`
+	Now          time.Time `db:"now" json:"now"`
+	ID           int64     `db:"id" json:"id"`
+}
+
+// Written before the rename, so a crash between the rename and RecordOptimized still leaves the
+// file recognizable as the optimizer's own output.
+func (q *Queries) SetImageOutputHash(ctx context.Context, arg SetImageOutputHashParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setImageOutputHash, arg.OutputSha256, arg.Now, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const sumBytesSavedByFolder = `-- name: SumBytesSavedByFolder :many
+SELECT folder_id, CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved FROM daily_stats
+GROUP BY folder_id
+`
+
+type SumBytesSavedByFolderRow struct {
+	FolderID int64 `db:"folder_id" json:"folder_id"`
+	Saved    int64 `db:"saved" json:"saved"`
+}
+
+func (q *Queries) SumBytesSavedByFolder(ctx context.Context) ([]SumBytesSavedByFolderRow, error) {
+	rows, err := q.db.QueryContext(ctx, sumBytesSavedByFolder)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SumBytesSavedByFolderRow
+	for rows.Next() {
+		var i SumBytesSavedByFolderRow
+		if err := rows.Scan(&i.FolderID, &i.Saved); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const sumBytesSavedOfFolder = `-- name: SumBytesSavedOfFolder :one
+SELECT CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved FROM daily_stats
+WHERE folder_id = ?
+`
+
+func (q *Queries) SumBytesSavedOfFolder(ctx context.Context, folderID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, sumBytesSavedOfFolder, folderID)
+	var saved int64
+	err := row.Scan(&saved)
+	return saved, err
 }
 
 const upsertDir = `-- name: UpsertDir :exec

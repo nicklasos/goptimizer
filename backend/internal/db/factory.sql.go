@@ -11,6 +11,39 @@ import (
 	"time"
 )
 
+const factoryCreateDailyStat = `-- name: FactoryCreateDailyStat :one
+INSERT INTO daily_stats (folder_id, day, optimized, bytes_before, bytes_after)
+VALUES (?1, ?2, ?3, ?4, ?5)
+RETURNING folder_id, day, optimized, bytes_before, bytes_after
+`
+
+type FactoryCreateDailyStatParams struct {
+	FolderID    int64  `db:"folder_id" json:"folder_id"`
+	Day         string `db:"day" json:"day"`
+	Optimized   int64  `db:"optimized" json:"optimized"`
+	BytesBefore int64  `db:"bytes_before" json:"bytes_before"`
+	BytesAfter  int64  `db:"bytes_after" json:"bytes_after"`
+}
+
+func (q *Queries) FactoryCreateDailyStat(ctx context.Context, arg FactoryCreateDailyStatParams) (DailyStat, error) {
+	row := q.db.QueryRowContext(ctx, factoryCreateDailyStat,
+		arg.FolderID,
+		arg.Day,
+		arg.Optimized,
+		arg.BytesBefore,
+		arg.BytesAfter,
+	)
+	var i DailyStat
+	err := row.Scan(
+		&i.FolderID,
+		&i.Day,
+		&i.Optimized,
+		&i.BytesBefore,
+		&i.BytesAfter,
+	)
+	return i, err
+}
+
 const factoryCreateFolder = `-- name: FactoryCreateFolder :one
 INSERT INTO folders (name, kind, path, enabled, scan_interval_minutes, full_scan_interval_hours, profile)
 VALUES (
@@ -57,24 +90,35 @@ func (q *Queries) FactoryCreateFolder(ctx context.Context, arg FactoryCreateFold
 }
 
 const factoryCreateImage = `-- name: FactoryCreateImage :one
-INSERT INTO images (folder_id, dir, name, format, size, mtime_ns, status, original_size, discovered_at, updated_at)
+INSERT INTO images (
+    folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts,
+    next_attempt_at, output_sha256, optimized_at, discovered_at, updated_at
+)
 VALUES (
     ?1, ?2, ?3, ?4, ?5, ?6,
-    ?7, ?8, ?9, ?9
+    ?7, ?8, ?9, ?10, ?11, ?12,
+    ?13, ?14, ?15, ?16, ?16
 )
-RETURNING id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at
+RETURNING id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at, output_sha256, next_attempt_at
 `
 
 type FactoryCreateImageParams struct {
-	FolderID     int64         `db:"folder_id" json:"folder_id"`
-	Dir          string        `db:"dir" json:"dir"`
-	Name         string        `db:"name" json:"name"`
-	Format       string        `db:"format" json:"format"`
-	Size         int64         `db:"size" json:"size"`
-	MtimeNs      int64         `db:"mtime_ns" json:"mtime_ns"`
-	Status       string        `db:"status" json:"status"`
-	OriginalSize sql.NullInt64 `db:"original_size" json:"original_size"`
-	Now          time.Time     `db:"now" json:"now"`
+	FolderID      int64          `db:"folder_id" json:"folder_id"`
+	Dir           string         `db:"dir" json:"dir"`
+	Name          string         `db:"name" json:"name"`
+	Format        string         `db:"format" json:"format"`
+	Size          int64          `db:"size" json:"size"`
+	MtimeNs       int64          `db:"mtime_ns" json:"mtime_ns"`
+	Status        string         `db:"status" json:"status"`
+	OriginalSize  sql.NullInt64  `db:"original_size" json:"original_size"`
+	OptimizedSize sql.NullInt64  `db:"optimized_size" json:"optimized_size"`
+	Mode          sql.NullString `db:"mode" json:"mode"`
+	Reason        sql.NullString `db:"reason" json:"reason"`
+	Attempts      int64          `db:"attempts" json:"attempts"`
+	NextAttemptAt sql.NullTime   `db:"next_attempt_at" json:"next_attempt_at"`
+	OutputSha256  []byte         `db:"output_sha256" json:"output_sha256"`
+	OptimizedAt   sql.NullTime   `db:"optimized_at" json:"optimized_at"`
+	Now           time.Time      `db:"now" json:"now"`
 }
 
 func (q *Queries) FactoryCreateImage(ctx context.Context, arg FactoryCreateImageParams) (Image, error) {
@@ -87,6 +131,13 @@ func (q *Queries) FactoryCreateImage(ctx context.Context, arg FactoryCreateImage
 		arg.MtimeNs,
 		arg.Status,
 		arg.OriginalSize,
+		arg.OptimizedSize,
+		arg.Mode,
+		arg.Reason,
+		arg.Attempts,
+		arg.NextAttemptAt,
+		arg.OutputSha256,
+		arg.OptimizedAt,
 		arg.Now,
 	)
 	var i Image
@@ -107,6 +158,8 @@ func (q *Queries) FactoryCreateImage(ctx context.Context, arg FactoryCreateImage
 		&i.DiscoveredAt,
 		&i.OptimizedAt,
 		&i.UpdatedAt,
+		&i.OutputSha256,
+		&i.NextAttemptAt,
 	)
 	return i, err
 }

@@ -2,6 +2,11 @@
 SELECT * FROM folders
 ORDER BY name COLLATE NOCASE, id;
 
+-- name: ListEnabledFolders :many
+SELECT * FROM folders
+WHERE enabled
+ORDER BY id;
+
 -- name: GetFolderByID :one
 SELECT * FROM folders
 WHERE id = ? LIMIT 1;

@@ -5,6 +5,7 @@ package images
 import (
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Status is an image's place in its life. Each step is one conditional UPDATE on the current
@@ -29,6 +30,9 @@ const (
 	FormatGIF  Format = "gif"
 )
 
+// Formats is every format the index holds, in the order the optimizer's checks list them.
+var Formats = []Format{FormatPNG, FormatJPEG, FormatGIF}
+
 // extensions decides which files are indexed. Whether the content matches is the optimizer's check.
 var extensions = map[string]Format{
 	".png":  FormatPNG,
@@ -42,3 +46,6 @@ func FormatOf(name string) (Format, bool) {
 	format, ok := extensions[strings.ToLower(filepath.Ext(name))]
 	return format, ok
 }
+
+// Day is the daily_stats key of a moment: its UTC date.
+func Day(at time.Time) string { return at.UTC().Format(time.DateOnly) }

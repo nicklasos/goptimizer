@@ -296,7 +296,9 @@ func (r *run) list(ctx context.Context, rel, abs string) error {
 }
 
 // reconcile brings a directory's rows in line with its image files. It writes nothing for a file
-// whose size and mtime match its row, so a scan that finds no change writes nothing.
+// whose size and mtime match its row, so a scan that finds no change writes nothing. A row being
+// optimized is the optimizer's until it is recorded: its file may be mid-swap. Each write applies
+// only if the row is still as read here, so a flush after the optimizer recorded a swap is a no-op.
 func (r *run) reconcile(ctx context.Context, rel string, files map[string]file, rows []db.ListImagesInDirRow) error {
 	now := r.Now().UTC()
 	for _, row := range rows {
@@ -304,10 +306,14 @@ func (r *run) reconcile(ctx context.Context, rel string, files map[string]file, 
 		delete(files, row.Name)
 		var write func(ctx context.Context, q *db.Queries) error
 		switch {
+		case row.Status == string(images.StatusOptimizing):
+			continue
 		case !onDisk && row.Status != string(images.StatusGone):
 			r.counts.FilesGone++
 			write = func(ctx context.Context, q *db.Queries) error {
-				return q.MarkImageGone(ctx, db.MarkImageGoneParams{ID: row.ID, Now: now})
+				return q.MarkImageGone(ctx, db.MarkImageGoneParams{
+					ID: row.ID, Now: now, ReadStatus: row.Status, ReadSize: row.Size, ReadMtimeNs: row.MtimeNs,
+				})
 			}
 		case !onDisk:
 			continue
@@ -320,7 +326,10 @@ func (r *run) reconcile(ctx context.Context, rel string, files map[string]file, 
 		}
 		if write == nil {
 			write = func(ctx context.Context, q *db.Queries) error {
-				return q.MarkImagePending(ctx, db.MarkImagePendingParams{ID: row.ID, Size: f.size, MtimeNs: f.mtimeNs, Now: now})
+				return q.MarkImagePending(ctx, db.MarkImagePendingParams{
+					ID: row.ID, Size: f.size, MtimeNs: f.mtimeNs, Now: now,
+					ReadStatus: row.Status, ReadSize: row.Size, ReadMtimeNs: row.MtimeNs,
+				})
 			}
 		}
 		if err := r.write(ctx, write); err != nil {

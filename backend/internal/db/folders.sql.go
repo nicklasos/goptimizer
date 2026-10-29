@@ -89,6 +89,46 @@ func (q *Queries) GetFolderByID(ctx context.Context, id int64) (Folder, error) {
 	return i, err
 }
 
+const listEnabledFolders = `-- name: ListEnabledFolders :many
+SELECT id, name, kind, path, enabled, scan_interval_minutes, full_scan_interval_hours, profile, created_at, updated_at FROM folders
+WHERE enabled
+ORDER BY id
+`
+
+func (q *Queries) ListEnabledFolders(ctx context.Context) ([]Folder, error) {
+	rows, err := q.db.QueryContext(ctx, listEnabledFolders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Folder
+	for rows.Next() {
+		var i Folder
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Kind,
+			&i.Path,
+			&i.Enabled,
+			&i.ScanIntervalMinutes,
+			&i.FullScanIntervalHours,
+			&i.Profile,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFolders = `-- name: ListFolders :many
 SELECT id, name, kind, path, enabled, scan_interval_minutes, full_scan_interval_hours, profile, created_at, updated_at FROM folders
 ORDER BY name COLLATE NOCASE, id

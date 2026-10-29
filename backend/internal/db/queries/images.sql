@@ -28,24 +28,33 @@ VALUES (
 );
 
 -- name: MarkImagePending :exec
--- The file is new on disk again. What the optimizer recorded before stays.
+-- The file is new on disk again. What the optimizer recorded before stays, but a new file gets its
+-- attempts back. The scan writes only when the row is still as it read it, so a stale write never
+-- undoes a swap the optimizer recorded since, and a row being optimized is never touched.
 UPDATE images
-SET status = 'pending', size = sqlc.arg(size), mtime_ns = sqlc.arg(mtime_ns), updated_at = sqlc.arg(now)
-WHERE id = sqlc.arg(id);
+SET status = 'pending', size = sqlc.arg(size), mtime_ns = sqlc.arg(mtime_ns), attempts = 0, next_attempt_at = NULL,
+    updated_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id)
+  AND status = sqlc.arg(read_status) AND size = sqlc.arg(read_size) AND mtime_ns = sqlc.arg(read_mtime_ns)
+  AND status != 'optimizing';
 
 -- name: MarkImageGone :exec
+-- Compare-and-set on the row as the scan read it, as MarkImagePending.
 UPDATE images
 SET status = 'gone', updated_at = sqlc.arg(now)
-WHERE id = sqlc.arg(id);
+WHERE id = sqlc.arg(id)
+  AND status = sqlc.arg(read_status) AND size = sqlc.arg(read_size) AND mtime_ns = sqlc.arg(read_mtime_ns)
+  AND status != 'optimizing';
 
 -- name: MarkImagesGoneUnder :execrows
 -- Every image in the directory and below it, with the range of DeleteDirsUnder on idx_images_path.
+-- An image being optimized is left to the optimizer, which finds the file missing.
 UPDATE images
 SET status = 'gone', updated_at = sqlc.arg(now)
 WHERE folder_id = sqlc.arg(folder_id)
   AND dir >= sqlc.arg(dir) AND dir < sqlc.arg(dir) || '0'
   AND (dir = sqlc.arg(dir) OR dir >= sqlc.arg(dir) || '/')
-  AND status != 'gone';
+  AND status NOT IN ('gone', 'optimizing');
 
 -- name: CountImagesByStatus :many
 SELECT folder_id, status, COUNT(*) AS count FROM images
@@ -55,3 +64,92 @@ GROUP BY folder_id, status;
 SELECT status, COUNT(*) AS count FROM images
 WHERE folder_id = ?
 GROUP BY status;
+
+-- name: CountOptimizingByFolder :many
+-- Served by idx_images_optimizing, which holds only the images in flight.
+SELECT folder_id, COUNT(*) AS count FROM images
+WHERE status = 'optimizing'
+GROUP BY folder_id;
+
+-- name: OldestClaimableImage :one
+-- The pending image of one folder and format with the oldest mtime that is at most cutoff: one
+-- seek on idx_images_claim, however many images the folder has.
+SELECT id, mtime_ns FROM images
+WHERE folder_id = sqlc.arg(folder_id) AND status = 'pending' AND format = sqlc.arg(format) AND mtime_ns <= sqlc.arg(cutoff)
+ORDER BY mtime_ns
+LIMIT 1;
+
+-- name: ClaimImage :one
+UPDATE images
+SET status = 'optimizing', updated_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id) AND status = 'pending'
+RETURNING *;
+
+-- name: RequeueDueImages :execrows
+-- A failed image whose retry time has come is pending again. idx_images_retry holds only those waiting.
+UPDATE images
+SET status = 'pending', next_attempt_at = NULL, updated_at = sqlc.arg(now)
+WHERE status = 'failed' AND next_attempt_at IS NOT NULL AND datetime(next_attempt_at) <= datetime(sqlc.arg(now));
+
+-- name: RecoverOptimizingImages :execrows
+UPDATE images
+SET status = 'pending', updated_at = sqlc.arg(now)
+WHERE status = 'optimizing';
+
+-- name: ReleaseImage :execrows
+-- Back to pending with the file as it is now: it changed, is too new, or the work was interrupted.
+UPDATE images
+SET status = 'pending', size = sqlc.arg(size), mtime_ns = sqlc.arg(mtime_ns), reason = sqlc.arg(reason), updated_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id) AND status = 'optimizing';
+
+-- name: LeaveImage :execrows
+-- Kept, skipped or gone: the file was not touched. size and mtime_ns are the file as it was read.
+UPDATE images
+SET status = sqlc.arg(status), reason = sqlc.arg(reason), size = sqlc.arg(size), mtime_ns = sqlc.arg(mtime_ns), updated_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id) AND status = 'optimizing';
+
+-- name: FailImage :execrows
+UPDATE images
+SET status = 'failed', reason = sqlc.arg(reason), attempts = sqlc.arg(attempts), next_attempt_at = sqlc.arg(next_attempt_at),
+    size = sqlc.arg(size), mtime_ns = sqlc.arg(mtime_ns), updated_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id) AND status = 'optimizing';
+
+-- name: SetImageOutputHash :execrows
+-- Written before the rename, so a crash between the rename and RecordOptimized still leaves the
+-- file recognizable as the optimizer's own output.
+UPDATE images
+SET output_sha256 = sqlc.arg(output_sha256), updated_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id) AND status = 'optimizing';
+
+-- name: RecordOptimized :execrows
+UPDATE images
+SET status = 'optimized', updated_at = sqlc.arg(now), optimized_at = sqlc.arg(now), size = sqlc.arg(size),
+    mtime_ns = sqlc.arg(mtime_ns), original_size = sqlc.arg(original_size), optimized_size = sqlc.arg(size),
+    mode = sqlc.arg(mode), output_sha256 = sqlc.arg(output_sha256), reason = NULL, attempts = 0, next_attempt_at = NULL
+WHERE id = sqlc.arg(id) AND status = 'optimizing';
+
+-- name: RestoreOptimized :execrows
+-- The file is still the optimizer's output, only touched: optimized again, with the new mtime.
+UPDATE images
+SET status = 'optimized', size = sqlc.arg(size), mtime_ns = sqlc.arg(mtime_ns), reason = NULL, updated_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id) AND status = 'optimizing';
+
+-- name: IsOptimizerOutput :one
+-- Served by idx_images_output. Any row counts: a moved or copied output is still output.
+SELECT EXISTS (SELECT 1 FROM images WHERE output_sha256 = sqlc.arg(output_sha256)) AS found;
+
+-- name: AddDailyStat :exec
+INSERT INTO daily_stats (folder_id, day, optimized, bytes_before, bytes_after)
+VALUES (sqlc.arg(folder_id), sqlc.arg(day), 1, sqlc.arg(bytes_before), sqlc.arg(bytes_after))
+ON CONFLICT (folder_id, day) DO UPDATE SET
+    optimized = optimized + 1,
+    bytes_before = bytes_before + excluded.bytes_before,
+    bytes_after = bytes_after + excluded.bytes_after;
+
+-- name: SumBytesSavedByFolder :many
+SELECT folder_id, CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved FROM daily_stats
+GROUP BY folder_id;
+
+-- name: SumBytesSavedOfFolder :one
+SELECT CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved FROM daily_stats
+WHERE folder_id = ?;
