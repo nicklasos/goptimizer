@@ -29,11 +29,12 @@ VALUES (
 
 -- name: MarkImagePending :exec
 -- The file is new on disk again. What the optimizer recorded before stays, but a new file gets its
--- attempts back. The scan writes only when the row is still as it read it, so a stale write never
--- undoes a swap the optimizer recorded since, and a row being optimized is never touched.
+-- attempts back, and the reason the old one was left alone no longer applies. The scan writes only
+-- when the row is still as it read it, so a stale write never undoes a swap the optimizer recorded
+-- since, and a row being optimized is never touched.
 UPDATE images
 SET status = 'pending', size = sqlc.arg(size), mtime_ns = sqlc.arg(mtime_ns), attempts = 0, next_attempt_at = NULL,
-    updated_at = sqlc.arg(now)
+    reason = NULL, updated_at = sqlc.arg(now)
 WHERE id = sqlc.arg(id)
   AND status = sqlc.arg(read_status) AND size = sqlc.arg(read_size) AND mtime_ns = sqlc.arg(read_mtime_ns)
   AND status != 'optimizing';

@@ -424,7 +424,7 @@ func (q *Queries) MarkImageGone(ctx context.Context, arg MarkImageGoneParams) er
 const markImagePending = `-- name: MarkImagePending :exec
 UPDATE images
 SET status = 'pending', size = ?1, mtime_ns = ?2, attempts = 0, next_attempt_at = NULL,
-    updated_at = ?3
+    reason = NULL, updated_at = ?3
 WHERE id = ?4
   AND status = ?5 AND size = ?6 AND mtime_ns = ?7
   AND status != 'optimizing'
@@ -441,8 +441,9 @@ type MarkImagePendingParams struct {
 }
 
 // The file is new on disk again. What the optimizer recorded before stays, but a new file gets its
-// attempts back. The scan writes only when the row is still as it read it, so a stale write never
-// undoes a swap the optimizer recorded since, and a row being optimized is never touched.
+// attempts back, and the reason the old one was left alone no longer applies. The scan writes only
+// when the row is still as it read it, so a stale write never undoes a swap the optimizer recorded
+// since, and a row being optimized is never touched.
 func (q *Queries) MarkImagePending(ctx context.Context, arg MarkImagePendingParams) error {
 	_, err := q.db.ExecContext(ctx, markImagePending,
 		arg.Size,

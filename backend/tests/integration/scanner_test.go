@@ -140,6 +140,24 @@ func TestScanner_ChangedFileGoesBackToPendingWithItsHistory(t *testing.T) {
 	app.AssertDatabaseHas("images", row)
 }
 
+// The reason a file was left alone was about its old content.
+func TestScanner_ChangedFileLosesItsReason(t *testing.T) {
+	app := testkit.New(t)
+	tr := newTree(t, app)
+	tr.write("a.png", "small")
+	info, err := os.Stat(tr.path("a.png"))
+	require.NoError(t, err)
+	app.Create.Image(tr.folder, factory.At("", "a.png"), factory.AsOnDisk(info.Size(), info.ModTime().UnixNano()),
+		factory.WithImageStatus(images.StatusKept), factory.WithReason("no_saving: 5 bytes to 5"))
+
+	tr.write("a.png", "rewritten and larger")
+	tr.scan(scans.KindFull)
+
+	row := tr.imageWith("", "a.png", images.StatusPending)
+	row["reason"] = nil
+	app.AssertDatabaseHas("images", row)
+}
+
 func TestScanner_DeletedFileIsGoneAndComesBackPending(t *testing.T) {
 	app := testkit.New(t)
 	tr := newTree(t, app)
