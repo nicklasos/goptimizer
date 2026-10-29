@@ -16,8 +16,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// reasonConstants is every string constant named Reason* in a package's source: the reasons it can
-// record on an image.
 func reasonConstants(t *testing.T, dir string) map[string]string {
 	t.Helper()
 	files, err := filepath.Glob(filepath.Join(dir, "*.go"))
@@ -50,8 +48,6 @@ func reasonConstants(t *testing.T, dir string) map[string]string {
 	return found
 }
 
-// The admin panel words each reason by its code. A reason the optimizer or the checks gain fails
-// here until images.ReasonCodes, and so the API's enum and both translations, have it.
 func TestImageReasons_EveryReasonTheOptimizerRecordsHasACode(t *testing.T) {
 	constants := map[string]string{}
 	for _, dir := range []string{"../../internal/optimizer", "../../internal/verify", "../../internal/images"} {

@@ -30,7 +30,6 @@ func WithScanStatus(status scans.Status) ScanOption {
 // StartedAt sets when a running or finished scan started.
 func StartedAt(at time.Time) ScanOption { return func(a *scanAttrs) { a.startedAt = at } }
 
-// Took sets how long a finished scan ran: it finished that long after it started.
 func Took(d time.Duration) ScanOption { return func(a *scanAttrs) { a.took = d } }
 
 func WithTrigger(trigger scans.Trigger) ScanOption { return func(a *scanAttrs) { a.trigger = trigger } }

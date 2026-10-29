@@ -7,9 +7,6 @@ import (
 	"app/internal/db"
 )
 
-// ListImagesQuery picks one page of a folder's images. Without a status it lists every status.
-// q keeps the images whose path, relative to the folder, contains it, ignoring ASCII case; the
-// matches are then listed by path, and sort does not apply. sort saved is for status optimized.
 type ListImagesQuery struct {
 	Status string `form:"status" json:"status" binding:"omitempty,oneof=pending optimizing optimized kept skipped failed gone"`
 	Search string `form:"q" json:"q" binding:"max=200"`
@@ -18,7 +15,6 @@ type ListImagesQuery struct {
 	Limit  int64  `form:"limit" json:"limit" binding:"omitempty,min=1,max=100"`
 }
 
-// DailySavingsQuery picks one folder's savings, or every folder's together without folder_id.
 type DailySavingsQuery struct {
 	FolderID int64 `form:"folder_id" json:"folder_id" binding:"omitempty,min=1"`
 }
@@ -59,17 +55,14 @@ type ImagesPage struct {
 	Order      string          `json:"order" enums:"updated,saved,path"`
 }
 
-// ImagesPageResponse wraps a page of images
 type ImagesPageResponse struct {
 	Data ImagesPage `json:"data"`
 }
 
-// ImageDataResponse wraps an image
 type ImageDataResponse struct {
 	Data ImageResponse `json:"data"`
 }
 
-// RetriedResponse is how many failed images went back to pending
 type RetriedResponse struct {
 	Data RetriedData `json:"data"`
 }
@@ -78,15 +71,12 @@ type RetriedData struct {
 	Retried int64 `json:"retried"`
 }
 
-// DaySavingsResponse is one UTC day of optimizations: how many, and the bytes they saved.
 type DaySavingsResponse struct {
 	Day        string `json:"day"`
 	Optimized  int64  `json:"optimized"`
 	BytesSaved int64  `json:"bytes_saved"`
 }
 
-// DailySavingsResponse is the last 30 UTC days, oldest first, today last, a day without
-// optimizations as zero.
 type DailySavingsResponse struct {
 	Data []DaySavingsResponse `json:"data"`
 }

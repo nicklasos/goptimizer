@@ -38,7 +38,6 @@ type ScanDataResponse struct {
 	Data ScanResponse `json:"data"`
 }
 
-// PaginatedScansResponse is one page of a folder's scans, newest first
 type PaginatedScansResponse struct {
 	Data       []ScanResponse          `json:"data"`
 	Pagination internal.PaginationMeta `json:"pagination"`

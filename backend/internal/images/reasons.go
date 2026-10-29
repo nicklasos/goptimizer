@@ -2,10 +2,6 @@ package images
 
 import "strings"
 
-// ReasonCodes is every code a stored reason starts with: the optimizer's (internal/optimizer) and
-// the checks' (internal/verify). The API sends the code and the admin panel words it in each
-// language. tests/unit/image_reasons_test.go fails when either package gains a reason this list
-// lacks, or when the list and the API's enum differ.
 var ReasonCodes = []string{
 	"symlink", "not_regular_file", "hard_link", "access_control_list", "wrong_content", "apng",
 	"extra_data", "too_many_pixels", "too_large", "unreadable", "already_optimized", "too_new",

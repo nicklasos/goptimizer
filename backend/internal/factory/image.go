@@ -55,7 +55,6 @@ func WithImageStatus(status images.Status) ImageOption {
 	return func(a *imageAttrs) { a.status = status }
 }
 
-// UpdatedAt sets when the row last changed, which the folder page sorts by.
 func UpdatedAt(at time.Time) ImageOption { return func(a *imageAttrs) { a.updatedAt = at } }
 
 func WithReason(reason string) ImageOption {

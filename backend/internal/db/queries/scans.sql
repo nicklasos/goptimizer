@@ -33,8 +33,7 @@ WHERE id = sqlc.arg(id) AND status = 'running'
 RETURNING folder_id;
 
 -- name: PruneScans :execrows
--- Every scan of the folder older than its newest keep, except its latest successful full scan,
--- which Due reads to space the full scans out. NULL from either subquery deletes nothing.
+-- Never the folder's latest successful full scan: Due reads it to space the full scans out.
 DELETE FROM scans
 WHERE scans.folder_id = sqlc.arg(folder_id)
   AND scans.id <= (

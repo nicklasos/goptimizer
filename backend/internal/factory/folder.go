@@ -27,7 +27,6 @@ func WithProfile(profile folders.Profile) FolderOption {
 	return func(a *folderAttrs) { a.profile = profile }
 }
 
-// WithScanIntervals sets the quick scan interval in minutes and the full scan interval in hours.
 func WithScanIntervals(minutes, hours int64) FolderOption {
 	return func(a *folderAttrs) { a.scanMinutes, a.fullScanHours = minutes, hours }
 }

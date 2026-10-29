@@ -140,7 +140,6 @@ func TestScanner_ChangedFileGoesBackToPendingWithItsHistory(t *testing.T) {
 	app.AssertDatabaseHas("images", row)
 }
 
-// The reason a file was left alone was about its old content.
 func TestScanner_ChangedFileLosesItsReason(t *testing.T) {
 	app := testkit.New(t)
 	tr := newTree(t, app)

@@ -77,8 +77,6 @@ func Progress(ctx context.Context, q *db.Queries, id int64, c Counts) error {
 	})
 }
 
-// Keep is how many scans of a folder are kept. Finish deletes the older ones, except the latest
-// successful full scan, which Due needs: about four days of scans at the default intervals.
 const Keep = 100
 
 // Finish moves a running scan to succeeded, or to failed when err is not nil, and deletes what

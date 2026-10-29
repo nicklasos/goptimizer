@@ -47,14 +47,11 @@ func (s *ScanService) Start(ctx context.Context, folderID int64, kind Kind) (*db
 	return &scan, nil
 }
 
-// Page is one page of a folder's scans, newest first, and how many it has: at most Keep and its
-// latest successful full scan.
 type Page struct {
 	Scans []db.Scan
 	Total int64
 }
 
-// List returns one page of the folder's scans, newest first.
 func (s *ScanService) List(ctx context.Context, folderID int64, page middleware.PaginationParams) (Page, error) {
 	if _, err := s.folder(ctx, folderID); err != nil {
 		return Page{}, err

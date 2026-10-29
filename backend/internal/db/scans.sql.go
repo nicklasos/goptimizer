@@ -336,8 +336,7 @@ type PruneScansParams struct {
 	Keep     int64 `db:"keep" json:"keep"`
 }
 
-// Every scan of the folder older than its newest keep, except its latest successful full scan,
-// which Due reads to space the full scans out. NULL from either subquery deletes nothing.
+// Never the folder's latest successful full scan: Due reads it to space the full scans out.
 func (q *Queries) PruneScans(ctx context.Context, arg PruneScansParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, pruneScans, arg.FolderID, arg.Keep)
 	if err != nil {

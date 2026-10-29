@@ -75,8 +75,6 @@ func TestScans_FinishKeepsTheLatestScansOfTheFolder(t *testing.T) {
 	app.AssertDatabaseCount("scans", 3, testkit.Row{"folder_id": other.ID})
 }
 
-// With quick scans every 5 minutes and a full one every 30 days, the newest 100 scans can all be
-// quick. Deleting the last successful full scan would make the folder due for a full scan again.
 func TestScans_FinishKeepsTheLastSuccessfulFullScan(t *testing.T) {
 	app := testkit.New(t)
 	folder := app.Create.Folder(factory.WithScanIntervals(5, 720))
