@@ -123,7 +123,7 @@ func (o *Optimizer) Process(ctx context.Context, job Job) images.Outcome {
 	original, err := readFile(dir, img.Name, st)
 	switch {
 	case errors.Is(err, errChanged):
-		return leave(unchanged, images.StatusPending, ReasonChanged)
+		return settle(dir, img.Name, st, leave(unchanged, images.StatusPending, ReasonChanged))
 	case errors.Is(err, errACL):
 		return leave(onDisk, images.StatusSkipped, ReasonACL)
 	case err != nil:
