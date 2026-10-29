@@ -39,9 +39,12 @@ func lstatAt(dir *os.File, name string) (unix.Stat_t, error) {
 	return st, err
 }
 
-// sameFile is the test before the swap: the original is the file that was read, unchanged.
+// sameFile is the test before the swap: the original is the file that was read, unchanged. The
+// inode change time also catches a chmod or chown, which would make the owner and mode given to
+// the result stale, and a write whose mtime was set back.
 func sameFile(a, b unix.Stat_t) bool {
-	return a.Ino == b.Ino && a.Size == b.Size && a.Mtim == b.Mtim && a.Nlink == b.Nlink
+	return a.Ino == b.Ino && a.Size == b.Size && a.Mtim == b.Mtim && a.Nlink == b.Nlink && a.Ctim == b.Ctim &&
+		a.Mode == b.Mode && a.Uid == b.Uid && a.Gid == b.Gid
 }
 
 func isRegular(st unix.Stat_t) bool { return st.Mode&unix.S_IFMT == unix.S_IFREG }
@@ -49,6 +52,10 @@ func isSymlink(st unix.Stat_t) bool { return st.Mode&unix.S_IFMT == unix.S_IFLNK
 func mtimeNs(st unix.Stat_t) int64  { return unix.TimespecToNsec(st.Mtim) }
 
 var errChanged = errors.New("the file changed while it was read")
+
+// errACL is a file with a POSIX access control list. The swap gives the result the original's
+// owner, group and mode but not its ACL, which may be what lets the web server read it.
+var errACL = errors.New("the file has an access control list")
 
 // readFile reads the file that lstat described, all of it. It fails with errChanged when what was
 // opened is not that file or its size or mtime moved during the read.
@@ -65,6 +72,9 @@ func readFile(dir *os.File, name string, st unix.Stat_t) ([]byte, error) {
 	}
 	if !sameFile(st, opened) {
 		return nil, errChanged
+	}
+	if n, err := unix.Fgetxattr(fd, "system.posix_acl_access", nil); err == nil && n > 0 {
+		return nil, errACL
 	}
 	data, err := io.ReadAll(io.LimitReader(f, st.Size+1))
 	if err != nil {

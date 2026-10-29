@@ -222,6 +222,7 @@ func (p *Pool) claim(ctx context.Context, nice bool) (Job, bool, error) {
 
 // process optimizes one claimed image and records the outcome, even after a stop.
 func (p *Pool) process(ctx context.Context, job Job) {
+	started := time.Now()
 	outcome := p.Optimizer.Process(ctx, job)
 	recordCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), recordTimeout)
 	defer cancel()
@@ -229,7 +230,10 @@ func (p *Pool) process(ctx context.Context, job Job) {
 		p.logger.Error("Could not record an optimized image", "image", job.Image.ID, "status", outcome.Status, "error", err)
 		return
 	}
-	attrs := []any{"image", job.Image.ID, "folder", job.Image.FolderID, "path", filepath.Join(job.Image.Dir, job.Image.Name), "status", outcome.Status}
+	attrs := []any{
+		"image", job.Image.ID, "folder", job.Image.FolderID, "path", filepath.Join(job.Image.Dir, job.Image.Name),
+		"status", outcome.Status, "took", time.Since(started).Round(time.Millisecond),
+	}
 	switch outcome.Status {
 	case images.StatusFailed:
 		p.logger.Warn("Image failed", append(attrs, "reason", outcome.Reason)...)
@@ -241,7 +245,8 @@ func (p *Pool) process(ctx context.Context, job Job) {
 }
 
 // PrepareWorkDir creates the work dir, or checks that an existing one is a directory only this
-// process's user can use, then deletes what a previous run left in it. A work dir someone else
+// process's user can use, then deletes the job directories a previous run left in it, and only
+// those, in case WORK_DIR names a directory that holds anything else. A work dir someone else
 // could replace or fill would let them steer what the tools read.
 func PrepareWorkDir(dir string) error {
 	if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
@@ -263,12 +268,12 @@ func PrepareWorkDir(dir string) error {
 	case info.Mode().Perm()&0o077 != 0:
 		return fmt.Errorf("work dir %s is open to other users (mode %o); make it 0700", dir, info.Mode().Perm())
 	}
-	entries, err := os.ReadDir(dir)
+	leftovers, err := filepath.Glob(filepath.Join(dir, "job-*"))
 	if err != nil {
 		return fmt.Errorf("work dir: %w", err)
 	}
-	for _, entry := range entries {
-		if err := os.RemoveAll(filepath.Join(dir, entry.Name())); err != nil {
+	for _, path := range leftovers {
+		if err := os.RemoveAll(path); err != nil {
 			return fmt.Errorf("work dir: %w", err)
 		}
 	}

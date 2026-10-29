@@ -1,6 +1,8 @@
 package integration
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -138,16 +140,28 @@ func TestClaim_AMissingToolLeavesItsImagesPending(t *testing.T) {
 	app.AssertDatabaseHas("images", testkit.Row{"id": png.ID, "status": "pending"})
 }
 
-func TestPool_StartMakesImagesLeftOptimizingPending(t *testing.T) {
+// An image still optimizing at a start was being worked on when the process died: it is pending
+// again with that attempt counted, and failed once it has used them all.
+func TestPool_StartRecoversImagesLeftOptimizing(t *testing.T) {
 	app := testkit.New(t)
 	folder := app.Create.Folder(factory.Paused())
-	image := app.Create.Image(folder, factory.WithImageStatus(images.StatusOptimizing))
+	fresh := app.Create.Image(folder, factory.WithImageStatus(images.StatusOptimizing))
+	again := app.Create.Image(folder, factory.Failed(2, time.Time{}))
+	_, err := app.DB.Exec(`UPDATE images SET status = 'optimizing' WHERE id = ?`, again.ID)
+	require.NoError(t, err)
 	pool := app.Pool()
+	leftover := filepath.Join(app.Config.WorkDir, "job-123")
+	unrelated := filepath.Join(app.Config.WorkDir, "notes.txt")
+	require.NoError(t, os.MkdirAll(leftover, 0o700))
+	require.NoError(t, os.WriteFile(unrelated, []byte("not the optimizer's"), 0o600))
 
 	require.NoError(t, pool.Start())
 	pool.Stop()
 
-	app.AssertDatabaseHas("images", testkit.Row{"id": image.ID, "status": "pending"})
+	app.AssertDatabaseHas("images", testkit.Row{"id": fresh.ID, "status": "pending", "attempts": 1})
+	app.AssertDatabaseHas("images", testkit.Row{"id": again.ID, "status": "failed", "attempts": 3})
+	assert.NoDirExists(t, leftover, "a job a previous run left is deleted")
+	assert.FileExists(t, unrelated, "what is not a job stays")
 }
 
 func TestPool_StartRefusesAWorkDirOthersCanWrite(t *testing.T) {
@@ -161,8 +175,8 @@ func TestPool_StartRefusesAWorkDirOthersCanWrite(t *testing.T) {
 	assert.Contains(t, err.Error(), "open to other users")
 }
 
-// The claim's queries must stay index lookups however many images there are: no full scan of
-// images, as SQLite's plan shows.
+// The claim's queries must stay index lookups however many images there are: no full scan of a
+// table, as SQLite's plan shows. A scan of an index is fine: the partial ones hold a few rows.
 func TestClaim_QueriesUseIndexes(t *testing.T) {
 	app := testkit.New(t)
 	folder := app.Create.Folder()
@@ -173,8 +187,8 @@ func TestClaim_QueriesUseIndexes(t *testing.T) {
 		"OldestClaimableImage":    `SELECT id, mtime_ns FROM images WHERE folder_id = ? AND status = 'pending' AND format = ? AND mtime_ns <= ? ORDER BY mtime_ns LIMIT 1`,
 		"CountOptimizingByFolder": `SELECT folder_id, COUNT(*) AS count FROM images WHERE status = 'optimizing' GROUP BY folder_id`,
 		"RequeueDueImages":        `UPDATE images SET status = 'pending', next_attempt_at = NULL, updated_at = ? WHERE status = 'failed' AND next_attempt_at IS NOT NULL AND datetime(next_attempt_at) <= datetime(?)`,
-		"RecoverOptimizingImages": `UPDATE images SET status = 'pending', updated_at = ? WHERE status = 'optimizing'`,
-		"IsOptimizerOutput":       `SELECT EXISTS (SELECT 1 FROM images WHERE output_sha256 = ?) AS found`,
+		"RecoverOptimizingImages": `UPDATE images SET status = CASE WHEN attempts + 1 >= ? THEN 'failed' ELSE 'pending' END, attempts = attempts + 1, updated_at = ? WHERE status = 'optimizing'`,
+		"IsOptimizerOutput":       `SELECT EXISTS (SELECT 1 FROM optimizer_outputs WHERE sha256 = ?) AS found`,
 		"ClaimImage":              `UPDATE images SET status = 'optimizing', updated_at = ? WHERE id = ? AND status = 'pending' RETURNING *`,
 		"CountImagesByStatus":     `SELECT folder_id, status, COUNT(*) AS count FROM images GROUP BY folder_id, status`,
 	}
@@ -182,7 +196,7 @@ func TestClaim_QueriesUseIndexes(t *testing.T) {
 		"OldestClaimableImage":    {folder.ID, "png", now.UnixNano()},
 		"CountOptimizingByFolder": nil,
 		"RequeueDueImages":        {now, now},
-		"RecoverOptimizingImages": {now},
+		"RecoverOptimizingImages": {3, now},
 		"IsOptimizerOutput":       {[]byte("x")},
 		"ClaimImage":              {now, 1},
 		"CountImagesByStatus":     nil,
@@ -200,9 +214,10 @@ func TestClaim_QueriesUseIndexes(t *testing.T) {
 				details = append(details, detail)
 			}
 			plan := strings.Join(details, "; ")
+			require.NotEmpty(t, details)
 			for _, d := range details {
-				if strings.Contains(d, "images") {
-					assert.Regexp(t, `(SEARCH|SCAN) images USING (COVERING )?INDEX|SEARCH images USING INTEGER PRIMARY KEY`, d, plan)
+				if strings.HasPrefix(d, "SCAN ") && d != "SCAN CONSTANT ROW" {
+					assert.Contains(t, d, " USING ", "a scan of a whole table: %s", plan)
 				}
 			}
 			t.Log(plan)

@@ -92,8 +92,13 @@ SET status = 'pending', next_attempt_at = NULL, updated_at = sqlc.arg(now)
 WHERE status = 'failed' AND next_attempt_at IS NOT NULL AND datetime(next_attempt_at) <= datetime(sqlc.arg(now));
 
 -- name: RecoverOptimizingImages :execrows
+-- A stop records its images as pending, so an image still optimizing at the next start was being
+-- worked on when the process died. That counts as an attempt: an image that kills the process
+-- every time, such as by running it out of memory, ends failed instead of being claimed first
+-- after every restart.
 UPDATE images
-SET status = 'pending', updated_at = sqlc.arg(now)
+SET status = CASE WHEN attempts + 1 >= sqlc.arg(max_attempts) THEN 'failed' ELSE 'pending' END,
+    attempts = attempts + 1, reason = sqlc.arg(reason), next_attempt_at = NULL, updated_at = sqlc.arg(now)
 WHERE status = 'optimizing';
 
 -- name: ReleaseImage :execrows
@@ -134,9 +139,11 @@ UPDATE images
 SET status = 'optimized', size = sqlc.arg(size), mtime_ns = sqlc.arg(mtime_ns), reason = NULL, updated_at = sqlc.arg(now)
 WHERE id = sqlc.arg(id) AND status = 'optimizing';
 
+-- name: AddOptimizerOutput :exec
+INSERT OR IGNORE INTO optimizer_outputs (sha256) VALUES (?);
+
 -- name: IsOptimizerOutput :one
--- Served by idx_images_output. Any row counts: a moved or copied output is still output.
-SELECT EXISTS (SELECT 1 FROM images WHERE output_sha256 = sqlc.arg(output_sha256)) AS found;
+SELECT EXISTS (SELECT 1 FROM optimizer_outputs WHERE sha256 = ?) AS found;
 
 -- name: AddDailyStat :exec
 INSERT INTO daily_stats (folder_id, day, optimized, bytes_before, bytes_after)

@@ -37,6 +37,15 @@ func (q *Queries) AddDailyStat(ctx context.Context, arg AddDailyStatParams) erro
 	return err
 }
 
+const addOptimizerOutput = `-- name: AddOptimizerOutput :exec
+INSERT OR IGNORE INTO optimizer_outputs (sha256) VALUES (?)
+`
+
+func (q *Queries) AddOptimizerOutput(ctx context.Context, sha256 []byte) error {
+	_, err := q.db.ExecContext(ctx, addOptimizerOutput, sha256)
+	return err
+}
+
 const claimImage = `-- name: ClaimImage :one
 UPDATE images
 SET status = 'optimizing', updated_at = ?1
@@ -262,12 +271,11 @@ func (q *Queries) InsertImage(ctx context.Context, arg InsertImageParams) error 
 }
 
 const isOptimizerOutput = `-- name: IsOptimizerOutput :one
-SELECT EXISTS (SELECT 1 FROM images WHERE output_sha256 = ?1) AS found
+SELECT EXISTS (SELECT 1 FROM optimizer_outputs WHERE sha256 = ?) AS found
 `
 
-// Served by idx_images_output. Any row counts: a moved or copied output is still output.
-func (q *Queries) IsOptimizerOutput(ctx context.Context, outputSha256 []byte) (bool, error) {
-	row := q.db.QueryRowContext(ctx, isOptimizerOutput, outputSha256)
+func (q *Queries) IsOptimizerOutput(ctx context.Context, sha256 []byte) (bool, error) {
+	row := q.db.QueryRowContext(ctx, isOptimizerOutput, sha256)
 	var found bool
 	err := row.Scan(&found)
 	return found, err
@@ -536,12 +544,23 @@ func (q *Queries) RecordOptimized(ctx context.Context, arg RecordOptimizedParams
 
 const recoverOptimizingImages = `-- name: RecoverOptimizingImages :execrows
 UPDATE images
-SET status = 'pending', updated_at = ?1
+SET status = CASE WHEN attempts + 1 >= ?1 THEN 'failed' ELSE 'pending' END,
+    attempts = attempts + 1, reason = ?2, next_attempt_at = NULL, updated_at = ?3
 WHERE status = 'optimizing'
 `
 
-func (q *Queries) RecoverOptimizingImages(ctx context.Context, now time.Time) (int64, error) {
-	result, err := q.db.ExecContext(ctx, recoverOptimizingImages, now)
+type RecoverOptimizingImagesParams struct {
+	MaxAttempts int64          `db:"max_attempts" json:"max_attempts"`
+	Reason      sql.NullString `db:"reason" json:"reason"`
+	Now         time.Time      `db:"now" json:"now"`
+}
+
+// A stop records its images as pending, so an image still optimizing at the next start was being
+// worked on when the process died. That counts as an attempt: an image that kills the process
+// every time, such as by running it out of memory, ends failed instead of being claimed first
+// after every restart.
+func (q *Queries) RecoverOptimizingImages(ctx context.Context, arg RecoverOptimizingImagesParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, recoverOptimizingImages, arg.MaxAttempts, arg.Reason, arg.Now)
 	if err != nil {
 		return 0, err
 	}

@@ -27,13 +27,14 @@ import (
 const (
 	// MaxPixels bounds what one image may decode to, checked from its headers before any decode,
 	// so a small file that claims to be huge cannot exhaust memory. 50 million covers the 48 MP
-	// photos of current phones. Verifying an image that large holds about 13 bytes per pixel,
-	// about 650 MB, while it runs.
+	// photos of current phones. Verifying a JPEG that large holds about 13 bytes per pixel, about
+	// 650 MB, while it runs: two decoded images and their 8-bit RGBA copies.
 	MaxPixels = 50_000_000
-	// MaxFileBytes bounds what is read into memory. No image within MaxPixels is near it.
+	// MaxFileBytes bounds what is read into memory, the original and each result.
 	MaxFileBytes = 256 << 20
-	// DefaultToolTimeout bounds one tool run. The slowest step on the calibration corpus took a
-	// few seconds; a tool still running after this is treated as hung.
+	// DefaultToolTimeout bounds one tool run. The slowest image of the 96 in the throughput
+	// benchmark took 7.4 s for every step together; a tool still running after 40 times that is
+	// treated as hung.
 	DefaultToolTimeout = 5 * time.Minute
 )
 
@@ -42,8 +43,10 @@ const (
 	ReasonSymlink          = "symlink"
 	ReasonNotRegular       = "not_regular_file"
 	ReasonHardLink         = "hard_link"
+	ReasonACL              = "access_control_list"
 	ReasonWrongContent     = "wrong_content"
 	ReasonAPNG             = "apng"
+	ReasonExtraData        = "extra_data"
 	ReasonTooManyPixels    = "too_many_pixels"
 	ReasonTooLarge         = "too_large"
 	ReasonUnreadable       = "unreadable"
@@ -121,6 +124,8 @@ func (o *Optimizer) Process(ctx context.Context, job Job) images.Outcome {
 	switch {
 	case errors.Is(err, errChanged):
 		return leave(unchanged, images.StatusPending, ReasonChanged)
+	case errors.Is(err, errACL):
+		return leave(onDisk, images.StatusSkipped, ReasonACL)
 	case err != nil:
 		return leave(onDisk, images.StatusSkipped, ReasonUnreadable)
 	}
@@ -129,6 +134,9 @@ func (o *Optimizer) Process(ctx context.Context, job Job) images.Outcome {
 	}
 	if format == images.FormatPNG && verify.IsAPNG(original) {
 		return leave(onDisk, images.StatusSkipped, ReasonAPNG)
+	}
+	if extra := verify.Extra(original, format); extra != "" {
+		return leave(onDisk, images.StatusSkipped, ReasonExtraData+": "+extra)
 	}
 	pixels, err := verify.Pixels(original, format)
 	switch {
@@ -154,25 +162,42 @@ func (o *Optimizer) Process(ctx context.Context, job Job) images.Outcome {
 	profile := job.Profile
 	result, refused, err := o.attempt(ctx, job, profile, format, original)
 	if refused != nil && profile.Mode == folders.ModeLossy {
-		profile.Mode = folders.ModeLossless
-		var lossless *verify.Failure
-		result, lossless, err = o.attempt(ctx, job, profile, format, original)
-		if lossless != nil {
-			refused.Detail += "; lossless: " + lossless.Error()
-		} else if err == nil {
-			refused = nil
+		lossless := profile
+		lossless.Mode = folders.ModeLossless
+		fallback, again, err := o.attempt(ctx, job, lossless, format, original)
+		switch {
+		case err != nil:
+			refused.Detail += "; lossless: " + err.Error()
+		case again != nil:
+			refused.Detail += "; lossless: " + again.Error()
+		default:
+			result, refused, profile = fallback, nil, lossless
 		}
 	}
 	switch {
 	case ctx.Err() != nil:
 		return leave(unchanged, images.StatusPending, ReasonInterrupted)
 	case err != nil:
-		return leave(onDisk, images.StatusFailed, fmt.Sprintf("%s: %v", ReasonToolFailed, err))
+		return settle(dir, img.Name, st, leave(onDisk, images.StatusFailed, fmt.Sprintf("%s: %v", ReasonToolFailed, err)))
 	case refused != nil:
-		return leave(onDisk, images.StatusKept, refused.Error())
+		return settle(dir, img.Name, st, leave(onDisk, images.StatusKept, refused.Error()))
 	}
 	job.Profile = profile
 	return o.replace(context.WithoutCancel(ctx), dir, job, st, original, result)
+}
+
+// settle records a refusal or a failure against the file as it is now. If it changed while the
+// tools ran, the outcome was about the old file: the image is pending again for the new one, with
+// its size and mtime, so the next scan does not take the row for current.
+func settle(dir *os.File, name string, st unix.Stat_t, o images.Outcome) images.Outcome {
+	now, err := lstatAt(dir, name)
+	switch {
+	case errors.Is(err, unix.ENOENT):
+		return images.Outcome{Status: images.StatusGone, Size: st.Size, MtimeNs: mtimeNs(st)}
+	case err == nil && !sameFile(st, now):
+		return images.Outcome{Status: images.StatusPending, Reason: ReasonChanged, Size: now.Size, MtimeNs: mtimeNs(now)}
+	}
+	return o
 }
 
 // attempt runs the profile's pipeline on the original and verifies the result. A lossy result that
@@ -195,12 +220,16 @@ func (o *Optimizer) attempt(ctx context.Context, job Job, profile folders.Profil
 	return result, verify.Compare(original, result, format, check), nil
 }
 
-// replace swaps the verified result in. The output hash is stored first, so if the process dies
-// between the rename and the record, the file is still recognized as the optimizer's output.
+// replace swaps the verified result in. The output hash is stored first, in optimizer_outputs and
+// on the row, so if the process dies between the rename and the record, the file is still
+// recognized as the optimizer's output.
 func (o *Optimizer) replace(ctx context.Context, dir *os.File, job Job, st unix.Stat_t, original, result []byte) images.Outcome {
 	img := job.Image
 	onDisk := images.Outcome{Size: st.Size, MtimeNs: mtimeNs(st)}
 	sum := sha256.Sum256(result)
+	if err := o.queries.AddOptimizerOutput(ctx, sum[:]); err != nil {
+		return leave(onDisk, images.StatusPending, ReasonInterrupted)
+	}
 	n, err := o.queries.SetImageOutputHash(ctx, db.SetImageOutputHashParams{ID: img.ID, OutputSha256: sum[:], Now: o.Now().UTC()})
 	if err != nil || n == 0 {
 		return leave(onDisk, images.StatusPending, ReasonInterrupted)

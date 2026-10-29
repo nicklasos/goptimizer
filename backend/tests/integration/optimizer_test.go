@@ -2,6 +2,7 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"image"
 	"image/color"
@@ -15,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"app/internal/factory"
 	"app/internal/folders"
 	"app/internal/images"
 	"app/internal/scans"
@@ -176,7 +178,7 @@ func TestOptimizer_AToolThatHangsIsKilledAtTheTimeout(t *testing.T) {
 	before := stateOf(t, tr.path("a.png"))
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	useFakeTools(t, app, map[string]string{"oxipng": `sleep 60 & echo $! > "` + pidFile + `"; wait`})
-	app.Pool().Optimizer.ToolTimeout = 2 * time.Second
+	app.Pool().Optimizer.ToolTimeout = 5 * time.Second
 
 	started := time.Now()
 	assert.Equal(t, 1, tr.optimize())
@@ -188,7 +190,7 @@ func TestOptimizer_AToolThatHangsIsKilledAtTheTimeout(t *testing.T) {
 	row := tr.imageWith("", "a.png", images.StatusFailed)
 	row["attempts"] = 1
 	app.AssertDatabaseHas("images", row)
-	assert.Contains(t, reasonOf(t, app, tr), "oxipng ran longer than 2s")
+	assert.Contains(t, reasonOf(t, app, tr), "oxipng ran longer than 5s")
 	pid, err := os.ReadFile(pidFile)
 	require.NoError(t, err)
 	assert.Error(t, exec.Command("kill", "-0", strings.TrimSpace(string(pid))).Run(), "the process the tool started was killed with it")
@@ -225,6 +227,9 @@ func TestOptimizer_FilesItMustNotTouch(t *testing.T) {
 		{"an animated PNG", func(t *testing.T, tr *tree) { tr.put("a.png", apng) }, nil, images.StatusSkipped, "apng"},
 		{"a JPEG named .png", func(t *testing.T, tr *tree) { tr.put("a.png", encodeJPEG(t, photo(32, 32, 5), 90)) }, nil, images.StatusSkipped, "wrong_content"},
 		{"a file over the pixel limit", func(t *testing.T, tr *tree) { tr.put("a.png", bomb) }, nil, images.StatusSkipped, "too_many_pixels"},
+		{"a PNG with data after its end, as a gain map or a video would be", func(t *testing.T, tr *tree) {
+			tr.put("a.png", append(encodePNG(t, photo(32, 32, 8)), "trailing"...))
+		}, nil, images.StatusSkipped, "extra_data: 8 bytes after IEND"},
 		{"a file rewritten since the scan, younger than min_age_minutes", func(t *testing.T, tr *tree) {
 			tr.put("a.png", encodePNG(t, photo(32, 32, 6)))
 		}, func(t *testing.T, tr *tree) {
@@ -348,6 +353,30 @@ func TestOptimizer_NeverLossyTwice(t *testing.T) {
 		row["original_size"], row["size"] = len(before.data), len(after.data)
 		app.AssertDatabaseHas("images", row)
 	})
+
+	t.Run("the copy is still known after the row that wrote it moved on", func(t *testing.T) {
+		touched := uploadedAt.Add(2 * time.Minute)
+		require.NoError(t, os.Chtimes(tr.path("copy/a.png"), touched, touched))
+		before := stateOf(t, tr.path("copy/a.png"))
+
+		assert.Equal(t, 1, tr.optimize())
+
+		assertUntouched(t, tr.path("copy/a.png"), before)
+		app.AssertDatabaseHas("images", tr.imageWith("copy", "a.png", images.StatusKept))
+	})
+
+	t.Run("a folder deleted and added again does not compress the outputs again", func(t *testing.T) {
+		before := stateOf(t, tr.path("a.png"))
+		_, err := app.Queries.DeleteFolder(app.Ctx, tr.folder.ID)
+		require.NoError(t, err)
+		tr.folder = app.Create.Folder(factory.WithFolderPath(tr.root), factory.WithProfile(lossy()))
+
+		assert.Equal(t, 2, tr.optimize())
+
+		assertUntouched(t, tr.path("a.png"), before)
+		app.AssertDatabaseHas("images", tr.imageWith("", "a.png", images.StatusKept))
+		assert.Equal(t, "already_optimized", reasonOfImage(t, app, tr, "a.png"))
+	})
 }
 
 // A scan that read a row before the optimizer swapped and recorded its file, and writes after,
@@ -433,4 +462,145 @@ func TestOptimizer_ARefusedLossyResultFallsBackToLossless(t *testing.T) {
 	row := tr.imageWith("", "a.png", images.StatusOptimized)
 	row["mode"] = "lossless"
 	app.AssertDatabaseHas("images", row)
+}
+
+// A chmod while the tool runs would make the mode given to the result stale: that swap is called
+// off, and the next run gives the result the new mode.
+func TestOptimizer_AModeChangedWhileTheToolRunsCallsOffTheSwap(t *testing.T) {
+	app := testkit.New(t)
+	tr := optTree(t, app, lossless())
+	tr.put("a.png", encodePNG(t, photo(64, 48, 1)))
+	once := filepath.Join(t.TempDir(), "once")
+	useFakeTools(t, app, map[string]string{
+		"oxipng": `[ -e "` + once + `" ] || { touch "` + once + `"; chmod 0604 "` + tr.path("a.png") + `"; }; ` +
+			copyOver(t, encodePNGBest(t, photo(64, 48, 1))),
+	})
+
+	assert.Equal(t, 2, tr.optimize(), "called off, then claimed again")
+
+	assert.Equal(t, os.FileMode(0o604), stateOf(t, tr.path("a.png")).mode.Perm(), "the result has the mode the file has now")
+	app.AssertDatabaseHas("images", tr.imageWith("", "a.png", images.StatusOptimized))
+	assertNoTempFiles(t, tr.root)
+}
+
+// A same-size rewrite in place that sets the mtime back, as rsync --inplace -t does, changes only
+// the inode change time: the swap is called off, and the new content stays.
+func TestOptimizer_ASameSizeRewriteWithTheOldMtimeStays(t *testing.T) {
+	app := testkit.New(t)
+	tr := optTree(t, app, lossless())
+	tr.put("a.png", encodePNG(t, photo(64, 48, 1)))
+	upload := encodePNG(t, photo(64, 48, 2))
+	staged := filepath.Join(t.TempDir(), "staged.png")
+	require.NoError(t, os.WriteFile(staged, upload, 0o640))
+	require.NoError(t, os.Chtimes(staged, uploadedAt.Add(time.Hour), uploadedAt))
+	require.Equal(t, len(stateOf(t, tr.path("a.png")).data), len(upload))
+	useFakeTools(t, app, map[string]string{
+		"oxipng": `[ -e "` + staged + `" ] && { cat "` + staged + `" > "` + tr.path("a.png") + `"; touch -r "` + staged + `" "` + tr.path("a.png") + `"; rm "` + staged + `"; }; ` +
+			copyOver(t, encodePNGBest(t, photo(64, 48, 1))),
+	})
+
+	tr.optimize()
+
+	data, err := os.ReadFile(tr.path("a.png"))
+	require.NoError(t, err)
+	assert.Equal(t, upload, data, "the rewrite stays")
+	assertNoTempFiles(t, tr.root)
+}
+
+// A tool that fails in the lossless try after a refused lossy result leaves the image kept: a
+// verification failure is not retried.
+func TestOptimizer_AFailingFallbackKeepsTheRefusal(t *testing.T) {
+	app := testkit.New(t)
+	banded := smooth(256, 128)
+	for i := range banded.Pix {
+		if i%4 != 3 {
+			banded.Pix[i] &^= 31
+		}
+	}
+	once := filepath.Join(t.TempDir(), "once")
+	useFakeTools(t, app, map[string]string{
+		"pngquant": copyOver(t, encodePNGBest(t, banded)),
+		"oxipng":   `[ -e "` + once + `" ] && exit 1; touch "` + once + `"`,
+	})
+	tr := optTree(t, app, lossy())
+	tr.put("a.png", encodePNG(t, smooth(256, 128)))
+	before := stateOf(t, tr.path("a.png"))
+
+	assert.Equal(t, 1, tr.optimize())
+
+	assertUntouched(t, tr.path("a.png"), before)
+	row := tr.imageWith("", "a.png", images.StatusKept)
+	row["attempts"] = 0
+	app.AssertDatabaseHas("images", row)
+	assert.Contains(t, reasonOfImage(t, app, tr, "a.png"), "lossless: oxipng")
+}
+
+// A file rewritten while the tools ran is pending again for the new content, even when the result
+// was refused: the refusal was about the old file.
+func TestOptimizer_ARefusalIsRecordedAgainstTheFileAsItIsNow(t *testing.T) {
+	app := testkit.New(t)
+	tr := optTree(t, app, lossless())
+	tr.put("a.png", encodePNG(t, photo(64, 48, 1)))
+	upload := encodePNG(t, photo(40, 40, 2))
+	uploadPath := filepath.Join(t.TempDir(), "upload")
+	require.NoError(t, os.WriteFile(uploadPath, upload, 0o644))
+	useFakeTools(t, app, map[string]string{"oxipng": `cp "` + uploadPath + `" "` + tr.path("a.png") + `"; printf garbage > "$f"`})
+
+	assert.Equal(t, 1, tr.optimize())
+
+	row := tr.imageWith("", "a.png", images.StatusPending)
+	row["size"], row["reason"] = len(upload), "changed_while_optimizing"
+	app.AssertDatabaseHas("images", row)
+}
+
+// A folder deleted while its image is optimized takes the row with it; the result is not swapped
+// in for a row that no longer exists.
+func TestOptimizer_NoSwapForAnImageWhoseFolderWasDeleted(t *testing.T) {
+	app := testkit.New(t)
+	useRealTools(t, app, "oxipng")
+	tr := optTree(t, app, lossless())
+	tr.put("a.png", encodePNG(t, photo(64, 48, 1)))
+	tr.scan(scans.KindFull)
+	before := stateOf(t, tr.path("a.png"))
+	job, ok, err := app.Pool().Claim(app.Ctx)
+	require.NoError(t, err)
+	require.True(t, ok)
+	_, err = app.Queries.DeleteFolder(app.Ctx, tr.folder.ID)
+	require.NoError(t, err)
+
+	outcome := app.Pool().Optimizer.Process(app.Ctx, job)
+
+	assert.Equal(t, images.StatusPending, outcome.Status)
+	assertUntouched(t, tr.path("a.png"), before)
+	assertNoTempFiles(t, tr.root)
+}
+
+// A stop while a tool runs kills it and puts the image back to pending without counting an
+// attempt, so a deploy does not use up an image's retries.
+func TestOptimizer_AStopWhileAToolRunsLeavesTheImagePending(t *testing.T) {
+	app := testkit.New(t)
+	tr := optTree(t, app, lossless())
+	tr.put("a.png", encodePNG(t, photo(64, 48, 1)))
+	before := stateOf(t, tr.path("a.png"))
+	started := filepath.Join(t.TempDir(), "started")
+	useFakeTools(t, app, map[string]string{"oxipng": `touch "` + started + `"; sleep 60`})
+	tr.scan(scans.KindFull)
+	ctx, cancel := context.WithCancel(app.Ctx)
+	go func() {
+		for {
+			if _, err := os.Stat(started); err == nil {
+				cancel()
+				return
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}()
+
+	app.Pool().Drain(ctx)
+
+	row := tr.imageWith("", "a.png", images.StatusPending)
+	row["attempts"], row["reason"] = 0, "interrupted"
+	app.AssertDatabaseHas("images", row)
+	assertUntouched(t, tr.path("a.png"), before)
+	assertWorkDirEmpty(t, app)
 }

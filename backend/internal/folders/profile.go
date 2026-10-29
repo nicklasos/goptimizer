@@ -64,7 +64,7 @@ func DefaultProfile() Profile {
 		PNGQualityMax:    80,
 		GIFLossy:         30,
 		MinSavingPercent: 3,
-		// The lowest 64-pixel tile's SSIM, set from 88 real and generated images:
+		// The lowest 64-pixel tile's SSIM, set from 96 real and generated images:
 		// docs/benchmarks/ssim.md.
 		MinSSIM:       0.85,
 		MinAgeMinutes: 5,

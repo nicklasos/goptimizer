@@ -112,10 +112,16 @@ func RequeueDue(ctx context.Context, q *db.Queries, now time.Time) (int64, error
 	return q.RequeueDueImages(ctx, now.UTC())
 }
 
-// Recover makes every image left optimizing by a process that stopped pending again. Only one
-// process runs the optimizer, so at its start no image can be in flight anywhere.
+// ReasonDied is an image the process died while optimizing.
+const ReasonDied = "interrupted: the process died while optimizing it"
+
+// Recover makes every image left optimizing by a process that died pending again, with one more
+// attempt counted, or failed at the last attempt. Only one process runs the optimizer, so at its
+// start no image can be in flight anywhere.
 func Recover(ctx context.Context, q *db.Queries, now time.Time) (int64, error) {
-	return q.RecoverOptimizingImages(ctx, now.UTC())
+	return q.RecoverOptimizingImages(ctx, db.RecoverOptimizingImagesParams{
+		MaxAttempts: int64(MaxAttempts), Reason: reason(ReasonDied), Now: now.UTC(),
+	})
 }
 
 // Outcome is how one claim of an image ended: the transition out of optimizing. Size and MtimeNs
