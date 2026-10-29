@@ -1,7 +1,8 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import type { ID, PageParams } from '@/api/types'
 import { foldersApi } from './api'
+import type { ImageFilters } from './images'
 import { pollInterval } from './overview'
 import type { FolderRequest, ScanKind } from './types'
 
@@ -32,6 +33,37 @@ export function useFolderScans(id: ID, params: PageParams, refetchInterval: numb
     queryFn: () => foldersApi.scans(id, params),
     placeholderData: keepPreviousData,
     refetchInterval,
+  })
+}
+
+/**
+ * A folder's images a keyset page at a time: each page brings the cursor of the next. A changed
+ * filter cancels the request still running for the last one.
+ */
+export function useFolderImages(id: ID, filters: ImageFilters) {
+  return useInfiniteQuery({
+    queryKey: qk.folders.images(id, filters),
+    queryFn: ({ pageParam, signal }) => foldersApi.images(id, filters, pageParam, signal),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.next_cursor ?? undefined,
+    placeholderData: keepPreviousData,
+  })
+}
+
+/** Retrying moves images between statuses: the folder, its lists and the dashboard all refetch. */
+export function useRetryImage() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: ID) => foldersApi.retryImage(id),
+    onSuccess: () => client.invalidateQueries({ queryKey: qk.folders.all }),
+  })
+}
+
+export function useRetryFailedImages() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (folderId: ID) => foldersApi.retryFailedImages(folderId),
+    onSuccess: () => client.invalidateQueries({ queryKey: qk.folders.all }),
   })
 }
 

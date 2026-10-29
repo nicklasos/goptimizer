@@ -1,6 +1,7 @@
 import { api } from '@/api/client'
 import type { ID, MessageResponse, PageParams } from '@/api/types'
-import type { DaySavings, Folder, FolderRequest, Scan, ScanKind } from './types'
+import type { ImageFilters } from './images'
+import type { DaySavings, Folder, FolderRequest, Image, ImagesPage, Scan, ScanKind } from './types'
 
 export const foldersApi = {
   list: () => api.get<Folder[]>('/folders'),
@@ -11,5 +12,9 @@ export const foldersApi = {
   remove: (id: ID) => api.del<MessageResponse>(`/folders/${id}`),
   startScan: (id: ID, kind: ScanKind) => api.post<Scan>(`/folders/${id}/scans`, { kind }),
   scans: (id: ID, params: PageParams) => api.getPage<Scan>(`/folders/${id}/scans`, { query: params }),
+  images: (id: ID, { status, q, sort }: ImageFilters, cursor: string | undefined, signal: AbortSignal) =>
+    api.get<ImagesPage>(`/folders/${id}/images`, { query: { status, q, sort: sort === 'updated' ? undefined : sort, cursor }, signal }),
+  retryImage: (id: ID) => api.post<Image>(`/images/${id}/retry`),
+  retryFailedImages: (folderId: ID) => api.post<{ retried: number }>(`/folders/${folderId}/images/retry-failed`),
   dailySavings: (folderId?: ID) => api.get<DaySavings[]>('/daily-savings', { query: { folder_id: folderId } }),
 }

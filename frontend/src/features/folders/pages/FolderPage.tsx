@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { PageHeader, type PageBack } from '@/shared/components/PageHeader'
 import { PageError, PageLoading } from '@/shared/components/PageState'
 import { PageStack } from '@/shared/components/PageStack'
+import { FolderImages } from '../components/FolderImages'
 import { FolderModeTag, MissingToolsAlert } from '../components/FolderSummary'
 import { FolderScans } from '../components/FolderScans'
 import { FolderStats } from '../components/FolderStats'
@@ -91,6 +92,7 @@ function FolderDetails({ folder, back }: { folder: Folder; back: PageBack }) {
       </Card>
       <FolderStats folders={[folder]} testId="folder-stats" />
       <SavingsCard folderId={folder.id} refetchInterval={refetchInterval} testId="folder-savings-chart" />
+      <FolderImages folder={folder} />
       <FolderScans folder={folder} refetchInterval={refetchInterval} />
     </>
   )

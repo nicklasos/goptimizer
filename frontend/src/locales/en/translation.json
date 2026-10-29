@@ -83,6 +83,15 @@
       "running": "Running",
       "succeeded": "Done",
       "failed": "Failed"
+    },
+    "imageStatus": {
+      "pending": "Pending",
+      "optimizing": "Optimizing",
+      "optimized": "Optimized",
+      "kept": "Kept",
+      "skipped": "Skipped",
+      "failed": "Failed",
+      "gone": "Gone"
     }
   },
   "folders": {
@@ -271,7 +280,9 @@
     "crashHint": "The rest of the app still works. Try again, or reload the page.",
     "reloadPage": "Reload page",
     "folders.paused": "The folder is paused",
-    "scans.in_progress": "A scan of this folder is already queued or running"
+    "scans.in_progress": "A scan of this folder is already queued or running",
+    "images.not_found": "Image not found",
+    "images.not_failed": "Only a failed image can be retried"
   },
   "overview": {
     "saved": "Saved",
@@ -305,5 +316,61 @@
     "error": "Error",
     "empty": "No scans yet",
     "filesLine": "{{dirs}} dirs listed, {{seen}} files seen: {{new}} new, {{changed}} changed, {{gone}} gone"
+  },
+  "images": {
+    "title": "Images",
+    "all": "All",
+    "searchPlaceholder": "Search by path",
+    "sort": {
+      "updated": "Latest change",
+      "saved": "Most saved",
+      "path": "By path"
+    },
+    "path": "Path",
+    "format": "Format",
+    "size": "Size",
+    "status": "Status",
+    "reason": "Why",
+    "updated": "Changed",
+    "empty": "No images here",
+    "loadMore": "Load more",
+    "retry": "Retry",
+    "retryAll": "Retry all failed ({{count}})",
+    "retried_one": "{{count}} image is waiting for another try",
+    "retried_other": "{{count}} images are waiting for another try",
+    "retriedImage": "The image is waiting for another try",
+    "losslessAttempt": "Lossless attempt: {{reason}}",
+    "retryAt": "Next try {{when}}",
+    "gaveUp_one": "Gave up after {{count}} attempt",
+    "gaveUp_other": "Gave up after {{count}} attempts",
+    "reasons": {
+      "symlink": "A symbolic link. Goptimizer only rewrites real files, never what a link points to.",
+      "not_regular_file": "Not a regular file, such as a device or a named pipe.",
+      "hard_link": "The file has more than one hard link. Replacing it would split it from its other names.",
+      "access_control_list": "The file has a POSIX access list, which a new file could not keep. It may be what lets the web server read it.",
+      "wrong_content": "The content is not the format its extension says, such as a JPEG named .png.",
+      "apng": "Animated PNG: quantizing would drop the animation.",
+      "extra_data": "The file holds data the tools would drop unnoticed, such as the video of a motion photo, an HDR gain map or content credentials.",
+      "too_many_pixels": "Over 50 megapixels: too big to check safely in memory.",
+      "too_large": "Over 256 MB.",
+      "unreadable": "The file could not be read, or it changed while it was read.",
+      "already_optimized": "Goptimizer wrote these bytes before, at another path: the file was moved or copied. An image is never compressed lossily twice, so it is left as it is.",
+      "too_new": "Younger than the folder's minimum age, so it may still be uploading. It is taken once it is old enough.",
+      "changed_while_optimizing": "The file changed while it was being optimized, so the result was thrown away. The new version is optimized next.",
+      "interrupted": "The service stopped while optimizing it. It is tried again.",
+      "tool_missing": "A program this format needs is not installed. The image waits until it is.",
+      "tool_failed": "A compression tool crashed, exited with an error or ran past its time limit.",
+      "swap_failed": "The smaller file could not replace the original. The original is unchanged.",
+      "no_saving": "The result was not smaller by at least the folder's minimum saving.",
+      "format_changed": "The result came out in another format.",
+      "result_undecodable": "The result could not be decoded.",
+      "dimensions_changed": "The result has another width or height.",
+      "frames_changed": "The result has a different number of frames.",
+      "animation_changed": "The loop count or frame delays changed, so the animation would play differently.",
+      "pixels_changed": "Some pixels differ from the original, which a lossless result must never do.",
+      "ssim_below_threshold": "The result looks too different from the original: its similarity (SSIM) is below the folder's minimum.",
+      "color_changed": "The color of an area shifted more than allowed: the result would look tinted or faded.",
+      "metadata_changed": "The result lost or changed data browsers draw it with, such as the color profile or the orientation."
+    }
   }
 }
