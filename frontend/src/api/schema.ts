@@ -211,12 +211,13 @@ export interface InternalPaginationMeta {
 
 export type InternalScansKind = "quick" | "full";
 
-export interface InternalScansScanDataResponse {
-  data: ScanResponse;
+export interface InternalScansPaginatedScansResponse {
+  data: ScanResponse[];
+  pagination: InternalPaginationMeta;
 }
 
-export interface InternalScansScansResponse {
-  data: ScanResponse[];
+export interface InternalScansScanDataResponse {
+  data: ScanResponse;
 }
 
 export interface InternalScansStartScanRequest {

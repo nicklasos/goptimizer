@@ -56,7 +56,10 @@ WHERE status IN ('queued', 'running') AND status = 'running';
 SELECT * FROM scans
 WHERE folder_id = ?
 ORDER BY id DESC
-LIMIT ?;
+LIMIT ? OFFSET ?;
+
+-- name: CountScansOfFolder :one
+SELECT COUNT(*) FROM scans WHERE folder_id = ?;
 
 -- name: GetLatestScanOfFolder :one
 SELECT * FROM scans

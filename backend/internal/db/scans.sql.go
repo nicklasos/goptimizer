@@ -49,6 +49,17 @@ func (q *Queries) ClaimNextScan(ctx context.Context, startedAt sql.NullTime) (Sc
 	return i, err
 }
 
+const countScansOfFolder = `-- name: CountScansOfFolder :one
+SELECT COUNT(*) FROM scans WHERE folder_id = ?
+`
+
+func (q *Queries) CountScansOfFolder(ctx context.Context, folderID int64) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countScansOfFolder, folderID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const enqueueScan = `-- name: EnqueueScan :one
 INSERT INTO scans (folder_id, kind, trigger, queued_at)
 VALUES (?1, ?2, ?3, ?4)
@@ -258,16 +269,17 @@ const listScansOfFolder = `-- name: ListScansOfFolder :many
 SELECT id, folder_id, kind, "trigger", status, queued_at, started_at, finished_at, dirs_seen, dirs_listed, files_seen, files_new, files_changed, files_gone, error FROM scans
 WHERE folder_id = ?
 ORDER BY id DESC
-LIMIT ?
+LIMIT ? OFFSET ?
 `
 
 type ListScansOfFolderParams struct {
 	FolderID int64 `db:"folder_id" json:"folder_id"`
 	Limit    int64 `db:"limit" json:"limit"`
+	Offset   int64 `db:"offset" json:"offset"`
 }
 
 func (q *Queries) ListScansOfFolder(ctx context.Context, arg ListScansOfFolderParams) ([]Scan, error) {
-	rows, err := q.db.QueryContext(ctx, listScansOfFolder, arg.FolderID, arg.Limit)
+	rows, err := q.db.QueryContext(ctx, listScansOfFolder, arg.FolderID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

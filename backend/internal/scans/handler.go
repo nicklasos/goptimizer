@@ -3,6 +3,7 @@ package scans
 import (
 	"net/http"
 
+	"app/internal"
 	"app/internal/errs"
 	"app/internal/middleware"
 
@@ -52,33 +53,42 @@ func (h *Handler) StartScan(c *gin.Context) {
 	c.JSON(http.StatusAccepted, ScanDataResponse{Data: ResponseFromDB(*scan)})
 }
 
-// ListScans lists a folder's latest scans
+// ListScans lists a folder's scans
 //
 //	@Summary		List folder scans
-//	@Description	The latest 20 scans of the folder, newest first.
+//	@Description	One page of the folder's scans, newest first. A folder keeps its latest 100 scans and its latest successful full scan.
 //	@Tags			scans
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			id	path		int	true	"Folder ID"
-//	@Success		200	{object}	ScansResponse
-//	@Failure		400	{object}	errs.ErrorResponse
-//	@Failure		401	{object}	errs.ErrorResponse
-//	@Failure		404	{object}	errs.ErrorResponse
-//	@Failure		500	{object}	errs.ErrorResponse
+//	@Param			id			path		int	true	"Folder ID"
+//	@Param			page		query		int	false	"Page number"	default(1)
+//	@Param			page_size	query		int	false	"Page size"		default(20)
+//	@Success		200			{object}	PaginatedScansResponse
+//	@Failure		400			{object}	errs.ErrorResponse
+//	@Failure		401			{object}	errs.ErrorResponse
+//	@Failure		404			{object}	errs.ErrorResponse
+//	@Failure		500			{object}	errs.ErrorResponse
 //	@Router			/api/v1/folders/{id}/scans [get]
 func (h *Handler) ListScans(c *gin.Context) {
 	id, ok := middleware.PathID(c, "id")
 	if !ok {
 		return
 	}
-	scans, err := h.service.List(c.Request.Context(), id)
+	page, ok := middleware.Page(c)
+	if !ok {
+		return
+	}
+	result, err := h.service.List(c.Request.Context(), id, page)
 	if err != nil {
 		errs.RespondWithError(c, err)
 		return
 	}
-	items := make([]ScanResponse, len(scans))
-	for i, scan := range scans {
+	items := make([]ScanResponse, len(result.Scans))
+	for i, scan := range result.Scans {
 		items[i] = ResponseFromDB(scan)
 	}
-	c.JSON(http.StatusOK, ScansResponse{Data: items})
+	c.JSON(http.StatusOK, PaginatedScansResponse{
+		Data:       items,
+		Pagination: internal.NewPaginationMeta(result.Total, page.Page, page.PageSize),
+	})
 }

@@ -524,19 +524,22 @@ definitions:
     x-enum-varnames:
     - KindQuick
     - KindFull
-  internal_scans.ScanDataResponse:
-    properties:
-      data:
-        $ref: '#/definitions/ScanResponse'
-    required:
-    - data
-    type: object
-  internal_scans.ScansResponse:
+  internal_scans.PaginatedScansResponse:
     properties:
       data:
         items:
           $ref: '#/definitions/ScanResponse'
         type: array
+      pagination:
+        $ref: '#/definitions/internal.PaginationMeta'
+    required:
+    - data
+    - pagination
+    type: object
+  internal_scans.ScanDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/ScanResponse'
     required:
     - data
     type: object
@@ -1263,12 +1266,23 @@ paths:
       - folders
   /api/v1/folders/{id}/scans:
     get:
-      description: The latest 20 scans of the folder, newest first.
+      description: One page of the folder's scans, newest first. A folder keeps its
+        latest 100 scans and its latest successful full scan.
       parameters:
       - description: Folder ID
         in: path
         name: id
         required: true
+        type: integer
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Page size
+        in: query
+        name: page_size
         type: integer
       produces:
       - application/json
@@ -1276,7 +1290,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_scans.ScansResponse'
+            $ref: '#/definitions/internal_scans.PaginatedScansResponse'
         "400":
           description: Bad Request
           schema:

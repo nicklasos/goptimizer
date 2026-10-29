@@ -38,9 +38,10 @@ type ScanDataResponse struct {
 	Data ScanResponse `json:"data"`
 }
 
-// ScansResponse is a folder's latest scans, newest first
-type ScansResponse struct {
-	Data []ScanResponse `json:"data"`
+// PaginatedScansResponse is one page of a folder's scans, newest first
+type PaginatedScansResponse struct {
+	Data       []ScanResponse          `json:"data"`
+	Pagination internal.PaginationMeta `json:"pagination"`
 }
 
 func ResponseFromDB(scan db.Scan) ScanResponse {

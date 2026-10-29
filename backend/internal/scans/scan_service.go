@@ -10,10 +10,8 @@ import (
 
 	"app/internal/db"
 	"app/internal/errs"
+	"app/internal/middleware"
 )
-
-// listLimit is how many scans of a folder GET /folders/:id/scans returns, newest first.
-const listLimit = 20
 
 var (
 	ErrFolderNotFound = errs.NewNotFoundError(errs.ErrKeyFoldersNotFound, "Folder not found")
@@ -49,16 +47,29 @@ func (s *ScanService) Start(ctx context.Context, folderID int64, kind Kind) (*db
 	return &scan, nil
 }
 
-// List returns the folder's latest scans, newest first.
-func (s *ScanService) List(ctx context.Context, folderID int64) ([]db.Scan, error) {
+// Page is one page of a folder's scans, newest first, and how many it has: at most Keep and its
+// latest successful full scan.
+type Page struct {
+	Scans []db.Scan
+	Total int64
+}
+
+// List returns one page of the folder's scans, newest first.
+func (s *ScanService) List(ctx context.Context, folderID int64, page middleware.PaginationParams) (Page, error) {
 	if _, err := s.folder(ctx, folderID); err != nil {
-		return nil, err
+		return Page{}, err
 	}
-	scans, err := s.queries.ListScansOfFolder(ctx, db.ListScansOfFolderParams{FolderID: folderID, Limit: listLimit})
+	total, err := s.queries.CountScansOfFolder(ctx, folderID)
 	if err != nil {
-		return nil, errs.WrapDatabaseError(err)
+		return Page{}, errs.WrapDatabaseError(err)
 	}
-	return scans, nil
+	scans, err := s.queries.ListScansOfFolder(ctx, db.ListScansOfFolderParams{
+		FolderID: folderID, Limit: int64(page.PageSize), Offset: int64(page.Offset()),
+	})
+	if err != nil {
+		return Page{}, errs.WrapDatabaseError(err)
+	}
+	return Page{Scans: scans, Total: total}, nil
 }
 
 // EnqueueDue queues the scan each enabled folder is due for at now, and returns how many it

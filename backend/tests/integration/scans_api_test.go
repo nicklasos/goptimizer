@@ -67,7 +67,14 @@ func TestScansAPI_ListScans(t *testing.T) {
 		AssertJSONPath("data.0.id", latest.ID).
 		AssertJSONPath("data.0.status", "failed").
 		AssertJSONPath("data.0.error", "the folder's path cannot be read").
-		AssertJSONPath("data.1.status", "succeeded")
+		AssertJSONPath("data.1.status", "succeeded").
+		AssertJSONPath("pagination.total", 22).
+		AssertJSONPath("pagination.last_page", 2)
+	app.As(user).GET("/api/v1/folders/%d/scans?page=2&page_size=20", folder.ID).
+		AssertOK().
+		AssertJSONCount("data", 2).
+		AssertJSONPath("data.1.id", 1)
+	app.As(user).GET("/api/v1/folders/%d/scans?page_size=1000", folder.ID).AssertError(http.StatusBadRequest, errs.ErrKeyBadRequest)
 
 	app.GET("/api/v1/folders/%d/scans", folder.ID).AssertUnauthorized()
 	app.As(user).GET("/api/v1/folders/%d/scans", 999999).AssertError(http.StatusNotFound, errs.ErrKeyFoldersNotFound)

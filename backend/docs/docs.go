@@ -893,7 +893,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "The latest 20 scans of the folder, newest first.",
+                "description": "One page of the folder's scans, newest first. A folder keeps its latest 100 scans and its latest successful full scan.",
                 "produces": [
                     "application/json"
                 ],
@@ -908,13 +908,27 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_scans.ScansResponse"
+                            "$ref": "#/definitions/internal_scans.PaginatedScansResponse"
                         }
                     },
                     "400": {
@@ -2273,6 +2287,24 @@ const docTemplate = `{
                 "KindFull"
             ]
         },
+        "internal_scans.PaginatedScansResponse": {
+            "type": "object",
+            "required": [
+                "data",
+                "pagination"
+            ],
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ScanResponse"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/internal.PaginationMeta"
+                }
+            }
+        },
         "internal_scans.ScanDataResponse": {
             "type": "object",
             "required": [
@@ -2281,20 +2313,6 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/ScanResponse"
-                }
-            }
-        },
-        "internal_scans.ScansResponse": {
-            "type": "object",
-            "required": [
-                "data"
-            ],
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ScanResponse"
-                    }
                 }
             }
         },
