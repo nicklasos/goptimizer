@@ -1,5 +1,5 @@
 // Command screenshots-seed fills the throwaway database of scripts/screenshots/shoot.mjs with the
-// accounts, folders, scans and images the README screenshots show. It writes through the
+// accounts, folders, scans, images and daily stats the README screenshots show. It writes through the
 // factories, which do not check that a folder's path exists, so the pictures can show /var/www
 // paths this machine lacks. The API there runs no scheduler, so no scan changes what is seeded.
 package main
@@ -12,6 +12,7 @@ import (
 	"app/internal/db"
 	"app/internal/factory"
 	"app/internal/folders"
+	"app/internal/images"
 	"app/internal/scans"
 )
 
@@ -54,9 +55,38 @@ func main() {
 	create.Scan(blog, full, factory.WithScanStatus(scans.StatusRunning), factory.StartedAt(now.Add(-time.Minute)), factory.WithScanCounts(scans.Counts{FilesSeen: 860, FilesNew: 860}))
 	create.Scan(docs, full, succeeded, factory.StartedAt(now.Add(-3*time.Hour)), factory.WithScanCounts(scans.Counts{FilesSeen: 312, FilesNew: 312}))
 	create.Scan(landing, succeeded, factory.StartedAt(now.Add(-40*time.Minute)))
-	for folder, n := range map[*db.Folder]int{shop: 1204, blog: 860, docs: 312, landing: 96} {
-		for range n {
-			create.Image(folder)
+	// Each folder's images by status, and what its optimizations saved, spread over the days before
+	// today so the totals add up as the optimizer would have written them.
+	for _, f := range []struct {
+		folder                     *db.Folder
+		optimized, kept, failed, n int
+		before, after              int64
+	}{
+		{shop, 1150, 40, 4, 1204, 412_000, 168_000},
+		{blog, 312, 0, 0, 860, 31_000, 17_800},
+		{docs, 298, 14, 0, 312, 298_000, 236_000},
+		{landing, 0, 0, 0, 96, 0, 0},
+	} {
+		for i := range f.n {
+			switch {
+			case i < f.optimized:
+				create.Image(f.folder, factory.Optimized(f.before), factory.AsOnDisk(f.after, 1))
+			case i < f.optimized+f.kept:
+				create.Image(f.folder, factory.WithImageStatus(images.StatusKept), factory.WithReason("no_saving"))
+			case i < f.optimized+f.kept+f.failed:
+				create.Image(f.folder, factory.Failed(3, time.Time{}), factory.WithReason("tool_failed: pngquant: signal: killed"))
+			default:
+				create.Image(f.folder)
+			}
+		}
+		for day := range 6 {
+			count := int64(f.optimized / 6)
+			if day == 0 {
+				count += int64(f.optimized % 6)
+			}
+			if count > 0 {
+				create.DailyStat(f.folder, now.AddDate(0, 0, -day), count, count*f.before, count*f.after)
+			}
 		}
 	}
 }

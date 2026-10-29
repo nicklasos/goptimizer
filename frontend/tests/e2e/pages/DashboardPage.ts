@@ -35,6 +35,11 @@ export class DashboardPage extends BasePage {
     return card.locator('[data-testid^="folder-scan-status-"]')
   }
 
+  /** The optimized count (`data-count`) and the bytes saved (`data-bytes`). */
+  optimized(card: Locator): Locator {
+    return card.locator('[data-testid^="folder-optimized-"]')
+  }
+
   /** Opens the card's Scan now menu and picks a quick or full scan. */
   async scan(card: Locator, kind: 'quick' | 'full'): Promise<void> {
     await card.locator('[data-testid^="scan-folder-button-"]').click()

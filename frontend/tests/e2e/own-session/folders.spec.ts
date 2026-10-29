@@ -85,5 +85,8 @@ test.describe('Folders', () => {
 
     await expect(dashboard.imageCount(card)).toHaveAttribute('data-count', '3', { timeout: 20_000 })
     await expect(dashboard.scanStatus(card)).toHaveAttribute('data-status', 'succeeded')
+    // The files were written moments ago, within min_age_minutes, so nothing is optimized yet.
+    await expect(dashboard.optimized(card)).toHaveAttribute('data-count', '0')
+    await expect(dashboard.optimized(card)).toHaveAttribute('data-bytes', '0')
   })
 })
