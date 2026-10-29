@@ -79,8 +79,12 @@ func pngMetadata(data []byte) pngMeta {
 	return m
 }
 
+// maxProfile bounds a decompressed iCCP profile. Real ones are well under a megabyte; a chunk
+// that inflates past this compares by its raw bytes, so a recompressed one is refused.
+const maxProfile = 16 << 20
+
 // iccpProfile is the profile of an iCCP chunk: a name, a NUL, the compression method and the
-// zlib stream. An unreadable chunk compares by its raw bytes.
+// zlib stream. An unreadable or oversized chunk compares by its raw bytes.
 func iccpProfile(data []byte) []byte {
 	name := bytes.IndexByte(data, 0)
 	if name < 0 || name+2 > len(data) {
@@ -90,8 +94,8 @@ func iccpProfile(data []byte) []byte {
 	if err != nil {
 		return data
 	}
-	profile, err := io.ReadAll(r)
-	if err != nil {
+	profile, err := io.ReadAll(io.LimitReader(r, maxProfile+1))
+	if err != nil || len(profile) > maxProfile {
 		return data
 	}
 	return profile
@@ -106,6 +110,7 @@ type jpegMeta struct {
 // numbered pieces, and the EXIF orientation. No orientation tag means 1, upright.
 func jpegMetadata(data []byte) jpegMeta {
 	m := jpegMeta{orientation: 1}
+	exif := false
 	type piece struct {
 		seq  byte
 		data []byte
@@ -126,8 +131,8 @@ func jpegMetadata(data []byte) jpegMeta {
 		}
 		segment := data[i+4 : i+2+n]
 		switch {
-		case marker == 0xE1 && bytes.HasPrefix(segment, []byte("Exif\x00\x00")):
-			m.orientation = exifOrientation(segment[6:])
+		case marker == 0xE1 && bytes.HasPrefix(segment, []byte("Exif\x00\x00")) && !exif:
+			m.orientation, exif = exifOrientation(segment[6:]), true
 		case marker == 0xE2 && bytes.HasPrefix(segment, []byte("ICC_PROFILE\x00")) && len(segment) >= 14:
 			pieces = append(pieces, piece{seq: segment[12], data: segment[14:]})
 		}

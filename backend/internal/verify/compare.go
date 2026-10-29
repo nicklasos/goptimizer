@@ -25,6 +25,7 @@ const (
 	ReasonAnimationChanged  Reason = "animation_changed"
 	ReasonPixelsChanged     Reason = "pixels_changed"
 	ReasonLowSSIM           Reason = "ssim_below_threshold"
+	ReasonColorChanged      Reason = "color_changed"
 	ReasonMetadataChanged   Reason = "metadata_changed"
 )
 
@@ -43,6 +44,11 @@ func (f *Failure) Error() string {
 func fail(reason Reason, format string, args ...any) *Failure {
 	return &Failure{Reason: reason, Detail: fmt.Sprintf(format, args...)}
 }
+
+// maxColorShift is how far, in 8-bit levels, the average color of a 32-pixel block may move in a
+// lossy result. On the calibration corpus no JPEG re-encode at quality 82 moved one more than 2.6,
+// and no palette result that passed SSIM more than 10.4 (docs/benchmarks/ssim.md).
+const maxColorShift = 12
 
 // Check is what a result is held to.
 type Check struct {
@@ -120,12 +126,16 @@ func comparePixels(format images.Format, before, after image.Image, c Check) *Fa
 	if s := score(format, before, after); s.Worst < c.MinSSIM {
 		return fail(ReasonLowSSIM, "%.4f, below %.4f, at %d,%d", s.Worst, c.MinSSIM, s.At.X, s.At.Y)
 	}
+	if shift := ColorShift(before, after); shift > maxColorShift {
+		return fail(ReasonColorChanged, "a block's average color moved %.1f levels", shift)
+	}
 	return nil
 }
 
 // firstDifference compares every pixel as 16-bit non-premultiplied RGBA, so the same colors from
-// a palette and from truecolor are equal, and so is a fully transparent pixel's hidden color only
-// when it stayed the same.
+// a palette and from truecolor are equal. Like every color model with alpha, it makes a fully
+// transparent pixel equal to any other, whatever color hides under it; no browser shows that
+// color.
 func firstDifference(a, b image.Image) (int, int, bool) {
 	ba, bb := a.Bounds(), b.Bounds()
 	if ya, ok := a.(*image.YCbCr); ok {
@@ -239,6 +249,11 @@ func compareGIF(original, result []byte, c Check) *Failure {
 	}
 	if len(before.Image) != len(after.Image) {
 		return fail(ReasonFramesChanged, "%d frames became %d", len(before.Image), len(after.Image))
+	}
+	for i, d := range before.Disposal {
+		if d > gif.DisposalPrevious {
+			return fail(ReasonAnimationChanged, "frame %d has disposal method %d, which browsers do not agree on", i+1, d)
+		}
 	}
 	if before.LoopCount != after.LoopCount {
 		return fail(ReasonAnimationChanged, "loop count %d became %d", before.LoopCount, after.LoopCount)

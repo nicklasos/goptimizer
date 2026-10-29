@@ -45,6 +45,7 @@ type result struct {
 	ycc        verify.Score
 	tileAt     image.Point
 	metadata   string
+	color      float64
 	err        string
 	resultPath string
 }
@@ -105,6 +106,13 @@ func main() {
 		}
 		r.after = len(optimized)
 		r.metadata = verify.MetadataChange(original, optimized, format)
+		if format != images.FormatGIF {
+			if a, _, err := image.Decode(bytes.NewReader(original)); err == nil {
+				if b, _, err := image.Decode(bytes.NewReader(optimized)); err == nil && a.Bounds().Size() == b.Bounds().Size() {
+					r.color = verify.ColorShift(a, b)
+				}
+			}
+		}
 		r.ssim, err = verify.Similarity(original, optimized, format)
 		if err != nil {
 			r.err = err.Error()
@@ -133,13 +141,13 @@ func main() {
 	}
 
 	sort.Slice(results, func(i, j int) bool { return results[i].ssim.Worst < results[j].ssim.Worst })
-	fmt.Println("rgb_worst\trgb_mean\tluma_worst\tluma_mean\tycc_worst\tycc_mean\tsaving_pct\tbefore\tafter\tmetadata\tfile\terror")
+	fmt.Println("rgb_worst\trgb_mean\tluma_worst\tluma_mean\tycc_worst\tycc_mean\tcolor_shift\tsaving_pct\tbefore\tafter\tmetadata\tfile\terror")
 	for _, r := range results {
 		saving := 0.0
 		if r.before > 0 && r.after > 0 {
 			saving = 100 * float64(r.before-r.after) / float64(r.before)
 		}
-		fmt.Printf("%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.1f\t%d\t%d\t%s\t%s\t%s\n", r.ssim.Worst, r.ssim.Mean, r.luma.Worst, r.luma.Mean, r.ycc.Worst, r.ycc.Mean, saving, r.before, r.after, r.metadata, r.path, r.err)
+		fmt.Printf("%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t%.2f\t%.1f\t%d\t%d\t%s\t%s\t%s\n", r.ssim.Worst, r.ssim.Mean, r.luma.Worst, r.luma.Mean, r.ycc.Worst, r.ycc.Mean, r.color, saving, r.before, r.after, r.metadata, r.path, r.err)
 	}
 	for _, p := range posterized() {
 		fmt.Println(p)
@@ -359,6 +367,12 @@ func scoreAgainst(originalPath string, results []string) {
 		}
 		score, err := verify.Similarity(original, result, format)
 		luma, ycc, _ := alternatives(original, result)
-		fmt.Printf("%s\t%d bytes\tworst tile %.4f at %v\tmean %.4f\tluma worst %.4f\tycc worst %.4f\t%v\n", path, len(result), score.Worst, score.At, score.Mean, luma.Worst, ycc.Worst, err)
+		shift := 0.0
+		if a, _, err := image.Decode(bytes.NewReader(original)); err == nil {
+			if b, _, err := image.Decode(bytes.NewReader(result)); err == nil && a.Bounds().Size() == b.Bounds().Size() {
+				shift = verify.ColorShift(a, b)
+			}
+		}
+		fmt.Printf("%s\t%d bytes\tworst tile %.4f at %v\tmean %.4f\tluma worst %.4f\tycc worst %.4f\tcolor shift %.2f\t%v\n", path, len(result), score.Worst, score.At, score.Mean, luma.Worst, ycc.Worst, shift, err)
 	}
 }

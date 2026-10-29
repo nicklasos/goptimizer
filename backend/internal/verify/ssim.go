@@ -238,3 +238,55 @@ func isOpaqueType(m image.Image) bool {
 	}
 	return false
 }
+
+// colorBlock is the side of the squares whose average color ColorShift compares.
+const colorBlock = 32
+
+// ColorShift is the largest change, in 8-bit levels, of the average Y, Cb or Cr of any
+// colorBlock-square block, with the images composited on black and, when either has
+// transparency, on white. SSIM barely moves for a flat area that changes color, and JPEG is
+// scored on luma alone, so a result that turned gray or swapped its color channels would pass it.
+// Averaging over a block keeps out the noise that quantization, dithering and chroma subsampling
+// add pixel by pixel.
+func ColorShift(a, b image.Image) float64 {
+	x, y := toNRGBA(a), toNRGBA(b)
+	backgrounds := []float64{0}
+	if !opaque(x) || !opaque(y) {
+		backgrounds = append(backgrounds, 255)
+	}
+	w, h := x.Rect.Dx(), x.Rect.Dy()
+	cols, rows := (w+colorBlock-1)/colorBlock, (h+colorBlock-1)/colorBlock
+	worst := 0.0
+	for _, bg := range backgrounds {
+		sa, sb := blockMeans(x, bg, cols, rows), blockMeans(y, bg, cols, rows)
+		for i := range sa {
+			worst = max(worst, math.Abs(sa[i]-sb[i]))
+		}
+	}
+	return worst
+}
+
+// blockMeans is, for every block, its mean Y, Cb and Cr (BT.601, full range), three per block.
+func blockMeans(m *image.NRGBA, bg float64, cols, rows int) []float64 {
+	sums := make([]float64, 3*cols*rows)
+	counts := make([]float64, cols*rows)
+	w, h := m.Rect.Dx(), m.Rect.Dy()
+	for py := range h {
+		pix := m.Pix[py*m.Stride : py*m.Stride+4*w]
+		for px := range w {
+			alpha := float64(pix[4*px+3]) / 255
+			r := float64(pix[4*px])*alpha + bg*(1-alpha)
+			g := float64(pix[4*px+1])*alpha + bg*(1-alpha)
+			b := float64(pix[4*px+2])*alpha + bg*(1-alpha)
+			block := (py/colorBlock)*cols + px/colorBlock
+			sums[3*block] += 0.299*r + 0.587*g + 0.114*b
+			sums[3*block+1] += -0.168736*r - 0.331264*g + 0.5*b
+			sums[3*block+2] += 0.5*r - 0.418688*g - 0.081312*b
+			counts[block]++
+		}
+	}
+	for i := range sums {
+		sums[i] /= counts[i/3]
+	}
+	return sums
+}

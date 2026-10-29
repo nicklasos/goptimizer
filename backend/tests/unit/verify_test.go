@@ -11,6 +11,9 @@ import (
 	"image/gif"
 	"image/jpeg"
 	"image/png"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -258,4 +261,158 @@ func TestSniffAndAPNG(t *testing.T) {
 
 	assert.False(t, verify.IsAPNG(original))
 	assert.True(t, verify.IsAPNG(withChunks(original, chunk("acTL", []byte{0, 0, 0, 2, 0, 0, 0, 0}))))
+}
+
+func TestExtra(t *testing.T) {
+	plainPNG := pngOf(t, gradient(16, 16))
+	plainJPEG := jpegOf(t, gradient(16, 16))
+	var buf bytes.Buffer
+	require.NoError(t, gif.Encode(&buf, image.NewPaletted(image.Rect(0, 0, 4, 4), color.Palette{color.Black, color.White}), nil))
+	plainGIF := buf.Bytes()
+	xmp := segment(0xE1, []byte("http://ns.adobe.com/xap/1.0/\x00<x:xmpmeta><Container:Directory><GContainer:Item/></x:xmpmeta>"))
+
+	for _, tc := range []struct {
+		name   string
+		data   []byte
+		format images.Format
+		extra  bool
+	}{
+		{"a plain PNG", plainPNG, images.FormatPNG, false},
+		{"a PNG with bytes after IEND", append(append([]byte{}, plainPNG...), "trailing"...), images.FormatPNG, true},
+		{"a PNG with content credentials", withChunks(plainPNG, chunk("caBX", []byte("jumb"))), images.FormatPNG, true},
+		{"a plain JPEG", plainJPEG, images.FormatJPEG, false},
+		{"a JPEG with a second image after it, as a gain map is", append(append([]byte{}, plainJPEG...), plainJPEG...), images.FormatJPEG, true},
+		{"a JPEG with an MPF index", withSegments(plainJPEG, segment(0xE2, []byte("MPF\x00MM\x00\x2a"))), images.FormatJPEG, true},
+		{"a JPEG with a JUMBF box", withSegments(plainJPEG, segment(0xEB, []byte("JP\x00\x01"))), images.FormatJPEG, true},
+		{"a JPEG whose XMP points at a container", withSegments(plainJPEG, xmp), images.FormatJPEG, true},
+		{"a plain GIF", plainGIF, images.FormatGIF, false},
+		{"a GIF with bytes after the trailer", append(append([]byte{}, plainGIF...), "trailing"...), images.FormatGIF, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.extra, verify.Extra(tc.data, tc.format) != "", verify.Extra(tc.data, tc.format))
+		})
+	}
+
+	// Real encoders' files, progressive and with restart markers, have nothing extra.
+	for _, name := range []string{"video-001.progressive.jpeg", "video-001.restart2.jpeg", "video-001.q50.420.progressive.jpeg", "video-001.png", "video-001.gif", "video-001.interlaced.gif"} {
+		data, err := os.ReadFile(filepath.Join(runtime.GOROOT(), "src", "image", "testdata", name))
+		require.NoError(t, err)
+		format, _ := verify.Sniff(data)
+		assert.Empty(t, verify.Extra(data, format), name)
+	}
+}
+
+func TestCompare_AJPEGThatLostItsColorsIsRefused(t *testing.T) {
+	colorful := image.NewNRGBA(image.Rect(0, 0, 128, 96))
+	gray := image.NewGray(colorful.Rect)
+	swapped := image.NewNRGBA(colorful.Rect)
+	for y := range 96 {
+		for x := range 128 {
+			c := color.NRGBA{uint8(40 + x), uint8(200 - y), uint8(60 + x/2), 255}
+			colorful.SetNRGBA(x, y, c)
+			gray.Set(x, y, c)
+			swapped.SetNRGBA(x, y, color.NRGBA{c.B, c.G, c.R, 255})
+		}
+	}
+	var original bytes.Buffer
+	require.NoError(t, jpeg.Encode(&original, colorful, &jpeg.Options{Quality: 100}))
+	reencoded := jpegOf(t, colorful)
+
+	assert.Nil(t, verify.Compare(original.Bytes(), reencoded, images.FormatJPEG, lossy), "the same picture at a lower quality")
+	for name, result := range map[string]image.Image{"turned gray": gray, "red and blue swapped": swapped} {
+		failure := verify.Compare(original.Bytes(), jpegOf(t, result), images.FormatJPEG, lossy)
+		require.NotNil(t, failure, name)
+		assert.Equal(t, verify.ReasonColorChanged, failure.Reason, "%s: %s", name, failure.Error())
+	}
+}
+
+// Frames drawn with disposal methods compose to what a browser shows: a square that the
+// background disposal clears, and one that the previous disposal takes back.
+func TestCompare_GIFDisposals(t *testing.T) {
+	palette := color.Palette{color.RGBA{255, 255, 255, 255}, color.RGBA{220, 20, 20, 255}, color.RGBA{20, 20, 220, 255}, color.RGBA{}}
+	frame := func(r image.Rectangle, fill uint8) *image.Paletted {
+		f := image.NewPaletted(r, palette)
+		for i := range f.Pix {
+			f.Pix[i] = fill
+		}
+		return f
+	}
+	canvas := image.Rect(0, 0, 40, 30)
+	square := image.Rect(10, 10, 20, 20)
+	encode := func(frames []*image.Paletted, disposal []byte) []byte {
+		var buf bytes.Buffer
+		require.NoError(t, gif.EncodeAll(&buf, &gif.GIF{Image: frames, Delay: make([]int, len(frames)), Disposal: disposal}))
+		return buf.Bytes()
+	}
+	withComment := func(data []byte) []byte {
+		out := append(append([]byte{}, data[:len(data)-1]...), 0x21, 0xFE)
+		for range 8 {
+			out = append(append(out, 0xFF), bytes.Repeat([]byte{'c'}, 255)...)
+		}
+		return append(out, 0, 0x3B)
+	}
+
+	// Shown: white, a red square on white, white again (background disposal), a blue square, white
+	// again (previous disposal restores the white canvas).
+	original := withComment(encode(
+		[]*image.Paletted{frame(canvas, 0), frame(square, 1), frame(square, 0), frame(square, 2), frame(square, 0)},
+		[]byte{gif.DisposalNone, gif.DisposalBackground, gif.DisposalNone, gif.DisposalPrevious, gif.DisposalNone}))
+	full := func(fill uint8) *image.Paletted {
+		f := frame(canvas, 0)
+		if fill != 0 {
+			for y := 10; y < 20; y++ {
+				for x := 10; x < 20; x++ {
+					f.SetColorIndex(x, y, fill)
+				}
+			}
+		}
+		return f
+	}
+	sameAsShown := encode([]*image.Paletted{full(0), full(1), full(0), full(2), full(0)}, nil)
+	assert.Nil(t, verify.Compare(original, sameAsShown, images.FormatGIF, lossless), "full frames of what is shown")
+
+	// With no disposal the red square would stay under frame 3's white square: the same here, so
+	// change frame 3 to draw nothing and let the stale red show through.
+	stale := withComment(encode(
+		[]*image.Paletted{frame(canvas, 0), frame(square, 1), frame(square, 3), frame(square, 2), frame(square, 3)},
+		[]byte{gif.DisposalNone, gif.DisposalBackground, gif.DisposalNone, gif.DisposalPrevious, gif.DisposalNone}))
+	failure := verify.Compare(stale, encode([]*image.Paletted{full(0), full(1), full(1), full(2), full(1)}, nil), images.FormatGIF, lossless)
+	require.NotNil(t, failure, "the background disposal clears the red square before frame 3")
+	assert.Equal(t, verify.ReasonPixelsChanged, failure.Reason)
+
+	unusual := withComment(encode([]*image.Paletted{frame(canvas, 0), frame(square, 1)}, []byte{4, gif.DisposalNone}))
+	failure = verify.Compare(unusual, encode([]*image.Paletted{full(0), full(1)}, nil), images.FormatGIF, lossless)
+	require.NotNil(t, failure, "a disposal method browsers disagree on")
+	assert.Equal(t, verify.ReasonAnimationChanged, failure.Reason)
+}
+
+func TestCompare_MetadataEdges(t *testing.T) {
+	jpegBase := jpegOf(t, gradient(64, 48))
+	icc := strings.Repeat("profile", 200)
+	split := withSegments(jpegBase,
+		segment(0xE2, append([]byte("ICC_PROFILE\x00\x02\x02"), icc[700:]...)),
+		segment(0xE2, append([]byte("ICC_PROFILE\x00\x01\x02"), icc[:700]...)),
+		comSegment())
+
+	assert.Nil(t, verify.Compare(split, withSegments(jpegBase, iccSegment(icc)), images.FormatJPEG, lossless), "a profile split over two segments, out of order, is one profile")
+	failure := verify.Compare(split, withSegments(jpegBase, iccSegment(icc[:700])), images.FormatJPEG, lossless)
+	require.NotNil(t, failure, "half a profile")
+	assert.Equal(t, verify.ReasonMetadataChanged, failure.Reason)
+
+	twoExif := withSegments(jpegBase, exifOrientation(6), exifOrientation(1), comSegment())
+	failure = verify.Compare(twoExif, withSegments(jpegBase, exifOrientation(1)), images.FormatJPEG, lossless)
+	require.NotNil(t, failure, "the first EXIF block is the one that counts")
+	assert.Equal(t, verify.ReasonMetadataChanged, failure.Reason)
+
+	original := pngOf(t, gradient(64, 48))
+	deflate := func(level int) []byte {
+		var z bytes.Buffer
+		w, _ := zlib.NewWriterLevel(&z, level)
+		_, _ = w.Write(make([]byte, 20<<20))
+		_ = w.Close()
+		return chunk("iCCP", append([]byte("big\x00\x00"), z.Bytes()...))
+	}
+	failure = verify.Compare(withChunks(original, deflate(zlib.BestSpeed), padding()), withChunks(original, deflate(zlib.BestCompression)), images.FormatPNG, lossless)
+	require.NotNil(t, failure, "a 20 MB profile is not inflated: it compares by its compressed bytes")
+	assert.Equal(t, verify.ReasonMetadataChanged, failure.Reason)
 }

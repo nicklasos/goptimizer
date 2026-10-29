@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"image/jpeg"
 	"image/png"
 
@@ -99,6 +100,8 @@ func pngChunks(data []byte) []chunk {
 type gifInfo struct {
 	width, height int
 	frames        []gifFrame
+	// end is the position after the trailer.
+	end int
 }
 
 type gifFrame struct{ width, height int }
@@ -126,6 +129,7 @@ func walkGIF(data []byte) (gifInfo, error) {
 	for i < len(data) {
 		switch data[i] {
 		case 0x3B:
+			g.end = i + 1
 			return g, nil
 		case 0x21:
 			i += 2
@@ -154,4 +158,96 @@ func walkGIF(data []byte) (gifInfo, error) {
 		}
 	}
 	return g, errMalformed
+}
+
+// Extra names data an image carries that the tools drop and no check would notice, or is "" when
+// it has none: bytes after the end of the image (where a motion photo keeps its video and an
+// Ultra HDR photo its gain map), a JPEG's MPF index or JUMBF box (C2PA), XMP that points at such
+// data, or a PNG's caBX chunk (C2PA). Such files are left alone.
+func Extra(data []byte, format images.Format) string {
+	switch format {
+	case images.FormatPNG:
+		end := len(pngMagic)
+		for _, c := range pngChunks(data) {
+			end += 12 + len(c.data)
+			if c.kind == "caBX" {
+				return "content credentials (caBX)"
+			}
+		}
+		if end < len(data) {
+			return fmt.Sprintf("%d bytes after IEND", len(data)-end)
+		}
+	case images.FormatJPEG:
+		return jpegExtra(data)
+	case images.FormatGIF:
+		g, err := walkGIF(data)
+		if err == nil && g.end < len(data) {
+			return fmt.Sprintf("%d bytes after the trailer", len(data)-g.end)
+		}
+	}
+	return ""
+}
+
+var xmpPointers = [][]byte{[]byte("GContainer"), []byte("hdrgm"), []byte("MotionPhoto"), []byte("MicroVideo")}
+
+// jpegExtra walks the segments and the entropy-coded data of every scan to the end of the primary
+// image, since an appended video or gain map can contain an end marker of its own.
+func jpegExtra(data []byte) string {
+	i := 2
+	for i+4 <= len(data) {
+		if data[i] != 0xFF {
+			return "unexpected bytes between segments"
+		}
+		marker := data[i+1]
+		switch {
+		case marker == 0xFF:
+			i++
+			continue
+		case marker == 0xD9:
+			if end := i + 2; end < len(data) {
+				return fmt.Sprintf("%d bytes after the end of the image", len(data)-end)
+			}
+			return ""
+		case marker >= 0xD0 && marker <= 0xD7, marker == 0x01:
+			i += 2
+			continue
+		}
+		n := int(binary.BigEndian.Uint16(data[i+2:]))
+		if n < 2 || i+2+n > len(data) {
+			return ""
+		}
+		segment := data[i+4 : i+2+n]
+		switch {
+		case marker == 0xE2 && bytes.HasPrefix(segment, []byte("MPF\x00")):
+			return "a multi-picture index (MPF)"
+		case marker == 0xEB:
+			return "a JUMBF box (APP11)"
+		case marker == 0xE1 && bytes.HasPrefix(segment, []byte("http://ns.adobe.com/xap/1.0/")):
+			for _, p := range xmpPointers {
+				if bytes.Contains(segment, p) {
+					return "XMP that refers to embedded media (" + string(p) + ")"
+				}
+			}
+		}
+		i += 2 + n
+		if marker == 0xDA {
+			i = skipEntropyCoded(data, i)
+		}
+	}
+	return ""
+}
+
+// skipEntropyCoded returns the position of the first marker after a scan's data: 0xFF followed by
+// anything but a stuffed 0x00, a fill byte or a restart marker.
+func skipEntropyCoded(data []byte, i int) int {
+	for i+1 < len(data) {
+		if data[i] == 0xFF {
+			next := data[i+1]
+			if next != 0x00 && next != 0xFF && (next < 0xD0 || next > 0xD7) {
+				return i
+			}
+		}
+		i++
+	}
+	return len(data)
 }
