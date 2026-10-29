@@ -1,5 +1,68 @@
 basePath: /
 definitions:
+  ScanResponse:
+    properties:
+      dirs_listed:
+        type: integer
+      dirs_seen:
+        type: integer
+      error:
+        type: string
+        x-nullable: true
+      files_changed:
+        type: integer
+      files_gone:
+        type: integer
+      files_new:
+        type: integer
+      files_seen:
+        type: integer
+      finished_at:
+        type: string
+        x-nullable: true
+      folder_id:
+        type: integer
+      id:
+        type: integer
+      kind:
+        enum:
+        - quick
+        - full
+        type: string
+      queued_at:
+        type: string
+      started_at:
+        type: string
+        x-nullable: true
+      status:
+        enum:
+        - queued
+        - running
+        - succeeded
+        - failed
+        type: string
+      trigger:
+        enum:
+        - schedule
+        - manual
+        type: string
+    required:
+    - dirs_listed
+    - dirs_seen
+    - error
+    - files_changed
+    - files_gone
+    - files_new
+    - files_seen
+    - finished_at
+    - folder_id
+    - id
+    - kind
+    - queued_at
+    - started_at
+    - status
+    - trigger
+    type: object
   app_internal_errs.ErrorResponse:
     properties:
       details:
@@ -341,11 +404,19 @@ definitions:
         type: integer
       id:
         type: integer
+      image_counts:
+        additionalProperties:
+          type: integer
+        type: object
       kind:
         allOf:
         - $ref: '#/definitions/internal_folders.Kind'
         enum:
         - local
+      last_scan:
+        allOf:
+        - $ref: '#/definitions/ScanResponse'
+        x-nullable: true
       name:
         type: string
       path:
@@ -361,7 +432,9 @@ definitions:
     - enabled
     - full_scan_interval_hours
     - id
+    - image_counts
     - kind
+    - last_scan
     - name
     - path
     - profile
@@ -434,6 +507,41 @@ definitions:
         type: boolean
     required:
     - enabled
+    type: object
+  internal_scans.Kind:
+    enum:
+    - quick
+    - full
+    type: string
+    x-enum-varnames:
+    - KindQuick
+    - KindFull
+  internal_scans.ScanDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/ScanResponse'
+    required:
+    - data
+    type: object
+  internal_scans.ScansResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/ScanResponse'
+        type: array
+    required:
+    - data
+    type: object
+  internal_scans.StartScanRequest:
+    properties:
+      kind:
+        allOf:
+        - $ref: '#/definitions/internal_scans.Kind'
+        enum:
+        - quick
+        - full
+    required:
+    - kind
     type: object
   internal_settings.SettingsDataResponse:
     properties:
@@ -924,7 +1032,8 @@ paths:
       - auth
   /api/v1/folders:
     get:
-      description: Every folder, ordered by name. Not paginated.
+      description: Every folder, ordered by name, with its latest scan and its image
+        counts by status. Not paginated.
       produces:
       - application/json
       responses:
@@ -1143,6 +1252,94 @@ paths:
       summary: Pause or resume folder
       tags:
       - folders
+  /api/v1/folders/{id}/scans:
+    get:
+      description: The latest 20 scans of the folder, newest first.
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_scans.ScansResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List folder scans
+      tags:
+      - scans
+    post:
+      consumes:
+      - application/json
+      description: Queue a quick or full scan. A quick scan lists the directories
+        whose modification time changed; a full scan lists every directory and also
+        finds files rewritten in place. 409 scans.in_progress while one is queued
+        or running, 409 folders.paused for a paused folder.
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Kind
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_scans.StartScanRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/internal_scans.ScanDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Scan folder now
+      tags:
+      - scans
   /api/v1/settings:
     get:
       produces:

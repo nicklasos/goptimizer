@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"app/internal"
-	"app/internal/db"
 	"app/internal/errs"
 	"app/internal/middleware"
+	"app/internal/scans"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,10 +20,15 @@ func NewHandler(service *FolderService) *Handler {
 	return &Handler{service: service}
 }
 
-func folderResponseFromDB(folder db.Folder) FolderResponse {
+func folderResponse(folder Folder) FolderResponse {
 	// The column is only ever written from a validated Profile.
 	var profile Profile
 	_ = json.Unmarshal([]byte(folder.Profile), &profile)
+	var lastScan *scans.ScanResponse
+	if folder.LastScan != nil {
+		scan := scans.ResponseFromDB(*folder.LastScan)
+		lastScan = &scan
+	}
 	return FolderResponse{
 		ID:                    folder.ID,
 		Name:                  folder.Name,
@@ -33,6 +38,8 @@ func folderResponseFromDB(folder db.Folder) FolderResponse {
 		ScanIntervalMinutes:   folder.ScanIntervalMinutes,
 		FullScanIntervalHours: folder.FullScanIntervalHours,
 		Profile:               profile,
+		LastScan:              lastScan,
+		ImageCounts:           folder.ImageCounts,
 		CreatedAt:             internal.FormatTime(folder.CreatedAt),
 		UpdatedAt:             internal.FormatTime(folder.UpdatedAt),
 	}
@@ -41,7 +48,7 @@ func folderResponseFromDB(folder db.Folder) FolderResponse {
 // ListFolders lists every folder
 //
 //	@Summary		List folders
-//	@Description	Every folder, ordered by name. Not paginated.
+//	@Description	Every folder, ordered by name, with its latest scan and its image counts by status. Not paginated.
 //	@Tags			folders
 //	@Produce		json
 //	@Security		BearerAuth
@@ -57,7 +64,7 @@ func (h *Handler) ListFolders(c *gin.Context) {
 	}
 	items := make([]FolderResponse, len(folders))
 	for i, folder := range folders {
-		items[i] = folderResponseFromDB(folder)
+		items[i] = folderResponse(folder)
 	}
 	c.JSON(http.StatusOK, FoldersResponse{Data: items})
 }
@@ -85,7 +92,7 @@ func (h *Handler) GetFolder(c *gin.Context) {
 		errs.RespondWithError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, FolderDataResponse{Data: folderResponseFromDB(*folder)})
+	c.JSON(http.StatusOK, FolderDataResponse{Data: folderResponse(*folder)})
 }
 
 // CreateFolder adds a folder
@@ -113,7 +120,7 @@ func (h *Handler) CreateFolder(c *gin.Context) {
 		errs.RespondWithError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, FolderDataResponse{Data: folderResponseFromDB(*folder)})
+	c.JSON(http.StatusOK, FolderDataResponse{Data: folderResponse(*folder)})
 }
 
 // UpdateFolder replaces a folder's settings
@@ -147,7 +154,7 @@ func (h *Handler) UpdateFolder(c *gin.Context) {
 		errs.RespondWithError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, FolderDataResponse{Data: folderResponseFromDB(*folder)})
+	c.JSON(http.StatusOK, FolderDataResponse{Data: folderResponse(*folder)})
 }
 
 // SetFolderEnabled pauses or resumes a folder
@@ -180,7 +187,7 @@ func (h *Handler) SetFolderEnabled(c *gin.Context) {
 		errs.RespondWithError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, FolderDataResponse{Data: folderResponseFromDB(*folder)})
+	c.JSON(http.StatusOK, FolderDataResponse{Data: folderResponse(*folder)})
 }
 
 // DeleteFolder removes a folder

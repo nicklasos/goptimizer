@@ -158,7 +158,9 @@ export interface InternalFoldersFolderResponse {
   enabled: boolean;
   full_scan_interval_hours: number;
   id: number;
+  image_counts: Record<string, number>;
   kind: "local";
+  last_scan?: ScanResponse | null;
   name: string;
   path: string;
   profile: InternalFoldersProfile;
@@ -203,6 +205,20 @@ export interface InternalPaginationMeta {
   last_page: number;
   per_page: number;
   total: number;
+}
+
+export type InternalScansKind = "quick" | "full";
+
+export interface InternalScansScanDataResponse {
+  data: ScanResponse;
+}
+
+export interface InternalScansScansResponse {
+  data: ScanResponse[];
+}
+
+export interface InternalScansStartScanRequest {
+  kind: "quick" | "full";
 }
 
 export interface InternalSettingsSettingsDataResponse {
@@ -273,4 +289,22 @@ export interface InternalUsersUserResponse {
   is_admin: boolean;
   name: string;
   updated_at: string;
+}
+
+export interface ScanResponse {
+  dirs_listed: number;
+  dirs_seen: number;
+  error?: string | null;
+  files_changed: number;
+  files_gone: number;
+  files_new: number;
+  files_seen: number;
+  finished_at?: string | null;
+  folder_id: number;
+  id: number;
+  kind: "quick" | "full";
+  queued_at: string;
+  started_at?: string | null;
+  status: "queued" | "running" | "succeeded" | "failed";
+  trigger: "schedule" | "manual";
 }

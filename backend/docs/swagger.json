@@ -545,7 +545,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Every folder, ordered by name. Not paginated.",
+                "description": "Every folder, ordered by name, with its latest scan and its image counts by status. Not paginated.",
                 "produces": [
                     "application/json"
                 ],
@@ -867,6 +867,138 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/folders/{id}/scans": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "The latest 20 scans of the folder, newest first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scans"
+                ],
+                "summary": "List folder scans",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Folder ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_scans.ScansResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Queue a quick or full scan. A quick scan lists the directories whose modification time changed; a full scan lists every directory and also finds files rewritten in place. 409 scans.in_progress while one is queued or running, 409 folders.paused for a paused folder.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "scans"
+                ],
+                "summary": "Scan folder now",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Folder ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Kind",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_scans.StartScanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/internal_scans.ScanDataResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/app_internal_errs.ErrorResponse"
                         }
@@ -1376,6 +1508,90 @@
         }
     },
     "definitions": {
+        "ScanResponse": {
+            "type": "object",
+            "required": [
+                "dirs_listed",
+                "dirs_seen",
+                "error",
+                "files_changed",
+                "files_gone",
+                "files_new",
+                "files_seen",
+                "finished_at",
+                "folder_id",
+                "id",
+                "kind",
+                "queued_at",
+                "started_at",
+                "status",
+                "trigger"
+            ],
+            "properties": {
+                "dirs_listed": {
+                    "type": "integer"
+                },
+                "dirs_seen": {
+                    "type": "integer"
+                },
+                "error": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "files_changed": {
+                    "type": "integer"
+                },
+                "files_gone": {
+                    "type": "integer"
+                },
+                "files_new": {
+                    "type": "integer"
+                },
+                "files_seen": {
+                    "type": "integer"
+                },
+                "finished_at": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "folder_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "quick",
+                        "full"
+                    ]
+                },
+                "queued_at": {
+                    "type": "string"
+                },
+                "started_at": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "queued",
+                        "running",
+                        "succeeded",
+                        "failed"
+                    ]
+                },
+                "trigger": {
+                    "type": "string",
+                    "enum": [
+                        "schedule",
+                        "manual"
+                    ]
+                }
+            }
+        },
         "app_internal_errs.ErrorResponse": {
             "type": "object",
             "required": [
@@ -1867,7 +2083,9 @@
                 "enabled",
                 "full_scan_interval_hours",
                 "id",
+                "image_counts",
                 "kind",
+                "last_scan",
                 "name",
                 "path",
                 "profile",
@@ -1887,6 +2105,12 @@
                 "id": {
                     "type": "integer"
                 },
+                "image_counts": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
                 "kind": {
                     "enum": [
                         "local"
@@ -1896,6 +2120,14 @@
                             "$ref": "#/definitions/internal_folders.Kind"
                         }
                     ]
+                },
+                "last_scan": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ScanResponse"
+                        }
+                    ],
+                    "x-nullable": true
                 },
                 "name": {
                     "type": "string"
@@ -2010,6 +2242,61 @@
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_scans.Kind": {
+            "type": "string",
+            "enum": [
+                "quick",
+                "full"
+            ],
+            "x-enum-varnames": [
+                "KindQuick",
+                "KindFull"
+            ]
+        },
+        "internal_scans.ScanDataResponse": {
+            "type": "object",
+            "required": [
+                "data"
+            ],
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/ScanResponse"
+                }
+            }
+        },
+        "internal_scans.ScansResponse": {
+            "type": "object",
+            "required": [
+                "data"
+            ],
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ScanResponse"
+                    }
+                }
+            }
+        },
+        "internal_scans.StartScanRequest": {
+            "type": "object",
+            "required": [
+                "kind"
+            ],
+            "properties": {
+                "kind": {
+                    "enum": [
+                        "quick",
+                        "full"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_scans.Kind"
+                        }
+                    ]
                 }
             }
         },

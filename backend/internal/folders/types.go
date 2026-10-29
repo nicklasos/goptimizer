@@ -1,6 +1,10 @@
 package folders
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"app/internal/scans"
+)
 
 const (
 	DefaultScanIntervalMinutes   = 60
@@ -38,18 +42,21 @@ type SetEnabledRequest struct {
 	Enabled *bool `json:"enabled" binding:"required"`
 }
 
-// FolderResponse is a folder with its parsed profile
+// FolderResponse is a folder with its parsed profile and the state of its image index:
+// last_scan is its latest scan of any status, image_counts the number of images per status.
 type FolderResponse struct {
-	ID                    int64   `json:"id"`
-	Name                  string  `json:"name"`
-	Kind                  Kind    `json:"kind" enums:"local"`
-	Path                  string  `json:"path"`
-	Enabled               bool    `json:"enabled"`
-	ScanIntervalMinutes   int64   `json:"scan_interval_minutes"`
-	FullScanIntervalHours int64   `json:"full_scan_interval_hours"`
-	Profile               Profile `json:"profile"`
-	CreatedAt             string  `json:"created_at"`
-	UpdatedAt             string  `json:"updated_at"`
+	ID                    int64               `json:"id"`
+	Name                  string              `json:"name"`
+	Kind                  Kind                `json:"kind" enums:"local"`
+	Path                  string              `json:"path"`
+	Enabled               bool                `json:"enabled"`
+	ScanIntervalMinutes   int64               `json:"scan_interval_minutes"`
+	FullScanIntervalHours int64               `json:"full_scan_interval_hours"`
+	Profile               Profile             `json:"profile"`
+	LastScan              *scans.ScanResponse `json:"last_scan" extensions:"x-nullable"`
+	ImageCounts           map[string]int64    `json:"image_counts"`
+	CreatedAt             string              `json:"created_at"`
+	UpdatedAt             string              `json:"updated_at"`
 }
 
 // FolderDataResponse wraps a folder

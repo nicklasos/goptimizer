@@ -22,23 +22,58 @@ func NewFolderService(queries *db.Queries) *FolderService {
 	return &FolderService{queries: queries}
 }
 
-func (s *FolderService) List(ctx context.Context) ([]db.Folder, error) {
+// Folder is a folder with the state of its index: its latest scan, nil before the first, and how
+// many images it has in each status.
+type Folder struct {
+	db.Folder
+	LastScan    *db.Scan
+	ImageCounts map[string]int64
+}
+
+// List returns every folder with its index state, in three queries whatever the number of folders.
+func (s *FolderService) List(ctx context.Context) ([]Folder, error) {
 	folders, err := s.queries.ListFolders(ctx)
 	if err != nil {
 		return nil, errs.WrapDatabaseError(err)
 	}
-	return folders, nil
+	latest, err := s.queries.ListLatestScans(ctx)
+	if err != nil {
+		return nil, errs.WrapDatabaseError(err)
+	}
+	counts, err := s.queries.CountImagesByStatus(ctx)
+	if err != nil {
+		return nil, errs.WrapDatabaseError(err)
+	}
+	scans := make(map[int64]*db.Scan, len(latest))
+	for i := range latest {
+		scans[latest[i].FolderID] = &latest[i]
+	}
+	byFolder := make(map[int64]map[string]int64, len(folders))
+	for _, c := range counts {
+		if byFolder[c.FolderID] == nil {
+			byFolder[c.FolderID] = map[string]int64{}
+		}
+		byFolder[c.FolderID][c.Status] = c.Count
+	}
+	result := make([]Folder, len(folders))
+	for i, folder := range folders {
+		result[i] = Folder{Folder: folder, LastScan: scans[folder.ID], ImageCounts: byFolder[folder.ID]}
+		if result[i].ImageCounts == nil {
+			result[i].ImageCounts = map[string]int64{}
+		}
+	}
+	return result, nil
 }
 
-func (s *FolderService) Get(ctx context.Context, id int64) (*db.Folder, error) {
+func (s *FolderService) Get(ctx context.Context, id int64) (*Folder, error) {
 	folder, err := s.queries.GetFolderByID(ctx, id)
 	if err != nil {
 		return nil, notFoundOr(err)
 	}
-	return &folder, nil
+	return s.withIndex(ctx, folder)
 }
 
-func (s *FolderService) Create(ctx context.Context, req FolderRequest) (*db.Folder, error) {
+func (s *FolderService) Create(ctx context.Context, req FolderRequest) (*Folder, error) {
 	params, err := s.parse(ctx, 0, req)
 	if err != nil {
 		return nil, err
@@ -47,10 +82,10 @@ func (s *FolderService) Create(ctx context.Context, req FolderRequest) (*db.Fold
 	if err != nil {
 		return nil, uniqueOr(err)
 	}
-	return &folder, nil
+	return s.withIndex(ctx, folder)
 }
 
-func (s *FolderService) Update(ctx context.Context, id int64, req FolderRequest) (*db.Folder, error) {
+func (s *FolderService) Update(ctx context.Context, id int64, req FolderRequest) (*Folder, error) {
 	if _, err := s.Get(ctx, id); err != nil {
 		return nil, err
 	}
@@ -70,15 +105,15 @@ func (s *FolderService) Update(ctx context.Context, id int64, req FolderRequest)
 	if err != nil {
 		return nil, uniqueOr(err)
 	}
-	return &folder, nil
+	return s.withIndex(ctx, folder)
 }
 
-func (s *FolderService) SetEnabled(ctx context.Context, id int64, enabled bool) (*db.Folder, error) {
+func (s *FolderService) SetEnabled(ctx context.Context, id int64, enabled bool) (*Folder, error) {
 	folder, err := s.queries.SetFolderEnabled(ctx, db.SetFolderEnabledParams{ID: id, Enabled: enabled})
 	if err != nil {
 		return nil, notFoundOr(err)
 	}
-	return &folder, nil
+	return s.withIndex(ctx, folder)
 }
 
 func (s *FolderService) Delete(ctx context.Context, id int64) error {
@@ -147,6 +182,25 @@ func (s *FolderService) overlapsAnother(ctx context.Context, id int64, path stri
 		}
 	}
 	return false, nil
+}
+
+func (s *FolderService) withIndex(ctx context.Context, folder db.Folder) (*Folder, error) {
+	result := Folder{Folder: folder, ImageCounts: map[string]int64{}}
+	scan, err := s.queries.GetLatestScanOfFolder(ctx, folder.ID)
+	switch {
+	case err == nil:
+		result.LastScan = &scan
+	case !errors.Is(err, sql.ErrNoRows):
+		return nil, errs.WrapDatabaseError(err)
+	}
+	counts, err := s.queries.CountImagesOfFolderByStatus(ctx, folder.ID)
+	if err != nil {
+		return nil, errs.WrapDatabaseError(err)
+	}
+	for _, c := range counts {
+		result.ImageCounts[c.Status] = c.Count
+	}
+	return &result, nil
 }
 
 func notFoundOr(err error) error {
