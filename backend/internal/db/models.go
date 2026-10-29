@@ -22,6 +22,25 @@ type Folder struct {
 	UpdatedAt             sql.NullTime `db:"updated_at" json:"updated_at"`
 }
 
+type Image struct {
+	ID            int64          `db:"id" json:"id"`
+	FolderID      int64          `db:"folder_id" json:"folder_id"`
+	Dir           string         `db:"dir" json:"dir"`
+	Name          string         `db:"name" json:"name"`
+	Format        string         `db:"format" json:"format"`
+	Size          int64          `db:"size" json:"size"`
+	MtimeNs       int64          `db:"mtime_ns" json:"mtime_ns"`
+	Status        string         `db:"status" json:"status"`
+	OriginalSize  sql.NullInt64  `db:"original_size" json:"original_size"`
+	OptimizedSize sql.NullInt64  `db:"optimized_size" json:"optimized_size"`
+	Mode          sql.NullString `db:"mode" json:"mode"`
+	Reason        sql.NullString `db:"reason" json:"reason"`
+	Attempts      int64          `db:"attempts" json:"attempts"`
+	DiscoveredAt  time.Time      `db:"discovered_at" json:"discovered_at"`
+	OptimizedAt   sql.NullTime   `db:"optimized_at" json:"optimized_at"`
+	UpdatedAt     time.Time      `db:"updated_at" json:"updated_at"`
+}
+
 type RefreshToken struct {
 	ID        int64        `db:"id" json:"id"`
 	UserID    int64        `db:"user_id" json:"user_id"`
@@ -29,6 +48,24 @@ type RefreshToken struct {
 	ExpiresAt time.Time    `db:"expires_at" json:"expires_at"`
 	CreatedAt sql.NullTime `db:"created_at" json:"created_at"`
 	IsRevoked sql.NullBool `db:"is_revoked" json:"is_revoked"`
+}
+
+type Scan struct {
+	ID           int64          `db:"id" json:"id"`
+	FolderID     int64          `db:"folder_id" json:"folder_id"`
+	Kind         string         `db:"kind" json:"kind"`
+	Trigger      string         `db:"trigger" json:"trigger"`
+	Status       string         `db:"status" json:"status"`
+	QueuedAt     time.Time      `db:"queued_at" json:"queued_at"`
+	StartedAt    sql.NullTime   `db:"started_at" json:"started_at"`
+	FinishedAt   sql.NullTime   `db:"finished_at" json:"finished_at"`
+	DirsSeen     int64          `db:"dirs_seen" json:"dirs_seen"`
+	DirsListed   int64          `db:"dirs_listed" json:"dirs_listed"`
+	FilesSeen    int64          `db:"files_seen" json:"files_seen"`
+	FilesNew     int64          `db:"files_new" json:"files_new"`
+	FilesChanged int64          `db:"files_changed" json:"files_changed"`
+	FilesGone    int64          `db:"files_gone" json:"files_gone"`
+	Error        sql.NullString `db:"error" json:"error"`
 }
 
 type Setting struct {

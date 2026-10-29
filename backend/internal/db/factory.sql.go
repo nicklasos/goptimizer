@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"time"
 )
 
 const factoryCreateFolder = `-- name: FactoryCreateFolder :one
@@ -50,6 +52,113 @@ func (q *Queries) FactoryCreateFolder(ctx context.Context, arg FactoryCreateFold
 		&i.Profile,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const factoryCreateImage = `-- name: FactoryCreateImage :one
+INSERT INTO images (folder_id, dir, name, format, size, mtime_ns, status, original_size, discovered_at, updated_at)
+VALUES (
+    ?1, ?2, ?3, ?4, ?5, ?6,
+    ?7, ?8, ?9, ?9
+)
+RETURNING id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at
+`
+
+type FactoryCreateImageParams struct {
+	FolderID     int64         `db:"folder_id" json:"folder_id"`
+	Dir          string        `db:"dir" json:"dir"`
+	Name         string        `db:"name" json:"name"`
+	Format       string        `db:"format" json:"format"`
+	Size         int64         `db:"size" json:"size"`
+	MtimeNs      int64         `db:"mtime_ns" json:"mtime_ns"`
+	Status       string        `db:"status" json:"status"`
+	OriginalSize sql.NullInt64 `db:"original_size" json:"original_size"`
+	Now          time.Time     `db:"now" json:"now"`
+}
+
+func (q *Queries) FactoryCreateImage(ctx context.Context, arg FactoryCreateImageParams) (Image, error) {
+	row := q.db.QueryRowContext(ctx, factoryCreateImage,
+		arg.FolderID,
+		arg.Dir,
+		arg.Name,
+		arg.Format,
+		arg.Size,
+		arg.MtimeNs,
+		arg.Status,
+		arg.OriginalSize,
+		arg.Now,
+	)
+	var i Image
+	err := row.Scan(
+		&i.ID,
+		&i.FolderID,
+		&i.Dir,
+		&i.Name,
+		&i.Format,
+		&i.Size,
+		&i.MtimeNs,
+		&i.Status,
+		&i.OriginalSize,
+		&i.OptimizedSize,
+		&i.Mode,
+		&i.Reason,
+		&i.Attempts,
+		&i.DiscoveredAt,
+		&i.OptimizedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const factoryCreateScan = `-- name: FactoryCreateScan :one
+INSERT INTO scans (folder_id, kind, trigger, status, queued_at, started_at, finished_at, error)
+VALUES (
+    ?1, ?2, ?3, ?4,
+    ?5, ?6, ?7, ?8
+)
+RETURNING id, folder_id, kind, "trigger", status, queued_at, started_at, finished_at, dirs_seen, dirs_listed, files_seen, files_new, files_changed, files_gone, error
+`
+
+type FactoryCreateScanParams struct {
+	FolderID   int64          `db:"folder_id" json:"folder_id"`
+	Kind       string         `db:"kind" json:"kind"`
+	Trigger    string         `db:"trigger" json:"trigger"`
+	Status     string         `db:"status" json:"status"`
+	QueuedAt   time.Time      `db:"queued_at" json:"queued_at"`
+	StartedAt  sql.NullTime   `db:"started_at" json:"started_at"`
+	FinishedAt sql.NullTime   `db:"finished_at" json:"finished_at"`
+	Error      sql.NullString `db:"error" json:"error"`
+}
+
+func (q *Queries) FactoryCreateScan(ctx context.Context, arg FactoryCreateScanParams) (Scan, error) {
+	row := q.db.QueryRowContext(ctx, factoryCreateScan,
+		arg.FolderID,
+		arg.Kind,
+		arg.Trigger,
+		arg.Status,
+		arg.QueuedAt,
+		arg.StartedAt,
+		arg.FinishedAt,
+		arg.Error,
+	)
+	var i Scan
+	err := row.Scan(
+		&i.ID,
+		&i.FolderID,
+		&i.Kind,
+		&i.Trigger,
+		&i.Status,
+		&i.QueuedAt,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.DirsSeen,
+		&i.DirsListed,
+		&i.FilesSeen,
+		&i.FilesNew,
+		&i.FilesChanged,
+		&i.FilesGone,
+		&i.Error,
 	)
 	return i, err
 }
