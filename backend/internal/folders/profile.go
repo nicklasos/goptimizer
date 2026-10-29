@@ -2,8 +2,11 @@ package folders
 
 import (
 	"encoding/json"
+	"slices"
 
 	"app/internal/errs"
+	"app/internal/images"
+	"app/internal/tools"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
@@ -14,6 +17,30 @@ const (
 	ModeLossy    Mode = "lossy"
 	ModeLossless Mode = "lossless"
 )
+
+// pipelines is the tool need that optimizes each format in each mode. tools.NeedSteps lists the
+// programs a need runs; internal/optimizer knows how to call each one.
+var pipelines = map[Mode]map[images.Format]tools.Need{
+	ModeLossy:    {images.FormatPNG: tools.NeedPNGLossy, images.FormatJPEG: tools.NeedJPEG, images.FormatGIF: tools.NeedGIF},
+	ModeLossless: {images.FormatPNG: tools.NeedPNGLossless, images.FormatJPEG: tools.NeedJPEG, images.FormatGIF: tools.NeedGIF},
+}
+
+// Need is what optimizes images of the format under this profile.
+func (p Profile) Need(format images.Format) tools.Need { return pipelines[p.Mode][format] }
+
+// MissingTools is every program this profile's pipelines need that is not installed. Images of a
+// format whose need is missing stay pending until it is.
+func (p Profile) MissingTools(report tools.Report) []string {
+	missing := []string{}
+	for _, format := range images.Formats {
+		for _, name := range report.Missing(p.Need(format)) {
+			if !slices.Contains(missing, name) {
+				missing = append(missing, name)
+			}
+		}
+	}
+	return missing
+}
 
 // Profile is how a folder's images are compressed and which of them are left alone.
 // It is stored as JSON in folders.profile.
@@ -37,8 +64,9 @@ func DefaultProfile() Profile {
 		PNGQualityMax:    80,
 		GIFLossy:         30,
 		MinSavingPercent: 3,
-		// A placeholder until phase 4 measures SSIM on real photos, screenshots and illustrations.
-		MinSSIM:       0.98,
+		// The lowest 64-pixel tile's SSIM, set from 88 real and generated images:
+		// docs/benchmarks/ssim.md.
+		MinSSIM:       0.85,
 		MinAgeMinutes: 5,
 		Excludes:      []string{},
 	}

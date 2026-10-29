@@ -10,8 +10,10 @@ import (
 	"app/config"
 	"app/internal/db"
 	"app/internal/logger"
+	"app/internal/optimizer"
 	"app/internal/scanner"
 	"app/internal/scheduler"
+	"app/internal/tools"
 )
 
 func main() {
@@ -56,13 +58,15 @@ func main() {
 	queries := db.New(database)
 	tx := db.NewTxRunner(database)
 
+	pool := optimizer.NewPool(queries, tx, appLogger, tools.NewReporter(tools.System{}, tools.ReportTTL), cfg.WorkDir)
 	deps := &scheduler.Dependencies{
 		Config:     cfg,
 		DB:         database,
 		Queries:    queries,
 		Tx:         tx,
 		Logger:     appLogger,
-		ScanWorker: scanner.NewWorker(queries, tx, appLogger),
+		ScanWorker: scanner.NewWorker(queries, tx, appLogger, pool.Wake),
+		Optimizer:  pool,
 	}
 
 	cronScheduler := scheduler.NewScheduler(deps)

@@ -43,7 +43,7 @@ func TestFolders_ProfileDefaults(t *testing.T) {
 			PNGQualityMax:    80,
 			GIFLossy:         30,
 			MinSavingPercent: 3,
-			MinSSIM:          0.98,
+			MinSSIM:          0.85,
 			MinAgeMinutes:    5,
 			Excludes:         []string{},
 		}, profile)
@@ -57,7 +57,7 @@ func TestFolders_ProfileDefaults(t *testing.T) {
 		assert.Equal(t, folders.ModeLossless, profile.Mode)
 		assert.Equal(t, []string{"cache/**"}, profile.Excludes)
 		assert.Equal(t, 82, profile.JPEGMaxQuality)
-		assert.Equal(t, 0.98, profile.MinSSIM)
+		assert.Equal(t, 0.85, profile.MinSSIM)
 	})
 
 	t.Run("a request without a profile or intervals gets the defaults", func(t *testing.T) {

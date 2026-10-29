@@ -10,6 +10,7 @@ import (
 	"app/config"
 	"app/internal/db"
 	"app/internal/logger"
+	"app/internal/optimizer"
 	"app/internal/scanner"
 	"app/internal/scans"
 	"app/internal/scheduler/jobs"
@@ -24,9 +25,10 @@ type Dependencies struct {
 	Queries *db.Queries
 	Tx      *db.TxRunner
 	Logger  *logger.Logger
-	// ScanWorker runs the queued scans. It starts and stops with the scheduler, so scans run in
-	// whichever process runs the schedule.
+	// ScanWorker runs the queued scans and Optimizer the pending images. They start and stop with
+	// the scheduler, so scans and optimizations run in whichever process runs the schedule.
 	ScanWorker *scanner.Worker
+	Optimizer  *optimizer.Pool
 }
 
 // Job represents a cron job that can be executed
@@ -69,8 +71,9 @@ func (s *Scheduler) RegisterJobs() error {
 	return nil
 }
 
-// Start starts the scan worker, which first fails the scans a previous process left running,
-// then begins executing all registered cron jobs
+// Start starts the scan worker, which first fails the scans a previous process left running, and
+// the optimizer, which first makes the images left optimizing pending again, then begins executing
+// all registered cron jobs
 func (s *Scheduler) Start() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -78,19 +81,25 @@ func (s *Scheduler) Start() error {
 	if err := s.deps.ScanWorker.Start(); err != nil {
 		return fmt.Errorf("failed to start the scan worker: %w", err)
 	}
+	if err := s.deps.Optimizer.Start(); err != nil {
+		s.deps.ScanWorker.Stop()
+		return fmt.Errorf("failed to start the optimizer: %w", err)
+	}
 	s.cron.Start()
 	s.deps.Logger.Info("Scheduler started", "jobs", len(s.cron.Entries()))
 	return nil
 }
 
 // Stop stops scheduling new runs and waits for the jobs already running to finish. Scans in
-// progress are stopped and recorded as failed.
+// progress are stopped and recorded as failed; images in progress go back to pending, unless their
+// swap had begun, which finishes.
 func (s *Scheduler) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	<-s.cron.Stop().Done()
 	s.deps.ScanWorker.Stop()
+	s.deps.Optimizer.Stop()
 	s.deps.Logger.Info("Scheduler stopped")
 }
 

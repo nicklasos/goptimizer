@@ -18,6 +18,7 @@ require (
 	github.com/swaggo/swag v1.16.2
 	github.com/wneessen/go-mail v0.8.1
 	golang.org/x/crypto v0.55.0
+	golang.org/x/sys v0.47.0
 	modernc.org/sqlite v1.59.0
 )
 
@@ -57,7 +58,6 @@ require (
 	github.com/ugorji/go/codec v1.3.0 // indirect
 	golang.org/x/arch v0.18.0 // indirect
 	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 	golang.org/x/tools v0.48.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect

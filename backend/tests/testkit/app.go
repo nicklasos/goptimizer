@@ -19,6 +19,7 @@ import (
 	"context"
 	"database/sql"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"app/internal/logger"
 	"app/internal/mail"
 	"app/internal/middleware"
+	"app/internal/optimizer"
 	"app/internal/scanner"
 	"app/internal/server"
 	"app/internal/tools"
@@ -76,6 +78,7 @@ type App struct {
 	server     *httptest.Server
 	scanWorker *scanner.Worker
 	toolReport *tools.Reporter
+	pool       *optimizer.Pool
 }
 
 // New starts a test. Pass configure functions to change the config:
@@ -99,6 +102,7 @@ func New(t *testing.T, configure ...func(*config.Config)) *App {
 		AllowRegistration: true,
 		AuthRateLimit:     true,
 		TrustedProxies:    []string{"127.0.0.1", "::1"},
+		WorkDir:           filepath.Join(t.TempDir(), "work"),
 	}
 	for _, fn := range configure {
 		fn(cfg)
@@ -188,7 +192,7 @@ func (a *App) baseURL() string {
 // queued, synchronously. A test of the start and stop calls Start and registers Stop.
 func (a *App) ScanWorker() *scanner.Worker {
 	if a.scanWorker == nil {
-		a.scanWorker = scanner.NewWorker(a.Queries, a.TxRunner, a.Logger)
+		a.scanWorker = scanner.NewWorker(a.Queries, a.TxRunner, a.Logger, a.Pool().Wake)
 	}
 	return a.scanWorker
 }
@@ -200,6 +204,18 @@ func (a *App) ToolReport() *tools.Reporter {
 		a.toolReport = tools.NewReporter(a.Tools, tools.ReportTTL)
 	}
 	return a.toolReport
+}
+
+// Pool is the optimizer's worker pool on the test's database, with a work dir of its own. It is
+// not started: Drain optimizes what is claimable, synchronously.
+func (a *App) Pool() *optimizer.Pool {
+	if a.pool == nil {
+		a.pool = optimizer.NewPool(a.Queries, a.TxRunner, a.Logger, a.ToolReport(), a.Config.WorkDir)
+		if err := optimizer.PrepareWorkDir(a.Config.WorkDir); err != nil {
+			a.t.Fatalf("testkit: work dir: %v", err)
+		}
+	}
+	return a.pool
 }
 
 // Actor is the user as a policy sees them, for calling a service directly.

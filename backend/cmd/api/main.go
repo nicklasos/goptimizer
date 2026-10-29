@@ -18,6 +18,7 @@ import (
 	"app/internal/db"
 	"app/internal/logger"
 	"app/internal/mail"
+	"app/internal/optimizer"
 	"app/internal/scanner"
 	"app/internal/scheduler"
 	"app/internal/server"
@@ -122,7 +123,8 @@ func main() {
 
 	// ENABLE_SCHEDULER=false when bin/goptimizer-cron runs the jobs and the scans as its own process instead
 	if cfg.EnableScheduler {
-		worker := scanner.NewWorker(app.Queries, app.Tx, logger)
+		pool := optimizer.NewPool(app.Queries, app.Tx, logger, app.ToolReport, cfg.WorkDir)
+		worker := scanner.NewWorker(app.Queries, app.Tx, logger, pool.Wake)
 		app.WakeScans = worker.Wake
 		cronScheduler := scheduler.NewScheduler(&scheduler.Dependencies{
 			Config:     cfg,
@@ -131,6 +133,7 @@ func main() {
 			Tx:         app.Tx,
 			Logger:     logger,
 			ScanWorker: worker,
+			Optimizer:  pool,
 		})
 		if err := cronScheduler.RegisterJobs(); err != nil {
 			logger.Error("Failed to register scheduler jobs", "error", err)

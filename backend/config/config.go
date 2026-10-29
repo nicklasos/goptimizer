@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -54,6 +55,9 @@ type Config struct {
 	CORSAllowedOrigins []string
 
 	EnableScheduler bool
+	// WorkDir is where the optimizer's tools work on copies of images. Only this process's user may
+	// use it; what is in it at start is deleted.
+	WorkDir string
 }
 
 // Load loads configuration from environment
@@ -97,6 +101,7 @@ func Load() (*Config, error) {
 		CORSAllowedOrigins: getEnvList("CORS_ALLOWED_ORIGINS"),
 
 		EnableScheduler: getEnvBool("ENABLE_SCHEDULER", true),
+		WorkDir:         getEnv("WORK_DIR", filepath.Join(os.TempDir(), "goptimizer-work")),
 	}, nil
 }
 

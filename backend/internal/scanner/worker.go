@@ -29,6 +29,8 @@ type Worker struct {
 	queries *db.Queries
 	scanner *Scanner
 	logger  *logger.Logger
+	// found is called after a scan that found new or changed images, to wake the optimizer.
+	found func()
 
 	running atomic.Int64
 	wake    chan struct{}
@@ -36,11 +38,12 @@ type Worker struct {
 	done    chan struct{}
 }
 
-func NewWorker(queries *db.Queries, tx *db.TxRunner, logger *logger.Logger) *Worker {
+func NewWorker(queries *db.Queries, tx *db.TxRunner, logger *logger.Logger, found func()) *Worker {
 	return &Worker{
 		queries: queries,
 		scanner: New(queries, tx, logger),
 		logger:  logger,
+		found:   found,
 		wake:    make(chan struct{}, 1),
 	}
 }
@@ -158,6 +161,9 @@ func (w *Worker) execute(ctx context.Context, scan db.Scan) {
 	counts, err := w.scanner.Scan(ctx, scan.FolderID, scans.Kind(scan.Kind), progress)
 	if err != nil && ctx.Err() != nil {
 		err = errors.New(scans.ErrInterruptedStop)
+	}
+	if counts.FilesNew+counts.FilesChanged > 0 && w.found != nil {
+		w.found()
 	}
 
 	finishCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), finishTimeout)
