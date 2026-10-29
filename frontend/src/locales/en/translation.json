@@ -353,7 +353,7 @@
       "extra_data": "The file holds data the tools would drop unnoticed, such as the video of a motion photo, an HDR gain map or content credentials.",
       "too_many_pixels": "Over 50 megapixels: too big to check safely in memory.",
       "too_large": "Over 256 MB.",
-      "unreadable": "The file could not be read, or it changed while it was read.",
+      "unreadable": "The file or its directory could not be read, or the image header could not be decoded.",
       "already_optimized": "Goptimizer wrote these bytes before, at another path: the file was moved or copied. An image is never compressed lossily twice, so it is left as it is.",
       "too_new": "Younger than the folder's minimum age, so it may still be uploading. It is taken once it is old enough.",
       "changed_while_optimizing": "The file changed while it was being optimized, so the result was thrown away. The new version is optimized next.",
