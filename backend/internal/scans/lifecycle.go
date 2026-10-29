@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"app/internal/db"
@@ -76,8 +77,12 @@ func Progress(ctx context.Context, q *db.Queries, id int64, c Counts) error {
 	})
 }
 
-// Finish moves a running scan to succeeded, or to failed when err is not nil. False when it was
-// not running, such as a scan that recovery already failed.
+// Keep is how many scans of a folder are kept. Finish deletes the older ones, except the latest
+// successful full scan, which Due needs: about four days of scans at the default intervals.
+const Keep = 100
+
+// Finish moves a running scan to succeeded, or to failed when err is not nil, and deletes what
+// Keep no longer covers. False when it was not running, such as a scan that recovery already failed.
 func Finish(ctx context.Context, q *db.Queries, id int64, c Counts, err error, at time.Time) (bool, error) {
 	params := db.FinishScanParams{
 		ID:           id,
@@ -94,8 +99,17 @@ func Finish(ctx context.Context, q *db.Queries, id int64, c Counts, err error, a
 		params.Status = string(StatusFailed)
 		params.Error = sql.NullString{String: err.Error(), Valid: true}
 	}
-	n, ferr := q.FinishScan(ctx, params)
-	return n == 1, ferr
+	folderID, ferr := q.FinishScan(ctx, params)
+	if errors.Is(ferr, sql.ErrNoRows) {
+		return false, nil
+	}
+	if ferr != nil {
+		return false, ferr
+	}
+	if _, err := q.PruneScans(ctx, db.PruneScansParams{FolderID: folderID, Keep: Keep}); err != nil {
+		return true, fmt.Errorf("delete the folder's old scans: %w", err)
+	}
+	return true, nil
 }
 
 // Recover fails every scan left running by a process that ended without finishing it. Only one

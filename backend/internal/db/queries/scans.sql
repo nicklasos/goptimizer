@@ -24,12 +24,28 @@ SET dirs_seen = sqlc.arg(dirs_seen), dirs_listed = sqlc.arg(dirs_listed), files_
     files_new = sqlc.arg(files_new), files_changed = sqlc.arg(files_changed), files_gone = sqlc.arg(files_gone)
 WHERE id = sqlc.arg(id) AND status = 'running';
 
--- name: FinishScan :execrows
+-- name: FinishScan :one
 UPDATE scans
 SET status = sqlc.arg(status), finished_at = sqlc.arg(finished_at), error = sqlc.arg(error),
     dirs_seen = sqlc.arg(dirs_seen), dirs_listed = sqlc.arg(dirs_listed), files_seen = sqlc.arg(files_seen),
     files_new = sqlc.arg(files_new), files_changed = sqlc.arg(files_changed), files_gone = sqlc.arg(files_gone)
-WHERE id = sqlc.arg(id) AND status = 'running';
+WHERE id = sqlc.arg(id) AND status = 'running'
+RETURNING folder_id;
+
+-- name: PruneScans :execrows
+-- Every scan of the folder older than its newest keep, except its latest successful full scan,
+-- which Due reads to space the full scans out. NULL from either subquery deletes nothing.
+DELETE FROM scans
+WHERE scans.folder_id = sqlc.arg(folder_id)
+  AND scans.id <= (
+    SELECT kept.id FROM scans AS kept WHERE kept.folder_id = sqlc.arg(folder_id)
+    ORDER BY kept.id DESC LIMIT 1 OFFSET sqlc.arg(keep)
+  )
+  AND scans.id IS NOT (
+    SELECT last_full.id FROM scans AS last_full
+    WHERE last_full.folder_id = sqlc.arg(folder_id) AND last_full.kind = 'full' AND last_full.status = 'succeeded'
+    ORDER BY last_full.id DESC LIMIT 1
+  );
 
 -- name: FailRunningScans :execrows
 UPDATE scans

@@ -110,12 +110,13 @@ func (q *Queries) FailRunningScans(ctx context.Context, arg FailRunningScansPara
 	return result.RowsAffected()
 }
 
-const finishScan = `-- name: FinishScan :execrows
+const finishScan = `-- name: FinishScan :one
 UPDATE scans
 SET status = ?1, finished_at = ?2, error = ?3,
     dirs_seen = ?4, dirs_listed = ?5, files_seen = ?6,
     files_new = ?7, files_changed = ?8, files_gone = ?9
 WHERE id = ?10 AND status = 'running'
+RETURNING folder_id
 `
 
 type FinishScanParams struct {
@@ -132,7 +133,7 @@ type FinishScanParams struct {
 }
 
 func (q *Queries) FinishScan(ctx context.Context, arg FinishScanParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, finishScan,
+	row := q.db.QueryRowContext(ctx, finishScan,
 		arg.Status,
 		arg.FinishedAt,
 		arg.Error,
@@ -144,10 +145,9 @@ func (q *Queries) FinishScan(ctx context.Context, arg FinishScanParams) (int64, 
 		arg.FilesGone,
 		arg.ID,
 	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+	var folder_id int64
+	err := row.Scan(&folder_id)
+	return folder_id, err
 }
 
 const getLatestScanOfFolder = `-- name: GetLatestScanOfFolder :one
@@ -303,6 +303,35 @@ func (q *Queries) ListScansOfFolder(ctx context.Context, arg ListScansOfFolderPa
 		return nil, err
 	}
 	return items, nil
+}
+
+const pruneScans = `-- name: PruneScans :execrows
+DELETE FROM scans
+WHERE scans.folder_id = ?1
+  AND scans.id <= (
+    SELECT kept.id FROM scans AS kept WHERE kept.folder_id = ?1
+    ORDER BY kept.id DESC LIMIT 1 OFFSET ?2
+  )
+  AND scans.id IS NOT (
+    SELECT last_full.id FROM scans AS last_full
+    WHERE last_full.folder_id = ?1 AND last_full.kind = 'full' AND last_full.status = 'succeeded'
+    ORDER BY last_full.id DESC LIMIT 1
+  )
+`
+
+type PruneScansParams struct {
+	FolderID int64 `db:"folder_id" json:"folder_id"`
+	Keep     int64 `db:"keep" json:"keep"`
+}
+
+// Every scan of the folder older than its newest keep, except its latest successful full scan,
+// which Due reads to space the full scans out. NULL from either subquery deletes nothing.
+func (q *Queries) PruneScans(ctx context.Context, arg PruneScansParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, pruneScans, arg.FolderID, arg.Keep)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updateScanProgress = `-- name: UpdateScanProgress :exec
