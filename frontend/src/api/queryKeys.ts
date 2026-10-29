@@ -14,6 +14,7 @@ export const qk = {
     list: () => ['folders', 'list'] as const,
     detail: (id: ID) => ['folders', 'detail', id] as const,
   },
+  dailySavings: (folderId?: ID) => ['daily-savings', folderId ?? 'all'] as const,
   settings: ['settings'] as const,
   tools: ['tools'] as const,
 }

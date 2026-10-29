@@ -9,7 +9,9 @@ import { enumLabel } from '@/shared/utils/enums'
 import { formatBytes, formatNumber, formatRelative } from '@/shared/utils/format'
 import type { Translate } from '@/shared/utils/serverErrors'
 import { FolderStats } from '../components/FolderStats'
+import { SavingsCard } from '../components/SavingsCard'
 import { useFolders, useSetFolderEnabled, useStartScan } from '../hooks'
+import { pollInterval } from '../overview'
 import { imagesIn, indexedImages, isScanActive } from '../scans'
 import { SCAN_KINDS, type Folder, type Scan, type ScanKind } from '../types'
 
@@ -51,6 +53,7 @@ export default function FoldersPage() {
           />
         </Card>
         <FolderStats folders={folders.data} testId="overview" />
+        <SavingsCard refetchInterval={pollInterval(folders.data)} testId="savings-chart" />
         <Row gutter={[token.margin, token.margin]}>
           {folders.data.map((folder) => (
             <Col key={folder.id} xs={24} md={12} xl={8}>

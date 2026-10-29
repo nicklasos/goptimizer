@@ -269,5 +269,14 @@
     "failed": "Failed",
     "optimizing": "Optimizing now",
     "scans": "Scans running"
+  },
+  "savings": {
+    "title": "Saved per day",
+    "total": "{{saved}} in the last 30 days",
+    "none": "Nothing saved in the last 30 days",
+    "saved": "{{saved}} saved",
+    "images_one": "{{images}} image optimized",
+    "images_other": "{{images}} images optimized",
+    "chartLabel": "Bytes saved on each of the last 30 days. Use the arrow keys to move between days."
   }
 }

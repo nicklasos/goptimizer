@@ -38,6 +38,15 @@ export function formatDateTime(value: string | null | undefined): string {
   return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+/** A UTC calendar day ("2026-10-29"): "29 Oct" short, "Thu, 29 Oct 2026" long. */
+export function formatDay(day: string, style: 'short' | 'long' = 'short'): string {
+  const date = new Date(`${day}T00:00:00Z`)
+  if (Number.isNaN(date.getTime())) return day
+  const options: Intl.DateTimeFormatOptions =
+    style === 'short' ? { day: 'numeric', month: 'short' } : { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }
+  return new Intl.DateTimeFormat(LOCALES[lang], { ...options, timeZone: 'UTC' }).format(date)
+}
+
 /** A byte count in binary units: "512 B", "1.5 KB", "3.2 MB". */
 export function formatBytes(bytes: number | null | undefined): string {
   if (missing(bytes)) return EMPTY

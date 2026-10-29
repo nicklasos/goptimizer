@@ -5,6 +5,7 @@ import {
   formatBytes,
   formatCount,
   formatDateTime,
+  formatDay,
   formatDuration,
   formatNumber,
   formatRelative,
@@ -39,6 +40,12 @@ describe('format', () => {
   it('formats a local timestamp', () => {
     assert.equal(formatDateTime('2026-09-11T14:05:00'), '11.09.2026 14:05')
     assert.equal(formatDateTime('not a date'), 'not a date')
+  })
+
+  it('formats a UTC calendar day whatever the local time zone', () => {
+    assert.equal(formatDay('2026-10-29'), '29 Oct')
+    assert.equal(formatDay('2026-10-29', 'long'), 'Thu, 29 Oct 2026')
+    assert.equal(formatDay('not a day'), 'not a day')
   })
 
   it('formats byte counts in binary units', () => {

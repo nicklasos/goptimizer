@@ -25,6 +25,18 @@ export function useFolder(id: ID | undefined, { live = false } = {}) {
   })
 }
 
+/**
+ * Bytes saved on each of the last 30 UTC days, by one folder or by all of them. Refetched at the
+ * rate of the folder data around it, since it grows as the same images are optimized.
+ */
+export function useDailySavings(folderId: ID | undefined, refetchInterval: number | false) {
+  return useQuery({
+    queryKey: qk.dailySavings(folderId),
+    queryFn: () => foldersApi.dailySavings(folderId),
+    refetchInterval,
+  })
+}
+
 /** Field errors are shown in the form, so the global error toast is silenced. */
 export function useSaveFolder() {
   const client = useQueryClient()
