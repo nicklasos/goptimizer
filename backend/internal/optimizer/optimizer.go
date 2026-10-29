@@ -167,9 +167,9 @@ func (o *Optimizer) Process(ctx context.Context, job Job) images.Outcome {
 		fallback, again, err := o.attempt(ctx, job, lossless, format, original)
 		switch {
 		case err != nil:
-			refused.Detail += "; lossless: " + err.Error()
+			refused.Detail += images.LosslessJoin + ReasonToolFailed + ": " + err.Error()
 		case again != nil:
-			refused.Detail += "; lossless: " + again.Error()
+			refused.Detail += images.LosslessJoin + again.Error()
 		default:
 			result, refused, profile = fallback, nil, lossless
 		}

@@ -532,7 +532,7 @@ func TestOptimizer_AFailingFallbackKeepsTheRefusal(t *testing.T) {
 	row := tr.imageWith("", "a.png", images.StatusKept)
 	row["attempts"] = 0
 	app.AssertDatabaseHas("images", row)
-	assert.Contains(t, reasonOfImage(t, app, tr, "a.png"), "lossless: oxipng")
+	assert.Contains(t, reasonOfImage(t, app, tr, "a.png"), "; lossless: tool_failed: oxipng")
 }
 
 // A file rewritten while the tools ran is pending again for the new content, even when the result
