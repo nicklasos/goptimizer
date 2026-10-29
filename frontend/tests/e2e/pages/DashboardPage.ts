@@ -1,7 +1,7 @@
 import { expect, type Locator } from '@playwright/test'
 import { BasePage } from './BasePage'
 
-/** `/`: the folder cards. */
+/** `/`: the overview tiles, the savings chart and the folder cards. */
 export class DashboardPage extends BasePage {
   get root(): Locator {
     return this.page.getByTestId('dashboard-page')
@@ -13,6 +13,25 @@ export class DashboardPage extends BasePage {
 
   folderCard(name: string): Locator {
     return this.page.locator('[data-testid^="folder-card-"]').filter({ hasText: name })
+  }
+
+  /** The card's name, a link to the folder's page. */
+  folderLink(card: Locator): Locator {
+    return card.locator('[data-testid^="folder-link-"]')
+  }
+
+  /** An overview tile; its figure across every folder is in `data-value`. */
+  overview(tile: 'saved' | 'optimized' | 'pending' | 'failed' | 'optimizing' | 'scans'): Locator {
+    return this.page.getByTestId(`overview-${tile}`)
+  }
+
+  /** The chart's day columns, oldest first. */
+  get savingsDays(): Locator {
+    return this.page.getByTestId('savings-chart').locator('[data-testid^="savings-day-"]')
+  }
+
+  get savingsTooltip(): Locator {
+    return this.page.getByTestId('savings-tooltip')
   }
 
   enabledSwitch(card: Locator): Locator {
