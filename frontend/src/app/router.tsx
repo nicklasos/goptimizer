@@ -13,6 +13,7 @@ const VerifyEmailPage = lazy(() => import('@/auth/VerifyEmailPage'))
 const ProfilePage = lazy(() => import('@/features/account/ProfilePage'))
 const FoldersPage = lazy(() => import('@/features/folders/pages/FoldersPage'))
 const FolderEditorPage = lazy(() => import('@/features/folders/pages/FolderEditorPage'))
+const FolderPage = lazy(() => import('@/features/folders/pages/FolderPage'))
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'))
 const UsersPage = lazy(() => import('@/features/users/pages/UsersPage'))
 const NotFoundPage = lazy(() => import('@/shared/components/NotFoundPage'))
@@ -42,6 +43,7 @@ export function AppRoutes() {
       <Route element={<AppShell />}>
         <Route index element={<FoldersPage />} />
         <Route path="folders/new" element={<FolderEditorPage />} />
+        <Route path="folders/:id" element={<FolderPage />} />
         <Route path="folders/:id/edit" element={<FolderEditorPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="profile" element={<ProfilePage />} />

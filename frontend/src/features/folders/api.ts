@@ -1,5 +1,5 @@
 import { api } from '@/api/client'
-import type { ID, MessageResponse } from '@/api/types'
+import type { ID, MessageResponse, PageParams } from '@/api/types'
 import type { DaySavings, Folder, FolderRequest, Scan, ScanKind } from './types'
 
 export const foldersApi = {
@@ -10,5 +10,6 @@ export const foldersApi = {
   setEnabled: (id: ID, enabled: boolean) => api.put<Folder>(`/folders/${id}/enabled`, { enabled }),
   remove: (id: ID) => api.del<MessageResponse>(`/folders/${id}`),
   startScan: (id: ID, kind: ScanKind) => api.post<Scan>(`/folders/${id}/scans`, { kind }),
+  scans: (id: ID, params: PageParams) => api.getPage<Scan>(`/folders/${id}/scans`, { query: params }),
   dailySavings: (folderId?: ID) => api.get<DaySavings[]>('/daily-savings', { query: { folder_id: folderId } }),
 }

@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
-import type { ID } from '@/api/types'
+import type { ID, PageParams } from '@/api/types'
 import { foldersApi } from './api'
 import { pollInterval } from './overview'
 import type { FolderRequest, ScanKind } from './types'
@@ -22,6 +22,16 @@ export function useFolder(id: ID | undefined, { live = false } = {}) {
     enabled: id != null,
     refetchInterval: (query) => live && pollInterval(query.state.data ? [query.state.data] : []),
     meta: { silent: true },
+  })
+}
+
+/** One page of a folder's scans, newest first, refetched at the rate of the folder around it. */
+export function useFolderScans(id: ID, params: PageParams, refetchInterval: number | false) {
+  return useQuery({
+    queryKey: qk.folders.scans(id, params),
+    queryFn: () => foldersApi.scans(id, params),
+    placeholderData: keepPreviousData,
+    refetchInterval,
   })
 }
 

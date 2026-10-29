@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { imagesIn, indexedImages, isScanActive } from './scans'
+import { imagesIn, indexedImages, isScanActive, scanDuration } from './scans'
 import type { Scan } from './types'
 
 const scan = (status: Scan['status']) => ({ status }) as Scan
@@ -35,5 +35,21 @@ describe('imagesIn', () => {
 
   it('is 0 for a status the folder has none of', () => {
     assert.equal(imagesIn({ image_counts: { pending: 3 } }, 'failed'), 0)
+  })
+})
+
+describe('scanDuration', () => {
+  const now = new Date('2026-10-29T12:00:00Z')
+
+  it('is finished minus started', () => {
+    assert.equal(scanDuration({ started_at: '2026-10-29T11:00:00Z', finished_at: '2026-10-29T11:00:12.5Z' }, now), 12_500)
+  })
+
+  it('is the time so far for a running scan', () => {
+    assert.equal(scanDuration({ started_at: '2026-10-29T11:59:00Z', finished_at: null }, now), 60_000)
+  })
+
+  it('is null for a scan still queued', () => {
+    assert.equal(scanDuration({ started_at: null, finished_at: null }, now), null)
   })
 })

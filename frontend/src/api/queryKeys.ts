@@ -13,6 +13,7 @@ export const qk = {
     all: ['folders'] as const,
     list: () => ['folders', 'list'] as const,
     detail: (id: ID) => ['folders', 'detail', id] as const,
+    scans: (id: ID, params: PageParams) => ['folders', 'detail', id, 'scans', params] as const,
   },
   dailySavings: (folderId?: ID) => ['daily-savings', folderId ?? 'all'] as const,
   settings: ['settings'] as const,

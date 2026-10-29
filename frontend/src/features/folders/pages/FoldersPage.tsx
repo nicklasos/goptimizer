@@ -1,19 +1,19 @@
-import { Alert, Button, Card, Col, Dropdown, Empty, Row, Space, Switch, Tag, Typography, theme } from 'antd'
-import { DownOutlined, EditOutlined, FolderOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons'
+import { Button, Card, Col, Empty, Row, Space, Typography, theme } from 'antd'
+import { FolderOutlined, PlusOutlined } from '@ant-design/icons'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/shared/components/PageHeader'
 import { PageError, PageLoading } from '@/shared/components/PageState'
 import { PageStack } from '@/shared/components/PageStack'
-import { enumLabel } from '@/shared/utils/enums'
-import { formatBytes, formatNumber, formatRelative } from '@/shared/utils/format'
-import type { Translate } from '@/shared/utils/serverErrors'
+import { formatBytes, formatNumber } from '@/shared/utils/format'
+import { FolderModeTag, MissingToolsAlert } from '../components/FolderSummary'
 import { FolderStats } from '../components/FolderStats'
 import { SavingsCard } from '../components/SavingsCard'
-import { useFolders, useSetFolderEnabled, useStartScan } from '../hooks'
+import { useFolderControls } from '../components/useFolderControls'
+import { useFolders } from '../hooks'
 import { pollInterval } from '../overview'
-import { imagesIn, indexedImages, isScanActive } from '../scans'
-import { SCAN_KINDS, type Folder, type Scan, type ScanKind } from '../types'
+import { imagesIn, indexedImages, scanLine } from '../scans'
+import type { Folder } from '../types'
 
 /** The dashboard: what every folder adds up to, then one card per folder. */
 export default function FoldersPage() {
@@ -71,66 +71,22 @@ export default function FoldersPage() {
 function FolderCard({ folder }: { folder: Folder }) {
   const { t } = useTranslation()
   const { token } = theme.useToken()
-  const navigate = useNavigate()
-  const setEnabled = useSetFolderEnabled()
-  const startScan = useStartScan()
-  const pending = setEnabled.isPending ? setEnabled.variables : undefined
-  const enabled = pending?.id === folder.id ? pending.enabled : folder.enabled
+  const { enabled, enabledSwitch, scanButton, editButton } = useFolderControls(folder, 'link')
   const scan = folder.last_scan
-  const scanning = isScanActive(scan)
   const images = indexedImages(folder)
   const optimized = imagesIn(folder, 'optimized')
   const failed = imagesIn(folder, 'failed')
-  const missingTools = folder.missing_tools
 
   return (
     <Card
       data-testid={`folder-card-${folder.id}`}
-      title={folder.name}
-      extra={
-        <Space size={token.marginXS}>
-          <Typography.Text type="secondary">{enabled ? t('folders.active') : t('folders.paused')}</Typography.Text>
-          <Switch
-            data-testid={`folder-enabled-switch-${folder.id}`}
-            checked={enabled}
-            loading={setEnabled.isPending}
-            onChange={(checked) => setEnabled.mutate({ id: folder.id, enabled: checked })}
-          />
-        </Space>
+      title={
+        <Link to={`/folders/${folder.id}`} data-testid={`folder-link-${folder.id}`}>
+          {folder.name}
+        </Link>
       }
-      actions={[
-        <Dropdown
-          key="scan"
-          trigger={['click']}
-          disabled={!enabled || scanning}
-          menu={{
-            items: SCAN_KINDS.map((kind) => ({
-              key: kind,
-              label: <span data-testid={`${kind}-scan-item-${folder.id}`}>{t(`folders.scan.${kind}`)}</span>,
-            })),
-            onClick: ({ key }) => startScan.mutate({ id: folder.id, kind: key as ScanKind }),
-          }}
-        >
-          <Button
-            type="link"
-            icon={<SyncOutlined spin={scanning} />}
-            loading={startScan.isPending}
-            disabled={!enabled || scanning}
-            data-testid={`scan-folder-button-${folder.id}`}
-          >
-            {t('folders.scan.now')} <DownOutlined />
-          </Button>
-        </Dropdown>,
-        <Button
-          key="edit"
-          type="link"
-          icon={<EditOutlined />}
-          data-testid={`edit-folder-button-${folder.id}`}
-          onClick={() => navigate(`/folders/${folder.id}/edit`)}
-        >
-          {t('common.edit')}
-        </Button>,
-      ]}
+      extra={enabledSwitch}
+      actions={[scanButton, editButton]}
       style={{ height: '100%', opacity: enabled ? 1 : 0.7 }}
     >
       <Space direction="vertical" size={token.marginSM} style={{ width: '100%' }}>
@@ -138,13 +94,7 @@ function FolderCard({ folder }: { folder: Folder }) {
           {folder.path}
         </Typography.Text>
         <Space size={token.marginXS} wrap>
-          <Tag
-            data-testid={`folder-mode-tag-${folder.id}`}
-            data-mode={folder.profile.mode}
-            color={folder.profile.mode === 'lossy' ? 'blue' : 'green'}
-          >
-            {enumLabel(t, 'mode', folder.profile.mode)}
-          </Tag>
+          <FolderModeTag folder={folder} />
           <Typography.Text type="secondary">
             {t('folders.scanSummary', { minutes: folder.scan_interval_minutes, hours: folder.full_scan_interval_hours })}
           </Typography.Text>
@@ -171,38 +121,8 @@ function FolderCard({ folder }: { folder: Folder }) {
             </Typography.Text>
           )}
         </Space>
-        {missingTools.length > 0 && (
-          <Alert
-            type="warning"
-            showIcon
-            data-testid={`folder-missing-tools-${folder.id}`}
-            message={t('folders.optimize.missingTools', { count: missingTools.length, tools: missingTools.join(', ') })}
-            action={
-              <Link to="/settings" data-testid={`folder-missing-tools-link-${folder.id}`}>
-                {t('folders.optimize.install')}
-              </Link>
-            }
-          />
-        )}
+        <MissingToolsAlert folder={folder} />
       </Space>
     </Card>
   )
-}
-
-/** The last scan in one line: queued, its progress, what it found, or why it failed. */
-function scanLine(t: Translate, scan: Scan | null | undefined): string {
-  if (!scan) return t('folders.scan.never')
-  const kind = enumLabel(t, 'scanKind', scan.kind)
-  const ago = formatRelative(scan.finished_at)
-  const files = { count: scan.files_seen, files: formatNumber(scan.files_seen, 0) }
-  switch (scan.status) {
-    case 'queued':
-      return t('folders.scan.queued', { kind })
-    case 'running':
-      return t('folders.scan.running', files)
-    case 'failed':
-      return t('folders.scan.failed', { kind, ago, error: scan.error })
-    case 'succeeded':
-      return scan.files_seen > 0 ? t('folders.scan.succeeded', { kind, ago, ...files }) : t('folders.scan.unchanged', { kind, ago })
-  }
 }
