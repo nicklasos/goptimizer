@@ -3,28 +3,19 @@ package settings
 import (
 	"context"
 	"runtime"
-	"time"
 
-	"app/internal/cache"
 	"app/internal/db"
 	"app/internal/errs"
 	"app/internal/tools"
 )
 
-const (
-	toolsCacheKey = "tools:report"
-	// Looking up five programs runs five processes; the page is opened rarely but reloaded in bursts.
-	toolsCacheTTL = 30 * time.Second
-)
-
 type SettingsService struct {
-	queries *db.Queries
-	cache   *cache.MemoryCache
-	finder  tools.Finder
+	queries  *db.Queries
+	reporter *tools.Reporter
 }
 
-func NewSettingsService(queries *db.Queries, cache *cache.MemoryCache, finder tools.Finder) *SettingsService {
-	return &SettingsService{queries: queries, cache: cache, finder: finder}
+func NewSettingsService(queries *db.Queries, reporter *tools.Reporter) *SettingsService {
+	return &SettingsService{queries: queries, reporter: reporter}
 }
 
 // EffectiveWorkers is how many images are optimized at once: the stored number, or for 0
@@ -56,14 +47,10 @@ func (s *SettingsService) Update(ctx context.Context, req SettingsRequest) (*db.
 	return &setting, nil
 }
 
-// Tools reports the image tools, from a cache of a few seconds unless refresh is set.
-func (s *SettingsService) Tools(ctx context.Context, refresh bool) (tools.Report, error) {
+// Tools reports the image tools, from the shared report unless refresh is set.
+func (s *SettingsService) Tools(ctx context.Context, refresh bool) tools.Report {
 	if refresh {
-		_ = s.cache.Forget(ctx, toolsCacheKey)
+		return s.reporter.Refresh(ctx)
 	}
-	var report tools.Report
-	err := s.cache.Remember(ctx, toolsCacheKey, toolsCacheTTL, func() (interface{}, error) {
-		return tools.Check(ctx, s.finder), nil
-	}, &report)
-	return report, err
+	return s.reporter.Report(ctx)
 }

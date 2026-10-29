@@ -75,6 +75,7 @@ type App struct {
 	t          *testing.T
 	server     *httptest.Server
 	scanWorker *scanner.Worker
+	toolReport *tools.Reporter
 }
 
 // New starts a test. Pass configure functions to change the config:
@@ -164,15 +165,16 @@ func (a *App) baseURL() string {
 	gin.SetMode(gin.TestMode)
 	router := server.NewEngine(a.Config, a.Logger)
 	server.RegisterRoutes(router, &internal.App{
-		Config:  a.Config,
-		DB:      a.DB,
-		Queries: a.Queries,
-		Tx:      a.TxRunner,
-		Cache:   a.Cache,
-		Logger:  a.Logger,
-		Mail:    a.Mail,
-		Tools:   a.Tools,
-		Api:     router.Group("/api/v1"),
+		Config:     a.Config,
+		DB:         a.DB,
+		Queries:    a.Queries,
+		Tx:         a.TxRunner,
+		Cache:      a.Cache,
+		Logger:     a.Logger,
+		Mail:       a.Mail,
+		Tools:      a.Tools,
+		ToolReport: a.ToolReport(),
+		Api:        router.Group("/api/v1"),
 
 		WakeScans: a.ScanWorker().Wake,
 	})
@@ -189,6 +191,15 @@ func (a *App) ScanWorker() *scanner.Worker {
 		a.scanWorker = scanner.NewWorker(a.Queries, a.TxRunner, a.Logger)
 	}
 	return a.scanWorker
+}
+
+// ToolReport is what app.Tools has installed, as the API and the optimizer see it. It is cached
+// like theirs: after changing app.Tools mid-test, call Refresh.
+func (a *App) ToolReport() *tools.Reporter {
+	if a.toolReport == nil {
+		a.toolReport = tools.NewReporter(a.Tools, tools.ReportTTL)
+	}
+	return a.toolReport
 }
 
 // Actor is the user as a policy sees them, for calling a service directly.

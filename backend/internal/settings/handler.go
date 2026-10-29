@@ -88,10 +88,5 @@ func (h *Handler) UpdateSettings(c *gin.Context) {
 //	@Failure		500		{object}	errs.ErrorResponse
 //	@Router			/api/v1/tools [get]
 func (h *Handler) GetTools(c *gin.Context) {
-	report, err := h.service.Tools(c.Request.Context(), c.Query("refresh") == "1")
-	if err != nil {
-		errs.RespondWithError(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, ToolsResponse{Data: report})
+	c.JSON(http.StatusOK, ToolsResponse{Data: h.service.Tools(c.Request.Context(), c.Query("refresh") == "1")})
 }

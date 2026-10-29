@@ -23,7 +23,9 @@ type App struct {
 	Logger  *logger.Logger
 	Mail    mail.Sender
 	Tools   tools.Finder
-	Api     *gin.RouterGroup
+	// ToolReport is what Tools finds, shared by the settings page, the folders and the optimizer.
+	ToolReport *tools.Reporter
+	Api        *gin.RouterGroup
 
 	// AuthMiddleware is set by auth.RegisterRoutes; modules registered after it use it to protect routes
 	AuthMiddleware gin.HandlerFunc

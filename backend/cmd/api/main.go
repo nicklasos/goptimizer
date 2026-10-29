@@ -118,6 +118,7 @@ func main() {
 		Tools:   tools.System{},
 		Api:     r.Group("/api/v1"),
 	}
+	app.ToolReport = tools.NewReporter(app.Tools, tools.ReportTTL)
 
 	// ENABLE_SCHEDULER=false when bin/goptimizer-cron runs the jobs and the scans as its own process instead
 	if cfg.EnableScheduler {
