@@ -96,6 +96,15 @@ The lowest score that looks the same in every case above it is 0.864. 0.85 sits 
 side of refusing: when in doubt the original stays. The aerial photo at 0.689 shows that the score
 also refuses results that look fine; for those the lossless fallback still applies.
 
+## Color, beside SSIM
+
+SSIM barely moves when a flat area changes color, and JPEG is scored on luma alone, so a re-encode
+that turned gray or swapped red and blue would pass it. A second check compares the average Y, Cb
+and Cr of every 32×32 block, composited like SSIM, and refuses a lossy result where one moves more
+than 12 levels. On this corpus no JPEG result moved a block more than 2.6 levels (the photos
+re-encoded at quality 25 moved up to 4.6), and no palette result that passed SSIM more than 10.4.
+The palette results that SSIM refused moved up to 29.
+
 ## What SSIM does not see
 
 Banding without dither scores high. A gray gradient from 0 to 255, 1024 pixels wide, cut to 32

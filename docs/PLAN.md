@@ -33,31 +33,31 @@ Phase 1 removes storages, plans, runs, restores, archives, self-backup and the s
 
 **Folder.** `id`, `name` (unique, case-insensitive), `kind` (`local`), `path` (absolute, must exist and be a readable directory, stored with symlinks resolved), `enabled`, `scan_interval_minutes` (quick scan, default 60, 5 to 10080), `full_scan_interval_hours` (default 24, 1 to 720), `profile` (JSON, below), `created_at`, `updated_at`. Two folders cannot overlap: a path inside another folder's path, or around it, is refused. `/` and the system directories (`/proc`, `/sys`, `/dev`, `/boot`, `/etc`, `/bin`, `/sbin`, `/usr`, `/lib*`, `/var/lib`) and everything inside them are refused too.
 
-**Profile.** `mode` (`lossy` or `lossless`), `jpeg_max_quality` (82), `png_quality_min` and `png_quality_max` (65 and 80, pngquant's `--quality 65-80`), `gif_lossy` (30), `min_saving_percent` (3: a smaller saving is not worth a rewrite), `min_ssim` (lossy only, 0.98 until phase 4 calibrates it), `min_age_minutes` (5: newer files may still be uploading), `excludes` (glob patterns with `**`, such as `cache/**`). A field left out of a request or of a stored profile takes its default.
+**Profile.** `mode` (`lossy` or `lossless`), `jpeg_max_quality` (82), `png_quality_min` and `png_quality_max` (65 and 80, pngquant's `--quality 65-80`), `gif_lossy` (30), `min_saving_percent` (3: a smaller saving is not worth a rewrite), `min_ssim` (lossy only, 0.85 on the worst 64-pixel tile, calibrated in phase 4: [docs/benchmarks/ssim.md](benchmarks/ssim.md)), `min_age_minutes` (5: newer files may still be uploading), `excludes` (glob patterns with `**`, such as `cache/**`). A field left out of a request or of a stored profile takes its default. A folder saved before phase 4 keeps the 0.98 it was saved with, which refuses most lossy results under the new score; edit the folder to take the new default.
 
 **Dir.** `folder_id`, `rel_path` (`''` is the folder's root), `mtime_ns`. One row per directory the scanner has listed. `mtime_ns = 0` means "list it again": a directory found but not listed yet, or one that changed within 2 seconds of its listing.
 
-**Image.** `id`, `folder_id`, `dir` (relative, `''` for the root), `name`, `format`, `size`, `mtime_ns`, `status`, `original_size`, `optimized_size`, `mode`, `reason`, `attempts`, `discovered_at`, `optimized_at`, `updated_at`. Unique on `(folder_id, dir, name)`, which also serves the scanner's lookups of one directory, and indexed on `(folder_id, status)`. `size` and `mtime_ns` are the file as it is on disk now, so after a swap they are the optimized file's. Phase 3 created every column, so phase 4 needs no migration for them. The format comes from the extension (`.png`, `.jpg`, `.jpeg`, `.gif`, in any case); the optimizer checks the content.
+**Image.** `id`, `folder_id`, `dir` (relative, `''` for the root), `name`, `format`, `size`, `mtime_ns`, `status`, `original_size`, `optimized_size`, `mode`, `reason`, `attempts`, `next_attempt_at`, `output_sha256`, `discovered_at`, `optimized_at`, `updated_at`. Unique on `(folder_id, dir, name)`, which also serves the scanner's lookups of one directory. `idx_images_claim` on `(folder_id, status, format, mtime_ns)` serves the claim and the counts by status. Partial indexes hold the images being optimized, the failed ones waiting for a retry and the rows with an output hash. `size` and `mtime_ns` are the file as it is on disk now, so after a swap they are the optimized file's. `original_size` is the size of the content before it was first optimized: a new upload at the same path is a new original. `output_sha256` is the SHA-256 of the bytes the optimizer last wrote to the file. `next_attempt_at` is when a failed image is tried again, empty once it has failed three times. `optimizer_outputs` holds the SHA-256 of every output the optimizer ever wrote, with no foreign key, so it outlives the image row, the folder and a new upload at the same path. The format comes from the extension (`.png`, `.jpg`, `.jpeg`, `.gif`, in any case); the optimizer checks the content.
 
-Image status is a state machine. Each step is one conditional UPDATE on the current status, as in Gogobackup's runner:
+Image status is a state machine. Each step is one conditional UPDATE on the current status, as in Gogobackup's runner. The scanner writes `pending` and `gone`. The optimizer moves `pending` to `optimizing` and `optimizing` to every other status, `gone` included when it finds the file missing; `internal/images/lifecycle.go` holds the transitions:
 
 | Status | Meaning |
 |---|---|
 | `pending` | New, or changed on disk since it was last handled |
 | `optimizing` | A worker claimed it |
 | `optimized` | Replaced with a smaller file that passed every check |
-| `kept` | Left as it was, with the reason: no saving, failed a check, already optimized |
-| `skipped` | Never tried, with the reason: APNG, symlink, hard link, unreadable, wrong content for its extension |
-| `failed` | A tool failed. Retried up to 3 times, then left for the admin |
+| `kept` | Left as it was, with the reason: no saving, failed a check (`ssim_below_threshold: 0.71, below 0.85, at 128,64` and the like), or `already_optimized`: bytes the optimizer wrote at another path |
+| `skipped` | Never tried, with the reason: APNG, symlink, hard link, not a regular file, a POSIX ACL, over 50 megapixels or 256 MB, data the tools would drop (`extra_data`), unreadable, wrong content for its extension |
+| `failed` | A tool crashed, exited with an error or ran past its time limit, the swap failed, or the process died while optimizing it. Tried again after 10 minutes and after an hour, then left for the admin |
 | `gone` | Deleted from disk |
 
-An image that is `optimized` or `kept` and then changes on disk goes back to `pending`. One that was optimized lossily keeps `mode = lossy`, and the optimizer never runs lossy compression on it again.
+An image that is `optimized` or `kept` and then changes on disk goes back to `pending`, with its attempts reset. An image is never compressed lossily twice, and the rule follows the bytes, not the path. Before the rename that swaps a result in, the optimizer stores the SHA-256 of the result in `output_sha256`. When it claims an image whose bytes hash to the row's own `output_sha256`, the file was only touched, and it goes back to `optimized` with its new mtime. When they hash to any other output in `optimizer_outputs`, the file was moved or copied, or its folder was deleted and added again, and it is `kept` as `already_optimized`. Nothing runs on it. Bytes with any other hash are a new upload, and lossy compression is allowed again.
 
 **Scan.** `id`, `folder_id`, `kind` (`quick` or `full`), `trigger` (`schedule` or `manual`), `status` (`queued`, `running`, `succeeded`, `failed`), `queued_at`, `started_at`, `finished_at`, `dirs_seen`, `dirs_listed`, `files_seen`, `files_new`, `files_changed`, `files_gone`, `error`. A partial unique index on `folder_id` where the status is `queued` or `running` allows one scan per folder at a time, whoever tries to queue a second one. Like an image, a scan moves by conditional UPDATEs: queued to running when the worker claims the oldest, running to succeeded or failed when it ends. The counts are written every 2 seconds while it runs. `files_new` includes files that came back after being gone.
 
-**Setting.** One row with typed columns, because the set of settings is closed: `workers` (optimizations at once; 0, the default, means the CPU count minus one, at least 1), `scan_workers` (scans at once, default 2), `nice` (tools run under `nice -n 10` and `ionice -c3` by default, so the projects on the server stay fast).
+**Setting.** One row with typed columns, because the set of settings is closed: `workers` (optimizations at once; 0, the default, means the CPU count minus one, at least 1), `scan_workers` (scans at once, default 2), `nice` (tools run under `nice -n 10`, and `ionice -c3` where it exists, which is Linux, by default, so the projects on the server stay fast).
 
-**Daily stat.** `folder_id`, `day`, `optimized`, `bytes_before`, `bytes_after`. One upsert per optimized image, read by the dashboard chart.
+**Daily stat.** `folder_id`, `day` (the UTC date), `optimized`, `bytes_before`, `bytes_after`. One upsert per swap, in the transaction that records it. The folder card's bytes saved is the sum of `bytes_before - bytes_after`, which also counts files deleted since; the dashboard chart reads the same rows.
 
 ## Finding new images in a huge folder
 
@@ -92,45 +92,53 @@ A scan that finds no change writes nothing: no image row, no directory row.
 - The scheduler ticks every minute. A folder that is due gets a queued scan, and the partial unique index makes a second one a no-op. An hourly tick during a scan that has run for three hours does nothing.
 - Due means: nothing within `scan_interval_minutes` of the start of the folder's last finished scan, succeeded or failed, so a folder that cannot be read is retried on its interval and not every minute. Past that, a full scan when the folder never had a successful one or the last started `full_scan_interval_hours` ago, and a quick scan otherwise. Times count whole minutes, because a scan starts a moment after its tick and an hourly scan would otherwise run every 61 minutes.
 - The scan worker lives in the process that runs the scheduler: the API, or `cmd/cron` with `ENABLE_SCHEDULER=false`. It runs at most `scan_workers` scans at once, reading the setting before each claim. It wakes at once for a scan the same process queued and polls every 5 seconds for the rest. A scan queued by hand (`POST /folders/:id/scans`) answers 409 while another is queued or running.
-- The worker pool is shared by all folders. It claims images round-robin across folders, so a first run of five million images does not starve a small folder that gets ten new uploads.
-- A paused folder queues no scans, a queued or running scan of it stops, and the pool skips its pending images.
+- Throughput, measured on 96 real and generated images on a busy 8-core laptop ([docs/benchmarks/optimizer.md](benchmarks/optimizer.md)): 0.85 images a second with 1 worker, 2.48 with 4, 2.75 with 7, median of 5 runs each. The tools take 92% of the CPU, and 7 workers kept 6.1 cores busy, so the rate is bound by cores; 4 workers already reach 90% of it because oxipng runs several threads.
+- The worker pool is shared by all folders and lives next to the scan worker, in the process that runs the scheduler. It runs at most `workers` images at once, reading the setting before each claim, wakes when a scan finds new or changed images, and polls every 5 seconds for the rest. A claim is one write transaction. Failed images whose retry time has come go back to `pending` first, at most every 30 seconds. Then the folders are ordered by how many of their images are in flight, fewest first, and round-robin from the folder after the one claimed from last among equals, so with one worker the folders take turns and with many no folder holds them all. The first folder with a claimable image gives its pending image with the oldest mtime, in a format whose tools are installed for its mode, at least `min_age_minutes` old: one seek on `idx_images_claim` per format. The conditional UPDATE `pending` to `optimizing` takes it. A first run of five million images does not starve a small folder that gets ten new uploads: the small one gets every other claim (`TestClaim_ABigFolderDoesNotStarveASmallOne`).
+- A paused folder queues no scans, a queued or running scan of it stops, and the pool skips its pending images. A folder whose pipeline needs a missing tool keeps its images of that format `pending`.
+- The scanner leaves a row that is `optimizing` alone: its file may be mid-swap. Every other write it makes applies only if the row still has the status, size and mtime the scan read, so a scan that read a row before a swap and writes after the optimizer recorded it changes nothing. The optimizer's lstat just before the rename catches a real change while it worked.
 
 ## Optimizing one image
 
-Formats are a registry: `map[Format]pipeline`, with a lossy and a lossless list of steps each. Adding WebP later is one entry.
+Formats are a registry. `folders.Profile.Need` maps each format and mode to a tool need, `tools.NeedSteps` lists the programs each need runs with their alternatives, and `internal/optimizer/pipelines.go` says how each program is called. Adding WebP later is one entry in each.
 
 | Format | Lossy | Lossless |
 |---|---|---|
-| PNG | `pngquant --quality 65-80 --skip-if-larger`, then `oxipng -o 3 --strip safe` | `oxipng -o 3 --strip safe`, or `optipng -o2` when oxipng is missing |
+| PNG | `pngquant --quality 65-80 --skip-if-larger`, then `oxipng -o 3 --keep display,gAMA,cHRM,eXIf` | `oxipng -o 3 --keep display,gAMA,cHRM,eXIf`, or `optipng -o2` when oxipng is missing |
 | JPEG | `jpegoptim --max 82 --all-progressive --strip-com --strip-xmp --strip-iptc` | the same without `--max` |
 | GIF | `gifsicle -O3 --lossy=30` | `gifsicle -O3` |
 
-`jpegoptim` keeps the EXIF block and the ICC profile on purpose. Without the orientation tag a phone photo shows sideways, and without its profile a Display P3 photo looks washed out.
+`jpegoptim` keeps the EXIF block and the ICC profile on purpose. Without the orientation tag a phone photo shows sideways, and without its profile a Display P3 photo looks washed out. oxipng's `--strip safe` drops `gAMA`, `cHRM` and `eXIf` (checked with oxipng 10.2.1), which change how a PNG shows or which way up, so the command keeps them. pngquant's exit codes 98 and 99 mean it left the file alone because the result would be larger or below the quality range; the next step runs on the copy as it is.
 
 The steps, for one claimed image:
 
-1. `lstat` the file. A symlink, a file with more than one hard link or a file younger than `min_age_minutes` is skipped or left for later.
-2. Read the first bytes to know the real format. A JPEG named `.png` is skipped. An APNG (a PNG with an `acTL` chunk) is skipped, because quantizing it would drop the animation.
-3. Copy it into `WORK_DIR` and run the steps there. No tool ever writes to the project's file.
-4. Verify the result (below). On any failure the image becomes `kept` with the reason, and the original is not touched.
-5. Copy the result into a temp file next to the original, `.goptimizer-<random>.tmp`, so the rename stays on one filesystem. Give it the original's owner, group, mode and mtime.
-6. `lstat` the original again. If its size or mtime changed while the tools ran, discard the result and set the image back to `pending`.
-7. Rename the temp file over the original. That is atomic: a web server reads either the old file or the new one.
-8. Record the new size and mtime, and add to the day's stats.
+1. Open the image's directory one component at a time from the folder's root, refusing a symlink at every level, and `lstat` the file in it. Every later step works on that directory descriptor, so a directory renamed or replaced by a symlink meanwhile cannot redirect the swap. A symlink, a file that is not regular, a file with more than one hard link, one with a POSIX ACL (the swap could not give the ACL to the new file, and it may be what lets the web server read it) or one over 256 MB is skipped. A file younger than `min_age_minutes` goes back to `pending` with its new mtime. A missing file is `gone`.
+2. Read the file, checking that what was opened is the file that was lstatted and that its size and mtime did not move during the read. Its first bytes give the real format: a JPEG named `.png` is skipped. An APNG (a PNG with an `acTL` chunk before `IDAT`) is skipped, because quantizing it would drop the animation. So is an image with data the tools drop and no check would notice: bytes after its end (where a motion photo keeps its video and an Ultra HDR photo its gain map), a JPEG MPF index, JUMBF box or XMP that points at a container, or a PNG `caBX` chunk (C2PA content credentials). The headers give the pixel count, frames included for a GIF, without decoding: over 50 million, the image is skipped, so a small file that claims to be huge cannot exhaust memory. 50 million covers the 48 MP photos of current phones; by arithmetic, verifying a JPEG that size holds about 650 MB while it runs (two decoded images and their 8-bit RGBA copies), not measured.
+3. If the bytes are the optimizer's own output (see Image), stop there. Otherwise copy them into a new directory under `WORK_DIR` and run the steps on that copy, each under a time limit (5 minutes) and in its own process group, so a hung tool and anything it started are killed. No tool ever gets the project's file. A tool that crashes, exits with an error or runs past its limit fails the image.
+4. Verify the result (below). A refused lossy result gets one more try: the lossless pipeline on the original, held to the lossless checks, recorded with `mode = lossless`. If that is refused too, or its tool fails, the image becomes `kept` with both reasons, and the original is not touched. A refusal or a failure is recorded against the file as it is now: if it changed while the tools ran, the image is `pending` for the new file instead.
+5. Store the result's SHA-256 in `optimizer_outputs` and the row's `output_sha256`. Create `.goptimizer-<random>.tmp` next to the original with `O_EXCL`, so the rename stays on one filesystem, write the result, give it the original's owner, group, mode, access time and modification time (the owner first, because `chown` clears setuid bits), and fsync it.
+6. `lstat` the original again, immediately before the rename, with nothing in between. If its size, mtime, inode, link count, inode change time, mode or owner changed while the tools ran, discard the result and set the image back to `pending` with the file as it is now. The inode change time catches a same-size rewrite that set the mtime back, and a `chmod` that would make the mode given to the result stale.
+7. Rename the temp file over the original. That is atomic: a web server reads either the old file or the new one. Fsync the directory. Any error after the temp file exists and before the rename removes the temp file.
+8. Record `optimized` with the new size, the original's mtime, `original_size`, `optimized_size`, `mode` and `optimized_at`, and add to the day's stats in the same transaction.
 
-A scan removes `.goptimizer-*.tmp` files older than an hour by their inode change time, which a crash between steps 5 and 7 can leave behind.
+A stop of the service kills the tools and sets the image back to `pending` without counting an attempt. Once a result has passed verification, the swap and its record finish even during a stop. An image still `optimizing` at the next start was being worked on when the process died: it is `pending` again with that attempt counted, or `failed` at the third, so an image that kills the process every time is not first in line after every restart. If the process died between the rename and the record, the bytes are recognized as the optimizer's output by the hash stored in step 5; that swap's `original_size` and daily stats are lost.
+
+A scan removes `.goptimizer-*.tmp` files older than an hour by their inode change time, which a crash between steps 5 and 7 can leave behind. At its start the optimizer deletes the `job-*` directories a previous run left in `WORK_DIR` (by default a directory under the OS temp dir named after the database), and refuses to start when the directory is not its own or other users can use it.
 
 The original mtime is kept so tools that sort a project's files by date still see the upload date. nginx's ETag includes the size, so caches still notice the new file.
 
+**Known risk.** Between the `lstat` of step 6 and the rename of step 7, another process can still write the original, and that write is lost when the rename replaces the file. Closing the window needs a lock every writer of the project takes, which a web application does not. The window is two system calls on an open directory descriptor; `min_age_minutes` keeps uploads in progress out of it.
+
 ## Verification
 
-Every result has to pass all of these before it replaces a file:
+Every result has to pass all of these before it replaces a file, cheapest first (`internal/verify`):
 
-- It is smaller by at least `min_saving_percent`.
-- It decodes with Go's own decoders (`image/png`, `image/jpeg`, `image/gif`) in the same format, with the same width and height, and a GIF has the same number of frames.
-- Lossless: every pixel equals the original's. These tools are lossless by design, so this rejects only a bug.
-- Lossy: SSIM against the original is at least `min_ssim`. That catches the case where quantization bands a gradient. The default is set in phase 4 from a sample of real photos, screenshots and illustrations.
-- A lossy result for an image already optimized lossily is never produced.
+- It is smaller by at least `min_saving_percent`, measured on the final bytes.
+- Its first bytes say the same format.
+- The metadata browsers render with is kept. A PNG keeps each of `cICP`, `iCCP`, `sRGB`, `gAMA`, `cHRM` and `pHYs` it has, with the same content (`iCCP` compared by its decompressed profile), adds no `cICP` or `iCCP`, and keeps the orientation of its `eXIf`. A JPEG keeps its ICC profile byte for byte and its EXIF orientation.
+- It decodes with Go's own decoders (`image/png`, `image/jpeg`, `image/gif`), with the same width and height, read from the headers before the full decode. A GIF has the same number of frames, the same loop count and the same frame delays, and its frames compare after composing them by their disposal methods from a transparent start, as a browser shows them: optimizers crop frames to what changed.
+- Lossless: every pixel equals the original's as 16-bit non-premultiplied RGBA, so a palette in place of truecolor is no difference. A fully transparent pixel equals any other, whatever color hides under it.
+- Lossy: no 32×32 block's average Y, Cb or Cr moved more than 12 levels, which catches a result that turned gray or changed a flat color, which SSIM barely sees. And the SSIM of the lowest 64×64 tile is at least `min_ssim`. SSIM is computed in pure Go over 8×8 windows at every position, at full resolution. PNG and GIF are scored on red, green and blue composited on black and, when either image has transparency, on white, taking the worst, so a pixel that changes its alpha is a difference. JPEG is scored on luma, because a re-encode moves the color channels at the scale of chroma subsampling, which the eye does not resolve. The tile score catches a banded shadow or a shifted tint that the mean over the image hides. The default of 0.85 comes from 96 real and generated images ([docs/benchmarks/ssim.md](benchmarks/ssim.md)): results with visible damage scored 0.793 or less.
+- Bytes the optimizer wrote itself are never compressed again (see Image).
 
 ## Settings page
 
@@ -146,6 +154,7 @@ Same three playbooks as Gogobackup, with these changes:
 - Supervisor runs the API as root, and the API listens on `127.0.0.1` only. Today it binds every interface.
 - `install.yml` installs the app on a server that already has Go, Node.js, nginx and supervisor, and installs the image tools too, because the app cannot run without them.
 - `deploy.yml` and `make deploy` pull, build, migrate, restart and wait for `/health`.
+- The service's environment sets `WORK_DIR` to a directory of the app's own, such as `/var/lib/goptimizer/work`. The default is under the OS temp dir, where another local user can create it first; the optimizer then refuses to start, and so does the API.
 
 ## Open decisions
 
@@ -153,7 +162,13 @@ Same three playbooks as Gogobackup, with these changes:
 - An exclude added to a profile takes effect at the next scan for the directories it matches, whose images become `gone`. For files it matches in a directory that did not change, it takes effect at the next full scan.
 - A folder whose root is a mount point lists as an empty directory while the disk is unmounted, so a scan then marks all its images `gone`. They come back `pending` with their history when the disk is back, and an image optimized lossily is still never compressed lossily twice. Refusing a scan whose root changed device is the guard if this turns out to matter.
 - A directory the scanner cannot read for any reason but "it is gone" fails the whole scan with that error, and the next scan tries again. Running as root makes this rare; a scan that skips such a directory and reports it is the alternative if it is not.
-- The scanner and the optimizer will both write an image row. Phase 4 decides how a scan that finds a file mid-swap, between the rename and the recorded size, keeps the row from going back to `pending`.
+- pngquant 3.0.3 on macOS strips metadata by default, so on a Mac its results for PNGs with an ICC profile or `gAMA` are refused and the lossless pipeline runs instead. On Linux it does not strip by default; what it keeps there was not measured. oxipng replaces a standard sRGB ICC profile with an `sRGB` chunk and drops `iCCP` from images it reduces to gray; the check refuses both, which costs savings on those PNGs. Accepting an `sRGB` chunk in place of an sRGB profile is the refinement if it matters.
+- `gifsicle -O3` merges identical consecutive frames and adds up their delays. The check counts frames, so it refuses those results (2 of 13 GIFs in the calibration corpus). Comparing the frames as shown over time would accept them.
+- SSIM does not see banding without dither: a gray gradient cut to 32 levels scores 0.917 on its worst tile, above 0.85. pngquant did not produce that case on the calibration corpus, because its `--quality` floor refuses to quantize smooth gradients, but another tool could.
+- A lossy result that is refused falls back to the lossless pipeline in the same claim. On the calibration corpus that recovered 22% of the bytes of the PNGs whose lossy result was refused, which would otherwise be left as they were.
+- The optimizer's memory grows with the image: about 13 bytes per pixel for a JPEG at the 50 MP limit, times the number of workers. A server with little memory and many workers should set fewer workers; a limit by memory is the alternative.
+- The swap gives the result the original's owner, group, mode and times, but not its other extended attributes or file flags. A file with a POSIX ACL is skipped for that reason; an SELinux label is the new file's default for its directory, which is usually the same. Skipping only ACLs was checked on macOS, where files have no POSIX ACL; on Linux it is not tested.
+- A lossless result compares fully transparent pixels as equal whatever color hides under them, as every color model with alpha does. A texture that a program reads without premultiplied alpha could show the difference at its edges.
 
 - The web UI runs as root. Binding to `127.0.0.1` behind nginx keeps it off the network. An option for later is a root worker process plus an unprivileged API, split the way Gogobackup's `cmd/cron` is.
 - Email when a folder's images start failing, through the existing mail module. Not in v1 unless asked.

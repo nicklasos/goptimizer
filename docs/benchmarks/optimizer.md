@@ -46,8 +46,9 @@ servers), and 21 at the end, when a test run of the same session overlapped the 
 | 7 | 5 | 2.75 | 2.52 to 2.81 | 35.0 s | 211 to 215 s | 6.10 |
 
 Every run ended the same way, which is the check that every run did all the work: 78 images
-optimized, 13 kept, 5 skipped, 69,782,498 bytes before and 52,028,565 after (25% saved), and no
-image failed.
+optimized, 13 kept, 5 skipped (four GIFs over the pixel limit, one GIF Go cannot decode),
+69,782,498 bytes before and 52,028,565 after (25% saved), and no image failed. The end-to-end run
+of the built API on the same corpus ended the same way, after the review fixes.
 
 ## What limits it
 
@@ -62,8 +63,8 @@ with 1 worker to 213 s with 7.
 
 **Where the time goes.** With one worker and the debug log, the slowest images are the large PNGs
 whose lossy result was refused and which then went through the lossless pipeline as well: 7.4 s for
-a 1.9 MB card, 4.7 to 5.9 s for the 1600-pixel desktop pictures. No GIF took more than 3.4 s,
-the 6 MB ones included. The longest single image is a fifth of the 7-worker run, so the order of the claims does not
+a 1.9 MB card, 4.7 to 5.9 s for the 1600-pixel desktop pictures. No GIF took more than 3.4 s; the
+four largest were skipped, as over 50 million pixels across their frames. The longest single image is a fifth of the 7-worker run, so the order of the claims does not
 set the wall time.
 
 **What it is not.** The claim is one write transaction of a few index seeks; on this corpus it runs

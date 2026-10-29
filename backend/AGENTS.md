@@ -20,6 +20,8 @@ backend/
 ├── cmd/api/main.go              # Main application entry (--port, --test-db)
 ├── cmd/cli/main.go              # CLI (migrate, create-user, seed, mail, smoke test); global --test flag
 ├── cmd/scanbench/main.go        # Measures the scanner on a synthetic tree of a million files
+├── cmd/ssimcal/main.go          # Scores the lossy pipelines on a corpus, to set min_ssim
+├── cmd/optbench/main.go         # Measures the optimizer's throughput on a corpus
 ├── config/
 │   ├── config.go                # Env → Config
 │   └── testdb.go                # Test-database safety guard
@@ -33,7 +35,9 @@ backend/
 │   │   └── types.go             # Request/response types
 │   ├── users/                   # User management (admins only) and the lockout rule
 │   ├── folders/                 # Folders to keep optimized: kind registry (kinds.go), path rules, Profile
-│   ├── images/                  # Image status and format (the extension registry)
+│   ├── images/                  # Image status and format (the extension registry), the claim and the transitions
+│   ├── optimizer/               # The worker pool and the steps for one image: pipelines, tools, swap
+│   ├── verify/                  # Whether a result may replace its original: metadata, pixels, SSIM
 │   ├── scans/                   # Scan kinds and states, the transitions, Due, /folders/:id/scans
 │   ├── scanner/                 # Scanner (lists a folder into dirs and images) and the scan Worker
 │   ├── settings/                # The settings page: the one settings row, and GET /tools
@@ -113,23 +117,33 @@ When adding new modules:
 - `folders.Profile` is stored as JSON in `folders.profile`. Decoding starts from `DefaultProfile()`, so a field missing from a request or an older row gets its default. Validation is `Profile.Validate()`; failures are field errors under `profile.<field>`.
 - Folder rule failures are `errs.Fields` with keys from `internal/errs/keys.go` (`folders.path_overlaps` and the rest), so the admin panel shows them under the field.
 - `settings` has exactly one row (`id = 1`), seeded by the migration. `workers = 0` means auto: `settings.EffectiveWorkers`.
-- The image tools are a table in `internal/tools/images.go`: `Programs` (name, purpose, apt package, brew formula) and `NeedSteps` (what PNG lossy, PNG lossless, JPEG and GIF run, with alternatives such as optipng for oxipng). `tools.Check(ctx, finder)` builds the report; `GET /tools` caches it for 30 s unless `?refresh=1`. It is served from `internal/settings` because `tools` cannot import `internal`.
+- The image tools are a table in `internal/tools/images.go`: `Programs` (name, purpose, apt package, brew formula) and `NeedSteps` (what PNG lossy, PNG lossless, JPEG and GIF run, with alternatives such as optipng for oxipng). `tools.Check(ctx, finder)` builds the report; `app.ToolReport` (`tools.Reporter`) keeps it for 30 s and is shared by `GET /tools` (which refreshes it on `?refresh=1`), the folder responses and the optimizer. `GET /tools` is served from `internal/settings` because `tools` cannot import `internal`.
+- `folders.Profile.Need(format)` is which need optimizes a format in the folder's mode; `Profile.MissingTools(report)` is what folder responses show as `missing_tools`.
 - Tests get `app.Tools`, a `tools.Fake` with every image tool installed (`testkit.FakeToolVersions`); `Remove` one to test a missing tool.
 
 ## Scans and the image index
-- `images` has one row per image file (`folder_id`, `dir`, `name`), `dirs` one row per directory a scan listed with its `mtime_ns`, and `scans` one row per scan. `internal/images` holds the image `Status` and `Format` (`FormatOf` decides by extension which files are indexed); the scanner writes only `pending` and `gone`.
+- `images` has one row per image file (`folder_id`, `dir`, `name`), `dirs` one row per directory a scan listed with its `mtime_ns`, and `scans` one row per scan. `internal/images` holds the image `Status` and `Format` (`FormatOf` decides by extension which files are indexed). The scanner writes only `pending` and `gone`, never touches a row that is `optimizing`, and each of its writes applies only if the row still has the status, size and mtime it read.
 - A scan's `Kind`, `Trigger` and `Status` live in `internal/scans`. Each transition is one conditional UPDATE in `lifecycle.go`: `ClaimNext` (queued to running, oldest first), `Finish` (running to succeeded or failed), `Recover` (running to failed at the worker's start). `idx_scans_active` allows one queued or running scan per folder; a second insert is `scans.ErrScanInProgress` (409), whoever tries.
 - `scans.Due` decides what the schedule queues. Nothing within `scan_interval_minutes` of the last finished scan, failed ones included; then a full scan if none succeeded or the last is `full_scan_interval_hours` old, else a quick one. The `enqueue-scans` job runs it every minute.
 - `scanner.Scanner.Scan` runs one scan. Both kinds go through one step per directory (`list`), which reconciles its entries with its rows: new files become pending, changed ones pending again with their history kept, missing ones gone, and back-again ones pending. A full scan lists every directory; a quick scan lstats the known ones and lists the changed and new ones. The rules that are easy to break, each with a test in `tests/integration/scanner_test.go`: a directory changed within 2 s of its listing is stored with mtime 0 so it is listed again; a new directory's row is written before its parent's mtime, so a stopped scan converges; a directory that is gone, excluded, a symlink or on another filesystem takes every image under it to gone; symlinks are never followed; writes go out 1,000 per transaction, in the order they were queued.
 - `scanner.Worker` runs queued scans, at most `settings.scan_workers` at once (read before each claim). The scheduler starts and stops it (`scheduler.Dependencies.ScanWorker`), so scans run in the API, or in `cmd/cron` with `ENABLE_SCHEDULER=false`. `app.WakeScans` wakes it when the API queues a scan; it is nil when cmd/cron runs the worker, which polls every 5 s.
-- Folder responses carry `last_scan` and `image_counts`; the list reads them for every folder in one query each.
+- Folder responses carry `last_scan`, `image_counts`, `bytes_saved` (summed from `daily_stats`) and `missing_tools`; the list reads them for every folder in one query each.
 - Tests: `scanner.New(...)` with `Now` set drives the rules on a real temp directory (`newTree` in `scanner_test.go`). `app.ScanWorker()` is an unstarted worker: `Drain` runs what is queued, synchronously; `Start` and `Stop` test the lifecycle.
 - `go run ./cmd/scanbench` measures the scanner on a million files; the results are in `../docs/benchmarks/scanner.md`.
+
+## The optimizer
+- `optimizer.Pool` claims pending images and optimizes them, at most `settings.workers` at once (read before each claim). The scheduler starts and stops it next to the scan worker (`scheduler.Dependencies.Optimizer`); the scan worker wakes it after a scan that found new or changed images, and it polls every 5 s. At its start it makes `optimizing` images `pending` again and empties the work dir (`WORK_DIR`, or `config.OptimizerWorkDir()`, named after the database).
+- `images.Claim` is the claim: one write transaction, folders ordered by `images.Order` (fewest in flight, then round-robin after the folder claimed from last), the oldest claimable image of the first folder that has one, then one conditional UPDATE. `images.Record` writes how a claim ended, one conditional UPDATE on `optimizing` per outcome, with the day's `daily_stats` upsert for a swap. `images.RetryAt` is the backoff.
+- `optimizer.Optimizer.Process` is one image, step by step as in `docs/PLAN.md`; it returns an `images.Outcome` and writes nothing but the output hash before a swap. `files.go` does the I/O on a directory descriptor (`openDir`, `readFile`, `swap`). `pipelines.go` says how each program in `tools.NeedSteps` is called; a new program needs an entry there.
+- `verify.Compare` is every check a result must pass; `verify.SSIM`, `verify.SSIMLuma`, `verify.ColorShift` and `verify.Similarity` are the scores, which `cmd/ssimcal` reports for a corpus (`../docs/benchmarks/ssim.md`). `verify.Extra` finds data the tools would drop, such as a motion photo's video; those images are skipped.
+- Every output hash also goes into `optimizer_outputs`, which has no foreign key: it outlives rows and folders, so "never lossy twice" holds after a folder is deleted and added again.
+- Tests: `app.Pool()` is an unstarted pool with its own work dir: `Drain` optimizes what is claimable, synchronously, and `Claim` takes one image without optimizing it. `useFakeTools` (in `tests/integration/optimizer_helpers_test.go`) installs a shell script for every program, `useRealTools` the programs on PATH, skipping the test when one is missing. `assertUntouched`, `assertSwapped` and `assertNoTempFiles` check a file after a run.
+- `go run ./cmd/optbench -corpus <dir>` measures images per second for several worker counts (`../docs/benchmarks/optimizer.md`).
 
 ## Factories and seed data
 - `internal/factory` creates records with defaults. In a test it is `app.Create`: `app.Create.User()`, `app.Create.User(factory.Admin(), factory.Unverified())`. Elsewhere: `factory.New(t, conn)`.
 - Every new table gets a factory. Factories write through the `Factory*` queries in `internal/db/queries/factory.sql`; tests still never write `INSERT` statements by hand. `dirs` has none: its rows only mean something for a real tree, so a test scans one.
-- `app.Create.Scan(folder, factory.WithScanStatus(...), factory.StartedAt(...))` and `app.Create.Image(folder, factory.At(dir, name), factory.Optimized(originalSize))`.
+- `app.Create.Scan(folder, factory.WithScanStatus(...), factory.StartedAt(...))`, `app.Create.Image(folder, factory.At(dir, name), factory.Optimized(originalSize), factory.Failed(attempts, retryAt))` and `app.Create.DailyStat(folder, day, optimized, bytesBefore, bytesAfter)`.
 - Users from a factory have the password `factory.DefaultPassword` and a verified email unless `factory.Unverified()` is passed.
 - `make seed` fills an empty development database through the same factories (`cmd/cli/internal/commands/seed.go`); add a new module's sample data there.
 
@@ -154,7 +168,7 @@ Transactions take SQLite's write lock when they begin (`_txlock=immediate`), so 
 - `/health` reports the database. Add a check there for each new dependency the API cannot serve without.
 
 ## Scheduler
-- By default the API process runs the cron jobs and the scan worker: `cmd/api/main.go` starts `internal/scheduler` on boot and stops it on shutdown. The worker reads its table at boot, so the database must be migrated before the API starts.
+- By default the API process runs the cron jobs, the scan worker and the optimizer: `cmd/api/main.go` starts `internal/scheduler` on boot and stops it on shutdown. Both workers read their tables at boot, so the database must be migrated before the API starts.
 - `ENABLE_SCHEDULER=false` turns that off, and `cmd/cron` (`bin/goptimizer-cron`) runs the same jobs as its own process. Run one or the other, never both.
 - `testkit` never starts it; test a job by calling its `Execute` (`docs/recipes/add-scheduled-job.md`).
 
