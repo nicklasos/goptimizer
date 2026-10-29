@@ -50,12 +50,15 @@ export function useFolderImages(id: ID, filters: ImageFilters) {
   })
 }
 
-/** Retrying moves images between statuses: the folder, its lists and the dashboard all refetch. */
+/**
+ * Retrying moves images between statuses: the folder, its lists and the dashboard all refetch. They
+ * refetch after a 409 too, which means the row on screen was stale (the image was retried already).
+ */
 export function useRetryImage() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (id: ID) => foldersApi.retryImage(id),
-    onSuccess: () => client.invalidateQueries({ queryKey: qk.folders.all }),
+    onSettled: () => client.invalidateQueries({ queryKey: qk.folders.all }),
   })
 }
 
