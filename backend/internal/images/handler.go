@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// defaultLimit is how many images a page has when the request does not say.
 const defaultLimit = 50
 
 type Handler struct {
@@ -24,7 +23,7 @@ func NewHandler(service *ImageService) *Handler {
 // ListImages lists one page of a folder's images
 //
 //	@Summary		List folder images
-//	@Description	One keyset page of the folder's images: every status or one, the latest change first, or with sort=saved and status=optimized the most bytes saved first. q keeps the paths that contain it, ignoring ASCII case, listed by path; on a million images a search that matches little reads the whole path index, about 0.1 s. Pass the response's next_cursor as cursor for the next page.
+//	@Description	One keyset page of the folder's images: every status or one, the latest change first, or with sort=saved and status=optimized the most bytes saved first. q keeps the paths that contain it, ignoring ASCII case, listed by path. Pass the response's next_cursor as cursor for the next page.
 //	@Tags			images
 //	@Produce		json
 //	@Security		BearerAuth
@@ -77,10 +76,12 @@ func parseListQuery(req ListImagesQuery) (Query, error) {
 	if query.Limit == 0 {
 		query.Limit = defaultLimit
 	}
-	if req.Sort == string(SortSaved) {
-		if query.Status != StatusOptimized {
-			return Query{}, errs.FieldError("sort", "invalid")
-		}
+	switch {
+	case req.Sort == string(SortSaved) && query.Status != StatusOptimized:
+		return Query{}, errs.FieldError("sort", "invalid")
+	case req.Search != "":
+		query.Sort = SortPath
+	case req.Sort == string(SortSaved):
 		query.Sort = SortSaved
 	}
 	if req.Cursor != "" {

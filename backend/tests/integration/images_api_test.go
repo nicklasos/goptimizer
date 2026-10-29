@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// walk follows next_cursor from the first page to the last and returns every image's path, in order.
 func walk(t *testing.T, app *testkit.App, user *db.User, folderID int64, query string) []string {
 	t.Helper()
 	var paths []string
@@ -101,12 +100,15 @@ func TestImagesAPI_SearchesThePathAnywhereIgnoringCase(t *testing.T) {
 	app.Create.Image(folder, factory.At("", "hero.gif"))
 	app.Create.Image(folder, factory.At("heroes", "team.png"))
 	app.Create.Image(folder, factory.At("uploads", "logo.png"))
+	app.Create.Image(folder, factory.At("Été", "Café.jpg"))
 
 	assert.Equal(t, []string{"hero.gif", "heroes/team.png", "uploads/2024/Hero-Banner.PNG", "uploads/2025/hero.jpg"},
 		walk(t, app, user, folder.ID, "q=HERO&limit=3"))
 	assert.Equal(t, []string{"uploads/2025/hero.jpg"}, walk(t, app, user, folder.ID, "q=hero&status=kept"))
 	assert.Equal(t, []string{"uploads/2024/Hero-Banner.PNG"}, walk(t, app, user, folder.ID, "q=2024%2Fhero"))
 	assert.Empty(t, walk(t, app, user, folder.ID, "q=%25"))
+	assert.Equal(t, []string{"Été/Café.jpg"}, walk(t, app, user, folder.ID, "q="+url.QueryEscape("Été/CAFé")), "ASCII letters fold, others match as typed")
+	assert.Empty(t, walk(t, app, user, folder.ID, "q="+url.QueryEscape("été")))
 	app.As(user).GET("/api/v1/folders/%d/images?q=hero&sort=updated", folder.ID).AssertOK().AssertJSONPath("data.order", "path")
 }
 

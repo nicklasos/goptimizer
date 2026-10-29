@@ -950,7 +950,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "One keyset page of the folder's images: every status or one, the latest change first, or with sort=saved and status=optimized the most bytes saved first. q keeps the paths that contain it, ignoring ASCII case, listed by path; on a million images a search that matches little reads the whole path index, about 0.1 s. Pass the response's next_cursor as cursor for the next page.",
+                "description": "One keyset page of the folder's images: every status or one, the latest change first, or with sort=saved and status=optimized the most bytes saved first. q keeps the paths that contain it, ignoring ASCII case, listed by path. Pass the response's next_cursor as cursor for the next page.",
                 "produces": [
                     "application/json"
                 ],

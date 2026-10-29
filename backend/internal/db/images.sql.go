@@ -356,7 +356,6 @@ type ListDailySavingsRow struct {
 	Saved     int64  `db:"saved" json:"saved"`
 }
 
-// Every folder's optimizations per day, from a day on. Days with none have no row.
 func (q *Queries) ListDailySavings(ctx context.Context, since string) ([]ListDailySavingsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listDailySavings, since)
 	if err != nil {
@@ -469,8 +468,6 @@ type ListImagesByUpdatedParams struct {
 	PageLimit int64     `db:"page_limit" json:"page_limit"`
 }
 
-// One keyset page of a folder's images, the latest change first: a range scan on idx_images_updated
-// from the row after the cursor.
 func (q *Queries) ListImagesByUpdated(ctx context.Context, arg ListImagesByUpdatedParams) ([]Image, error) {
 	rows, err := q.db.QueryContext(ctx, listImagesByUpdated,
 		arg.FolderID,
@@ -741,10 +738,9 @@ type MarkImagePendingParams struct {
 	ReadMtimeNs int64     `db:"read_mtime_ns" json:"read_mtime_ns"`
 }
 
-// The file is new on disk again. What the optimizer recorded before stays, but a new file gets its
-// attempts back, and the reason the old one was left alone no longer applies. The scan writes only
-// when the row is still as it read it, so a stale write never undoes a swap the optimizer recorded
-// since, and a row being optimized is never touched.
+// A new file gets its attempts back, and the reason the old one was left alone no longer applies.
+// The scan writes only when the row is still as it read it, so a stale write never undoes a swap
+// the optimizer recorded since, and a row being optimized is never touched.
 func (q *Queries) MarkImagePending(ctx context.Context, arg MarkImagePendingParams) error {
 	_, err := q.db.ExecContext(ctx, markImagePending,
 		arg.Size,
@@ -970,8 +966,6 @@ type RetryImageParams struct {
 	ID  int64     `db:"id" json:"id"`
 }
 
-// A failed image is pending again with its attempts back, as for a new file. Its reason stays
-// until the next attempt replaces it, as when a retry comes due on its own.
 func (q *Queries) RetryImage(ctx context.Context, arg RetryImageParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, retryImage, arg.Now, arg.ID)
 	if err != nil {
@@ -983,7 +977,7 @@ func (q *Queries) RetryImage(ctx context.Context, arg RetryImageParams) (int64, 
 const searchImages = `-- name: SearchImages :many
 SELECT id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at, output_sha256, next_attempt_at FROM images
 WHERE folder_id = ?1 AND (dir, name) > (?2, ?3)
-  AND instr(lower(dir || '/' || name), ?4) > 0
+  AND instr(lower(dir || '/' || name), lower(?4)) > 0
 ORDER BY dir, name
 LIMIT ?5
 `
@@ -996,9 +990,8 @@ type SearchImagesParams struct {
 	PageLimit int64  `db:"page_limit" json:"page_limit"`
 }
 
-// Paths that contain a text, ignoring ASCII case, in path order. The match reads only dir and name,
-// which idx_images_path holds, so a row is read only for a path that matches: one pass over the
-// index at worst, not over the table. needle is lower case.
+// The match reads only dir and name, which idx_images_path holds, so a row is read only for a path
+// that matches. lower() folds ASCII only, so both sides go through it.
 func (q *Queries) SearchImages(ctx context.Context, arg SearchImagesParams) ([]Image, error) {
 	rows, err := q.db.QueryContext(ctx, searchImages,
 		arg.FolderID,
@@ -1050,7 +1043,7 @@ func (q *Queries) SearchImages(ctx context.Context, arg SearchImagesParams) ([]I
 const searchImagesOfStatus = `-- name: SearchImagesOfStatus :many
 SELECT id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at, output_sha256, next_attempt_at FROM images
 WHERE folder_id = ?1 AND status = ?2 AND (dir, name) > (?3, ?4)
-  AND instr(lower(dir || '/' || name), ?5) > 0
+  AND instr(lower(dir || '/' || name), lower(?5)) > 0
 ORDER BY dir, name
 LIMIT ?6
 `

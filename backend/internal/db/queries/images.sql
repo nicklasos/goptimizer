@@ -28,10 +28,9 @@ VALUES (
 );
 
 -- name: MarkImagePending :exec
--- The file is new on disk again. What the optimizer recorded before stays, but a new file gets its
--- attempts back, and the reason the old one was left alone no longer applies. The scan writes only
--- when the row is still as it read it, so a stale write never undoes a swap the optimizer recorded
--- since, and a row being optimized is never touched.
+-- A new file gets its attempts back, and the reason the old one was left alone no longer applies.
+-- The scan writes only when the row is still as it read it, so a stale write never undoes a swap
+-- the optimizer recorded since, and a row being optimized is never touched.
 UPDATE images
 SET status = 'pending', size = sqlc.arg(size), mtime_ns = sqlc.arg(mtime_ns), attempts = 0, next_attempt_at = NULL,
     reason = NULL, updated_at = sqlc.arg(now)
@@ -166,8 +165,6 @@ WHERE folder_id = ?;
 SELECT * FROM images WHERE id = ?;
 
 -- name: ListImagesByUpdated :many
--- One keyset page of a folder's images, the latest change first: a range scan on idx_images_updated
--- from the row after the cursor.
 SELECT * FROM images
 WHERE folder_id = sqlc.arg(folder_id) AND (updated_at, id) < (sqlc.arg(updated_at), CAST(sqlc.arg(id) AS INTEGER))
 ORDER BY updated_at DESC, id DESC
@@ -191,25 +188,22 @@ ORDER BY original_size - optimized_size DESC, id DESC
 LIMIT sqlc.arg(page_limit);
 
 -- name: SearchImages :many
--- Paths that contain a text, ignoring ASCII case, in path order. The match reads only dir and name,
--- which idx_images_path holds, so a row is read only for a path that matches: one pass over the
--- index at worst, not over the table. needle is lower case.
+-- The match reads only dir and name, which idx_images_path holds, so a row is read only for a path
+-- that matches. lower() folds ASCII only, so both sides go through it.
 SELECT * FROM images
 WHERE folder_id = sqlc.arg(folder_id) AND (dir, name) > (sqlc.arg(dir), sqlc.arg(name))
-  AND instr(lower(dir || '/' || name), sqlc.arg(needle)) > 0
+  AND instr(lower(dir || '/' || name), lower(sqlc.arg(needle))) > 0
 ORDER BY dir, name
 LIMIT sqlc.arg(page_limit);
 
 -- name: SearchImagesOfStatus :many
 SELECT * FROM images
 WHERE folder_id = sqlc.arg(folder_id) AND status = sqlc.arg(status) AND (dir, name) > (sqlc.arg(dir), sqlc.arg(name))
-  AND instr(lower(dir || '/' || name), sqlc.arg(needle)) > 0
+  AND instr(lower(dir || '/' || name), lower(sqlc.arg(needle))) > 0
 ORDER BY dir, name
 LIMIT sqlc.arg(page_limit);
 
 -- name: RetryImage :execrows
--- A failed image is pending again with its attempts back, as for a new file. Its reason stays
--- until the next attempt replaces it, as when a retry comes due on its own.
 UPDATE images
 SET status = 'pending', attempts = 0, next_attempt_at = NULL, updated_at = sqlc.arg(now)
 WHERE id = sqlc.arg(id) AND status = 'failed';
@@ -220,7 +214,6 @@ SET status = 'pending', attempts = 0, next_attempt_at = NULL, updated_at = sqlc.
 WHERE folder_id = sqlc.arg(folder_id) AND status = 'failed';
 
 -- name: ListDailySavings :many
--- Every folder's optimizations per day, from a day on. Days with none have no row.
 SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved
 FROM daily_stats
 WHERE day >= sqlc.arg(since)
