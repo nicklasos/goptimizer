@@ -111,10 +111,21 @@ async function main() {
     // A short viewport with fullPage crops each shot to its content instead of empty background.
     const desktop = await signIn(await page(browser, { width: 1440, height: 400 }))
     const phone = await signIn(await page(browser, { width: 390, height: 844 }))
+    // Tall enough that an element shot never scrolls under the sticky top bar.
+    const tall = await signIn(await page(browser, { width: 1440, height: 1500 }))
     const folderCards = (p) => p.locator('[data-testid^="folder-card-"]').nth(4).waitFor()
+    const rows = (table, n) => (p) => p.locator(`[data-testid="${table}"] [data-row-key]`).nth(n).waitFor()
+    const imageRows = rows('images-table', 9)
+    const folderPage = async (p) => {
+      await imageRows(p)
+      await rows('scans-table', 9)(p)
+    }
 
     await shoot(desktop, '/', 'dashboard', folderCards)
     await shoot(phone, '/', 'mobile-dashboard', folderCards, { fullPage: false })
+    await shoot(tall, '/folders/1', 'folder-page', folderPage, { fullPage: false })
+    await shoot(tall, '/folders/1?status=kept&q=oak-table', 'folder-images', rows('images-table', 3), { element: 'folder-images' })
+    await shoot(phone, '/folders/1', 'mobile-folder-page', (p) => p.locator('[data-testid^="image-card-"]').nth(2).waitFor(), { fullPage: false })
     await shoot(desktop, '/folders/1/edit', 'folder-editor', (p) => p.getByTestId('folder-editor-form').waitFor())
     await shoot(desktop, '/settings', 'settings', (p) => p.getByTestId('tool-status-gifsicle').waitFor())
     await shoot(desktop, '/users', 'users', (p) => p.locator('[data-testid="users-table"] tr[data-row-key]').nth(4).waitFor())
@@ -138,12 +149,13 @@ async function signIn(p) {
   return p
 }
 
-async function shoot(p, url, name, ready, { fullPage = true } = {}) {
+async function shoot(p, url, name, ready, { fullPage = true, element } = {}) {
   await p.goto(web + url)
   await ready(p)
   await p.evaluate(() => document.fonts.ready)
   await p.mouse.move(0, 0)
-  await p.screenshot({ path: path.join(images, `${name}.png`), fullPage })
+  const target = element ? p.getByTestId(element) : p
+  await target.screenshot({ path: path.join(images, `${name}.png`), ...(element ? {} : { fullPage }) })
   console.log(`docs/images/${name}.png`)
 }
 

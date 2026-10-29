@@ -26,7 +26,7 @@
 > install the image tools or run the service as root until phase 6, so on a server deployed today it
 > can only rewrite files its own user owns. Try it on a copy of a folder first.
 
-![The folders page: one card per project folder, with its path, compression mode, scan intervals, image count, last scan, images optimized and bytes saved, failures, a Scan now menu and a pause switch](docs/images/dashboard.png)
+![The folders page: totals for every folder (bytes saved, images optimized, waiting and failed, what is running now), a chart of the bytes saved on each of the last 30 days, and one card per project folder with its path, compression mode, scan intervals, last scan, savings, a Scan now menu and a pause switch](docs/images/dashboard.png)
 
 ## Why
 
@@ -81,8 +81,15 @@ installed on the server, and shows per folder how many images it handled and how
   and `ionice` where it exists, by default, so the sites on the same server stay fast. Seven workers
   handled 2.75 images a second on a busy 8-core laptop, and four handled 2.48
   ([measured](docs/benchmarks/optimizer.md)).
-- **Statistics.** Each folder card shows the images optimized, the bytes saved and the failures. A
-  folder page with a 30-day chart comes in phase 5.
+- **A dashboard that answers the usual questions.** The folders page adds up every folder: bytes saved,
+  images optimized, waiting and failed, and the scans and optimizations running now, with a chart of
+  the bytes saved on each of the last 30 days. It refreshes on its own while work is in flight. Each
+  folder has its own page with its figures, its chart, its scans and its images.
+- **Why an image was left alone.** The folder page lists its images by status, newest change first or
+  by bytes saved, and finds one by any part of its path. Each kept, skipped or failed image says why in
+  plain words, such as "Animated PNG: quantizing would drop the animation", with what was measured. A
+  failed image can be tried again, one or all at once. Each page of the list is one index seek, about
+  0.2 ms on a folder of 900,000 images ([measured](docs/benchmarks/images.md)).
 
 Local folders come first. SSH servers, Amazon S3 and Google Cloud Storage are planned as more kinds of
 folder.
@@ -93,6 +100,8 @@ These are generated from demo data by `node scripts/screenshots/shoot.mjs`.
 
 | | |
 |---|---|
+| ![A folder's page: its settings and controls, its figures, the bytes saved per day and the start of its images](docs/images/folder-page.png) | ![A folder's images on the Kept tab, searched for oak-table: each row with its path, format, size, status and why it was kept in plain words, with what was measured](docs/images/folder-images.png) |
+| **Folder page.** One folder's figures, chart, images and scans. | **Images.** By status, searched by path, each with the reason in plain words. |
 | ![The folder editor: name, path, scan intervals and the compression profile](docs/images/folder-editor.png) | ![The settings page: each image tool with its status, version, path and install commands, and the global settings](docs/images/settings.png) |
 | **Folder editor.** Path, scan intervals and the compression profile. | **Settings.** The image tools on this server and how to install the missing ones. |
 | ![The users page: accounts with an Admin tag](docs/images/users.png) | ![The sign-in page](docs/images/login.png) |
@@ -100,6 +109,7 @@ These are generated from demo data by `node scripts/screenshots/shoot.mjs`.
 
 <p align="center">
   <img src="docs/images/mobile-dashboard.png" alt="The folders page on a phone" width="300">
+  <img src="docs/images/mobile-folder-page.png" alt="A folder's page on a phone" width="300">
 </p>
 
 ## Safety
@@ -131,8 +141,8 @@ Still, lossy compression changes pixels by design. Try a folder on a copy first 
 | 2 | Folders and the tools page | Done |
 | 3 | Scanner: quick and full scans, measured on a million files | Done |
 | 4 | Optimizer: pipelines, verification, the shared worker pool | Done |
-| 5 | Dashboard: statistics per folder, scans and images by status, a 30-day chart | Next |
-| 6 | Deploy: image tools installed by the playbooks | Planned |
+| 5 | Dashboard: statistics per folder, scans and images by status, a 30-day chart | Done |
+| 6 | Deploy: image tools installed by the playbooks | Next |
 
 The design, the data model and the reasoning behind each decision are in [docs/PLAN.md](docs/PLAN.md).
 
