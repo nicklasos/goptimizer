@@ -112,23 +112,33 @@ func (q *Queries) FactoryCreateImage(ctx context.Context, arg FactoryCreateImage
 }
 
 const factoryCreateScan = `-- name: FactoryCreateScan :one
-INSERT INTO scans (folder_id, kind, trigger, status, queued_at, started_at, finished_at, error)
+INSERT INTO scans (
+    folder_id, kind, trigger, status, queued_at, started_at, finished_at, error,
+    dirs_seen, dirs_listed, files_seen, files_new, files_changed, files_gone
+)
 VALUES (
     ?1, ?2, ?3, ?4,
-    ?5, ?6, ?7, ?8
+    ?5, ?6, ?7, ?8,
+    ?9, ?10, ?11, ?12, ?13, ?14
 )
 RETURNING id, folder_id, kind, "trigger", status, queued_at, started_at, finished_at, dirs_seen, dirs_listed, files_seen, files_new, files_changed, files_gone, error
 `
 
 type FactoryCreateScanParams struct {
-	FolderID   int64          `db:"folder_id" json:"folder_id"`
-	Kind       string         `db:"kind" json:"kind"`
-	Trigger    string         `db:"trigger" json:"trigger"`
-	Status     string         `db:"status" json:"status"`
-	QueuedAt   time.Time      `db:"queued_at" json:"queued_at"`
-	StartedAt  sql.NullTime   `db:"started_at" json:"started_at"`
-	FinishedAt sql.NullTime   `db:"finished_at" json:"finished_at"`
-	Error      sql.NullString `db:"error" json:"error"`
+	FolderID     int64          `db:"folder_id" json:"folder_id"`
+	Kind         string         `db:"kind" json:"kind"`
+	Trigger      string         `db:"trigger" json:"trigger"`
+	Status       string         `db:"status" json:"status"`
+	QueuedAt     time.Time      `db:"queued_at" json:"queued_at"`
+	StartedAt    sql.NullTime   `db:"started_at" json:"started_at"`
+	FinishedAt   sql.NullTime   `db:"finished_at" json:"finished_at"`
+	Error        sql.NullString `db:"error" json:"error"`
+	DirsSeen     int64          `db:"dirs_seen" json:"dirs_seen"`
+	DirsListed   int64          `db:"dirs_listed" json:"dirs_listed"`
+	FilesSeen    int64          `db:"files_seen" json:"files_seen"`
+	FilesNew     int64          `db:"files_new" json:"files_new"`
+	FilesChanged int64          `db:"files_changed" json:"files_changed"`
+	FilesGone    int64          `db:"files_gone" json:"files_gone"`
 }
 
 func (q *Queries) FactoryCreateScan(ctx context.Context, arg FactoryCreateScanParams) (Scan, error) {
@@ -141,6 +151,12 @@ func (q *Queries) FactoryCreateScan(ctx context.Context, arg FactoryCreateScanPa
 		arg.StartedAt,
 		arg.FinishedAt,
 		arg.Error,
+		arg.DirsSeen,
+		arg.DirsListed,
+		arg.FilesSeen,
+		arg.FilesNew,
+		arg.FilesChanged,
+		arg.FilesGone,
 	)
 	var i Scan
 	err := row.Scan(

@@ -13,6 +13,7 @@ type scanAttrs struct {
 	status    scans.Status
 	startedAt time.Time
 	err       string
+	counts    scans.Counts
 }
 
 type ScanOption func(*scanAttrs)
@@ -28,6 +29,8 @@ func WithScanStatus(status scans.Status) ScanOption {
 func StartedAt(at time.Time) ScanOption { return func(a *scanAttrs) { a.startedAt = at } }
 
 func WithScanError(message string) ScanOption { return func(a *scanAttrs) { a.err = message } }
+
+func WithScanCounts(counts scans.Counts) ScanOption { return func(a *scanAttrs) { a.counts = counts } }
 
 // Scan creates a queued quick scan of the folder, triggered by the schedule.
 func (f *Factory) Scan(folder *db.Folder, opts ...ScanOption) *db.Scan {
@@ -45,6 +48,13 @@ func (f *Factory) Scan(folder *db.Folder, opts ...ScanOption) *db.Scan {
 		Status:   string(attrs.status),
 		QueuedAt: attrs.startedAt.UTC(),
 		Error:    sql.NullString{String: attrs.err, Valid: attrs.err != ""},
+
+		DirsSeen:     attrs.counts.DirsSeen,
+		DirsListed:   attrs.counts.DirsListed,
+		FilesSeen:    attrs.counts.FilesSeen,
+		FilesNew:     attrs.counts.FilesNew,
+		FilesChanged: attrs.counts.FilesChanged,
+		FilesGone:    attrs.counts.FilesGone,
 	}
 	if attrs.status != scans.StatusQueued {
 		params.StartedAt = sql.NullTime{Time: attrs.startedAt.UTC(), Valid: true}

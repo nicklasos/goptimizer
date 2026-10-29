@@ -18,10 +18,14 @@ VALUES (
 RETURNING *;
 
 -- name: FactoryCreateScan :one
-INSERT INTO scans (folder_id, kind, trigger, status, queued_at, started_at, finished_at, error)
+INSERT INTO scans (
+    folder_id, kind, trigger, status, queued_at, started_at, finished_at, error,
+    dirs_seen, dirs_listed, files_seen, files_new, files_changed, files_gone
+)
 VALUES (
     sqlc.arg(folder_id), sqlc.arg(kind), sqlc.arg(trigger), sqlc.arg(status),
-    sqlc.arg(queued_at), sqlc.arg(started_at), sqlc.arg(finished_at), sqlc.arg(error)
+    sqlc.arg(queued_at), sqlc.arg(started_at), sqlc.arg(finished_at), sqlc.arg(error),
+    sqlc.arg(dirs_seen), sqlc.arg(dirs_listed), sqlc.arg(files_seen), sqlc.arg(files_new), sqlc.arg(files_changed), sqlc.arg(files_gone)
 )
 RETURNING *;
 
