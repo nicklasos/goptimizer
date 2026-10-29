@@ -1,6 +1,9 @@
 package unit
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"app/config"
@@ -65,4 +68,14 @@ func TestConfig_LoadAuthDefaults(t *testing.T) {
 	t.Setenv("JWT_ACCESS_TOKEN_TTL", "soon")
 	cfg, _ = config.Load()
 	assert.Equal(t, "1h0m0s", cfg.AccessTokenTTL.String(), "an unparsable duration falls back to the default")
+}
+
+func TestConfig_OptimizerWorkDir(t *testing.T) {
+	dev := &config.Config{DatabasePath: "./data/goptimizer.db"}
+	e2e := &config.Config{DatabasePath: "./data/goptimizer_test.db"}
+
+	assert.True(t, strings.HasPrefix(dev.OptimizerWorkDir(), filepath.Join(os.TempDir(), "goptimizer-work-")))
+	assert.NotEqual(t, dev.OptimizerWorkDir(), e2e.OptimizerWorkDir(), "two databases on one machine get two work dirs")
+	assert.Equal(t, dev.OptimizerWorkDir(), (&config.Config{DatabasePath: "./data/goptimizer.db"}).OptimizerWorkDir(), "and a restart finds its own again")
+	assert.Equal(t, "/srv/work", (&config.Config{DatabasePath: "x.db", WorkDir: "/srv/work"}).OptimizerWorkDir())
 }

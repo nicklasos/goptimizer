@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -55,8 +57,9 @@ type Config struct {
 	CORSAllowedOrigins []string
 
 	EnableScheduler bool
-	// WorkDir is where the optimizer's tools work on copies of images. Only this process's user may
-	// use it; what is in it at start is deleted.
+	// WorkDir is WORK_DIR: where the optimizer's tools work on copies of images. Only this
+	// process's user may use it, and what is in it at start is deleted. OptimizerWorkDir gives the
+	// default when it is empty.
 	WorkDir string
 }
 
@@ -101,7 +104,7 @@ func Load() (*Config, error) {
 		CORSAllowedOrigins: getEnvList("CORS_ALLOWED_ORIGINS"),
 
 		EnableScheduler: getEnvBool("ENABLE_SCHEDULER", true),
-		WorkDir:         getEnv("WORK_DIR", filepath.Join(os.TempDir(), "goptimizer-work")),
+		WorkDir:         getEnv("WORK_DIR", ""),
 	}, nil
 }
 
@@ -153,6 +156,21 @@ const (
 	minJWTSecretLen      = 32
 	placeholderJWTSecret = "your-super-secret-jwt-key-change-this-in-production"
 )
+
+// OptimizerWorkDir is WORK_DIR, or a directory under the OS temp dir named after the database.
+// Only one process runs the optimizer on a database, so the name keeps two of them on one machine,
+// such as the development API and the E2E suite's, from emptying each other's work dir.
+func (c *Config) OptimizerWorkDir() string {
+	if c.WorkDir != "" {
+		return c.WorkDir
+	}
+	database, err := filepath.Abs(c.DatabasePath)
+	if err != nil {
+		database = c.DatabasePath
+	}
+	sum := sha256.Sum256([]byte(database))
+	return filepath.Join(os.TempDir(), "goptimizer-work-"+hex.EncodeToString(sum[:6]))
+}
 
 func (c *Config) IsProduction() bool {
 	return strings.EqualFold(c.Environment, "production")

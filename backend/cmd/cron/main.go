@@ -58,7 +58,7 @@ func main() {
 	queries := db.New(database)
 	tx := db.NewTxRunner(database)
 
-	pool := optimizer.NewPool(queries, tx, appLogger, tools.NewReporter(tools.System{}, tools.ReportTTL), cfg.WorkDir)
+	pool := optimizer.NewPool(queries, tx, appLogger, tools.NewReporter(tools.System{}, tools.ReportTTL), cfg.OptimizerWorkDir())
 	deps := &scheduler.Dependencies{
 		Config:     cfg,
 		DB:         database,

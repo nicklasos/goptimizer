@@ -123,7 +123,7 @@ func main() {
 
 	// ENABLE_SCHEDULER=false when bin/goptimizer-cron runs the jobs and the scans as its own process instead
 	if cfg.EnableScheduler {
-		pool := optimizer.NewPool(app.Queries, app.Tx, logger, app.ToolReport, cfg.WorkDir)
+		pool := optimizer.NewPool(app.Queries, app.Tx, logger, app.ToolReport, cfg.OptimizerWorkDir())
 		worker := scanner.NewWorker(app.Queries, app.Tx, logger, pool.Wake)
 		app.WakeScans = worker.Wake
 		cronScheduler := scheduler.NewScheduler(&scheduler.Dependencies{
