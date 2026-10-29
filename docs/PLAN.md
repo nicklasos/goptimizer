@@ -15,6 +15,7 @@ It is built from [Gogobackup](https://github.com/nicklasos/gogobackup), which is
 | WebP and AVIF copies | Not in v1. |
 | SVG | Not in v1. SVG optimizers rewrite markup and can change how a file renders. |
 | Users | Two kinds: admins and users (`users.is_admin`). Every user can add, edit, pause and delete any folder and change the settings. Admins also manage accounts and can make other admins. |
+| Scan history | The latest 100 scans of each folder, and its latest successful full scan. |
 
 ## Phases
 
@@ -51,9 +52,11 @@ Image status is a state machine. Each step is one conditional UPDATE on the curr
 | `failed` | A tool crashed, exited with an error or ran past its time limit, the swap failed, or the process died while optimizing it. Tried again after 10 minutes and after an hour, then left for the admin |
 | `gone` | Deleted from disk |
 
-An image that is `optimized` or `kept` and then changes on disk goes back to `pending`, with its attempts reset. An image is never compressed lossily twice, and the rule follows the bytes, not the path. Before the rename that swaps a result in, the optimizer stores the SHA-256 of the result in `output_sha256`. When it claims an image whose bytes hash to the row's own `output_sha256`, the file was only touched, and it goes back to `optimized` with its new mtime. When they hash to any other output in `optimizer_outputs`, the file was moved or copied, or its folder was deleted and added again, and it is `kept` as `already_optimized`. Nothing runs on it. Bytes with any other hash are a new upload, and lossy compression is allowed again.
+An image's `reason` is `code` or `code: detail`, such as `ssim_below_threshold: 0.7100, below 0.8500, at 128,64`. A refused lossy result is followed by how the lossless attempt after it ended, behind `; lossless: `. Every code is in `images.ReasonCodes`, which the API sends as an enum, so the admin panel words each one in every language; a test fails when the optimizer or the checks gain a reason that list lacks.
 
-**Scan.** `id`, `folder_id`, `kind` (`quick` or `full`), `trigger` (`schedule` or `manual`), `status` (`queued`, `running`, `succeeded`, `failed`), `queued_at`, `started_at`, `finished_at`, `dirs_seen`, `dirs_listed`, `files_seen`, `files_new`, `files_changed`, `files_gone`, `error`. A partial unique index on `folder_id` where the status is `queued` or `running` allows one scan per folder at a time, whoever tries to queue a second one. Like an image, a scan moves by conditional UPDATEs: queued to running when the worker claims the oldest, running to succeeded or failed when it ends. The counts are written every 2 seconds while it runs. `files_new` includes files that came back after being gone.
+An image that is `optimized` or `kept` and then changes on disk goes back to `pending`, with its attempts reset and its reason cleared: the reason was about the old content. An image is never compressed lossily twice, and the rule follows the bytes, not the path. Before the rename that swaps a result in, the optimizer stores the SHA-256 of the result in `output_sha256`. When it claims an image whose bytes hash to the row's own `output_sha256`, the file was only touched, and it goes back to `optimized` with its new mtime. When they hash to any other output in `optimizer_outputs`, the file was moved or copied, or its folder was deleted and added again, and it is `kept` as `already_optimized`. Nothing runs on it. Bytes with any other hash are a new upload, and lossy compression is allowed again.
+
+**Scan.** `id`, `folder_id`, `kind` (`quick` or `full`), `trigger` (`schedule` or `manual`), `status` (`queued`, `running`, `succeeded`, `failed`), `queued_at`, `started_at`, `finished_at`, `dirs_seen`, `dirs_listed`, `files_seen`, `files_new`, `files_changed`, `files_gone`, `error`. A partial unique index on `folder_id` where the status is `queued` or `running` allows one scan per folder at a time, whoever tries to queue a second one. Like an image, a scan moves by conditional UPDATEs: queued to running when the worker claims the oldest, running to succeeded or failed when it ends. The counts are written every 2 seconds while it runs. `files_new` includes files that came back after being gone. Finishing a scan deletes the folder's scans older than its newest 100, except its latest successful full scan: `Due` reads that one, and with quick scans every 5 minutes the newest 100 can all be quick. That is about four days of scans at the default intervals.
 
 **Setting.** One row with typed columns, because the set of settings is closed: `workers` (optimizations at once; 0, the default, means the CPU count minus one, at least 1), `scan_workers` (scans at once, default 2), `nice` (tools run under `nice -n 10`, and `ionice -c3` where it exists, which is Linux, by default, so the projects on the server stay fast).
 
@@ -140,6 +143,16 @@ Every result has to pass all of these before it replaces a file, cheapest first 
 - Lossy: no 32×32 block's average Y, Cb or Cr moved more than 12 levels, which catches a result that turned gray or changed a flat color, which SSIM barely sees. And the SSIM of the lowest 64×64 tile is at least `min_ssim`. SSIM is computed in pure Go over 8×8 windows at every position, at full resolution. PNG and GIF are scored on red, green and blue composited on black and, when either image has transparency, on white, taking the worst, so a pixel that changes its alpha is a difference. JPEG is scored on luma, because a re-encode moves the color channels at the scale of chroma subsampling, which the eye does not resolve. The tile score catches a banded shadow or a shifted tint that the mean over the image hides. The default of 0.85 comes from 96 real and generated images ([docs/benchmarks/ssim.md](benchmarks/ssim.md)): results with visible damage scored 0.793 or less.
 - Bytes the optimizer wrote itself are never compressed again (see Image).
 
+## Dashboard
+
+The folders page leads with what every folder adds up to: bytes saved, images optimized, waiting (`pending`) and failed, and what runs now, scans queued or running and images optimizing. The figures come from `GET /folders`, which already carries each folder's counts by status and bytes saved. Under them, a chart of the bytes saved on each of the last 30 UTC days (`GET /daily-savings`, a day without optimizations as zero), then the folder cards. The page refreshes every 2 seconds while a scan or an optimization is in flight, every 10 seconds while an enabled folder with every tool has images waiting, and not at all otherwise.
+
+A card's name opens the folder's page (`/folders/:id`): its settings and the same controls as the card, its figures and chart, its images and its scans, 10 to a page, newest first, with what each found and how long it took.
+
+The images list has a tab per status with its count, a search by path and two orders: the latest change first, or, for optimized images, the most bytes saved first. Pages are keyset pages, never OFFSET: the cursor is the last row's sort key, and each order has its index (migration 007), so any page of a million images is one seek, about 0.2 ms on 900,000 ([docs/benchmarks/images.md](benchmarks/images.md)). A search matches any part of the path, ASCII letters in any case, and lists by path. It reads only the path index and reads a row only for a path that matches: about 0.3 s on 900,000 images when nothing matches, a few milliseconds when matches are common. Kept, skipped and failed images say why in plain words, from the reason's code, with what was measured under it; a lossy result that was refused also says how the lossless attempt ended.
+
+Retry sets a failed image, or every failed image of a folder, back to `pending` with its attempts reset, one conditional UPDATE each. A kept image has no retry: the same bytes, tools and profile give the same verdict, and bytes the optimizer wrote are recognized by their hash at the claim whatever the status says.
+
 ## Settings page
 
 One table of every tool the registry uses: the program, which formats and modes need it, whether it is required, whether it is installed, its path and version (`tools.Finder`, as in Gogobackup). A missing tool shows how to install it: the `apt` package for Ubuntu, `brew` on macOS. Folders whose pipeline needs a missing tool show a warning, and their images stay `pending` instead of failing.
@@ -158,7 +171,6 @@ Same three playbooks as Gogobackup, with these changes:
 
 ## Open decisions
 
-- Scans are never deleted. At the default intervals that is about 9,000 rows a year per folder. A retention rule, such as the last 100 per folder, can come with the scans page in phase 5.
 - An exclude added to a profile takes effect at the next scan for the directories it matches, whose images become `gone`. For files it matches in a directory that did not change, it takes effect at the next full scan.
 - A folder whose root is a mount point lists as an empty directory while the disk is unmounted, so a scan then marks all its images `gone`. They come back `pending` with their history when the disk is back, and an image optimized lossily is still never compressed lossily twice. Refusing a scan whose root changed device is the guard if this turns out to matter.
 - A directory the scanner cannot read for any reason but "it is gone" fails the whole scan with that error, and the next scan tries again. Running as root makes this rare; a scan that skips such a directory and reports it is the alternative if it is not.
@@ -169,6 +181,10 @@ Same three playbooks as Gogobackup, with these changes:
 - The optimizer's memory grows with the image: about 13 bytes per pixel for a JPEG at the 50 MP limit, times the number of workers. A server with little memory and many workers should set fewer workers; a limit by memory is the alternative.
 - The swap gives the result the original's owner, group, mode and times, but not its other extended attributes or file flags. A file with a POSIX ACL is skipped for that reason; an SELinux label is the new file's default for its directory, which is usually the same. Skipping only ACLs was checked on macOS, where files have no POSIX ACL; on Linux it is not tested.
 - A lossless result compares fully transparent pixels as equal whatever color hides under them, as every color model with alpha does. A texture that a program reads without premultiplied alpha could show the difference at its edges.
+
+- A search on a folder of a million images costs up to a pass over its path index, about 0.3 s, and 0.7 to 0.8 s in the corner case of a text that matches nearly every path in a status almost no image has. An FTS5 table with the trigram tokenizer would make any search fast, at the price of a second copy of every path kept in step with the scanner. Not worth it for a search an admin runs by hand, unless that changes.
+- A kept image cannot be tried again from the folder page. After a change to the folder's profile, such as a lower `min_ssim`, its kept images would deserve another try; setting them back to `pending` when the profile's thresholds change is the way, if it is wanted.
+- The chart's days are UTC dates, as `daily_stats` stores them, so near midnight a swap counts on the day UTC says.
 
 - The web UI runs as root. Binding to `127.0.0.1` behind nginx keeps it off the network. An option for later is a root worker process plus an unprivileged API, split the way Gogobackup's `cmd/cron` is.
 - Email when a folder's images start failing, through the existing mail module. Not in v1 unless asked.
