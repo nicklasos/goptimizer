@@ -1944,6 +1944,7 @@ const docTemplate = `{
             "required": [
                 "dirs_listed",
                 "dirs_seen",
+                "duration_ms",
                 "error",
                 "files_changed",
                 "files_gone",
@@ -1964,6 +1965,10 @@ const docTemplate = `{
                 },
                 "dirs_seen": {
                     "type": "integer"
+                },
+                "duration_ms": {
+                    "type": "integer",
+                    "x-nullable": true
                 },
                 "error": {
                     "type": "string",

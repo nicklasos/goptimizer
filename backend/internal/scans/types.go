@@ -13,7 +13,8 @@ type StartScanRequest struct {
 }
 
 // ScanResponse is one scan of a folder. The counts grow while it runs. files_new includes files
-// that came back after being gone. It is named for swag because folders embeds it too, and swag
+// that came back after being gone. duration_ms is finished_at minus started_at to the millisecond,
+// which the second-precision timestamps cannot give a quick scan. It is named for swag because folders embeds it too, and swag
 // would otherwise describe it twice. The enum fields are plain strings for the same reason.
 type ScanResponse struct {
 	ID           int64   `json:"id"`
@@ -24,6 +25,7 @@ type ScanResponse struct {
 	QueuedAt     string  `json:"queued_at"`
 	StartedAt    *string `json:"started_at" extensions:"x-nullable"`
 	FinishedAt   *string `json:"finished_at" extensions:"x-nullable"`
+	DurationMs   *int64  `json:"duration_ms" extensions:"x-nullable"`
 	DirsSeen     int64   `json:"dirs_seen"`
 	DirsListed   int64   `json:"dirs_listed"`
 	FilesSeen    int64   `json:"files_seen"`
@@ -62,6 +64,10 @@ func ResponseFromDB(scan db.Scan) ScanResponse {
 	}
 	if scan.Error.Valid {
 		response.Error = &scan.Error.String
+	}
+	if scan.StartedAt.Valid && scan.FinishedAt.Valid {
+		ms := scan.FinishedAt.Time.Sub(scan.StartedAt.Time).Milliseconds()
+		response.DurationMs = &ms
 	}
 	return response
 }

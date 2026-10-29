@@ -21,10 +21,10 @@ export function imagesIn(folder: Pick<Folder, 'image_counts'>, status: string): 
 }
 
 /** How long a scan took, or how long a running one has run so far. Null before it starts. */
-export function scanDuration(scan: Pick<Scan, 'started_at' | 'finished_at'>, now: Date = new Date()): number | null {
+export function scanDuration(scan: Pick<Scan, 'started_at' | 'duration_ms'>, now: Date = new Date()): number | null {
+  if (scan.duration_ms != null) return scan.duration_ms
   if (!scan.started_at) return null
-  const end = scan.finished_at ? new Date(scan.finished_at) : now
-  return Math.max(0, end.getTime() - new Date(scan.started_at).getTime())
+  return Math.max(0, now.getTime() - new Date(scan.started_at).getTime())
 }
 
 /** The last scan in one line: queued, its progress, what it found, or why it failed. */

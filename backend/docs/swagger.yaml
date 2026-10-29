@@ -104,6 +104,9 @@ definitions:
         type: integer
       dirs_seen:
         type: integer
+      duration_ms:
+        type: integer
+        x-nullable: true
       error:
         type: string
         x-nullable: true
@@ -147,6 +150,7 @@ definitions:
     required:
     - dirs_listed
     - dirs_seen
+    - duration_ms
     - error
     - files_changed
     - files_gone

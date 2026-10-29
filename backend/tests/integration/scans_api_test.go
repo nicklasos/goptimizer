@@ -25,7 +25,8 @@ func TestScansAPI_StartScan(t *testing.T) {
 		AssertJSONPath("data.kind", "quick").
 		AssertJSONPath("data.trigger", "manual").
 		AssertJSONPath("data.status", "queued").
-		AssertJSONPath("data.started_at", nil)
+		AssertJSONPath("data.started_at", nil).
+		AssertJSONPath("data.duration_ms", nil)
 
 	app.As(user).POST("/api/v1/folders/%d/scans", map[string]any{"kind": "full"}, folder.ID).
 		AssertError(http.StatusConflict, errs.ErrKeyScansInProgress)
@@ -58,7 +59,7 @@ func TestScansAPI_ListScans(t *testing.T) {
 	for i := range 21 {
 		app.Create.Scan(folder, factory.WithScanStatus(scans.StatusSucceeded), factory.StartedAt(start.Add(time.Duration(i)*time.Hour)))
 	}
-	latest := app.Create.Scan(folder, factory.WithScanStatus(scans.StatusFailed), factory.WithScanError("the folder's path cannot be read"))
+	latest := app.Create.Scan(folder, factory.WithScanStatus(scans.StatusFailed), factory.WithScanError("the folder's path cannot be read"), factory.Took(250*time.Millisecond))
 	app.Create.Scan(other)
 
 	app.As(user).GET("/api/v1/folders/%d/scans", folder.ID).
@@ -67,6 +68,7 @@ func TestScansAPI_ListScans(t *testing.T) {
 		AssertJSONPath("data.0.id", latest.ID).
 		AssertJSONPath("data.0.status", "failed").
 		AssertJSONPath("data.0.error", "the folder's path cannot be read").
+		AssertJSONPath("data.0.duration_ms", 250).
 		AssertJSONPath("data.1.status", "succeeded").
 		AssertJSONPath("pagination.total", 22).
 		AssertJSONPath("pagination.last_page", 2)

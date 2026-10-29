@@ -41,15 +41,15 @@ describe('imagesIn', () => {
 describe('scanDuration', () => {
   const now = new Date('2026-10-29T12:00:00Z')
 
-  it('is finished minus started', () => {
-    assert.equal(scanDuration({ started_at: '2026-10-29T11:00:00Z', finished_at: '2026-10-29T11:00:12.5Z' }, now), 12_500)
+  it('is what the API measured for a finished scan, below the second its timestamps show', () => {
+    assert.equal(scanDuration({ started_at: '2026-10-29T11:00:00Z', duration_ms: 18 }, now), 18)
   })
 
   it('is the time so far for a running scan', () => {
-    assert.equal(scanDuration({ started_at: '2026-10-29T11:59:00Z', finished_at: null }, now), 60_000)
+    assert.equal(scanDuration({ started_at: '2026-10-29T11:59:00Z', duration_ms: null }, now), 60_000)
   })
 
   it('is null for a scan still queued', () => {
-    assert.equal(scanDuration({ started_at: null, finished_at: null }, now), null)
+    assert.equal(scanDuration({ started_at: null, duration_ms: null }, now), null)
   })
 })

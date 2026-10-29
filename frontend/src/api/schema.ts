@@ -384,6 +384,7 @@ export interface ReasonResponse {
 export interface ScanResponse {
   dirs_listed: number;
   dirs_seen: number;
+  duration_ms?: number | null;
   error?: string | null;
   files_changed: number;
   files_gone: number;
