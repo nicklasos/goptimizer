@@ -31,9 +31,10 @@ const (
 	ErrKeyUsersLastAdmin        = "users.last_admin"
 )
 
-// Folders error keys. All but not_found are field errors, under "name", "path" or "profile.*".
+// Folders error keys. All but not_found and paused are field errors, under "name", "path" or "profile.*".
 const (
 	ErrKeyFoldersNotFound         = "folders.not_found"
+	ErrKeyFoldersPaused           = "folders.paused"
 	ErrKeyFoldersNameTaken        = "folders.name_taken"
 	ErrKeyFoldersPathNotAbsolute  = "folders.path_not_absolute"
 	ErrKeyFoldersPathNotFound     = "folders.path_not_found"
@@ -43,6 +44,11 @@ const (
 	ErrKeyFoldersPathOverlaps     = "folders.path_overlaps"
 	ErrKeyFoldersPNGQualityRange  = "folders.png_quality_range"
 	ErrKeyFoldersExcludeInvalid   = "folders.exclude_invalid"
+)
+
+// Scans error keys
+const (
+	ErrKeyScansInProgress = "scans.in_progress"
 )
 
 // Validation error keys

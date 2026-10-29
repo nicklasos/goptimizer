@@ -10,6 +10,8 @@ import (
 	"app/config"
 	"app/internal/db"
 	"app/internal/logger"
+	"app/internal/scanner"
+	"app/internal/scans"
 	"app/internal/scheduler/jobs"
 
 	"github.com/robfig/cron/v3"
@@ -22,6 +24,9 @@ type Dependencies struct {
 	Queries *db.Queries
 	Tx      *db.TxRunner
 	Logger  *logger.Logger
+	// ScanWorker runs the queued scans. It starts and stops with the scheduler, so scans run in
+	// whichever process runs the schedule.
+	ScanWorker *scanner.Worker
 }
 
 // Job represents a cron job that can be executed
@@ -57,27 +62,52 @@ func (s *Scheduler) RegisterJobs() error {
 	if err := s.registerCleanupRefreshTokensJob(); err != nil {
 		return fmt.Errorf("failed to register cleanup refresh tokens job: %w", err)
 	}
+	if err := s.registerEnqueueScansJob(); err != nil {
+		return fmt.Errorf("failed to register enqueue scans job: %w", err)
+	}
 
 	return nil
 }
 
-// Start begins executing all registered cron jobs
+// Start starts the scan worker, which first fails the scans a previous process left running,
+// then begins executing all registered cron jobs
 func (s *Scheduler) Start() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if err := s.deps.ScanWorker.Start(); err != nil {
+		return fmt.Errorf("failed to start the scan worker: %w", err)
+	}
 	s.cron.Start()
 	s.deps.Logger.Info("Scheduler started", "jobs", len(s.cron.Entries()))
 	return nil
 }
 
-// Stop stops scheduling new runs and waits for the jobs already running to finish.
+// Stop stops scheduling new runs and waits for the jobs already running to finish. Scans in
+// progress are stopped and recorded as failed.
 func (s *Scheduler) Stop() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	<-s.cron.Stop().Done()
+	s.deps.ScanWorker.Stop()
 	s.deps.Logger.Info("Scheduler stopped")
+}
+
+func (s *Scheduler) registerEnqueueScansJob() error {
+	job := jobs.NewEnqueueScansJob(scans.NewScanService(s.deps.Queries, s.deps.ScanWorker.Wake), s.deps.Logger)
+
+	_, err := s.cron.AddFunc("* * * * *", func() {
+		if err := job.Execute(context.Background()); err != nil {
+			s.deps.Logger.Error("Enqueue scans job failed", "error", err)
+		}
+	})
+	if err != nil {
+		return fmt.Errorf("failed to add enqueue scans job: %w", err)
+	}
+
+	s.deps.Logger.Info("Registered enqueue-scans job (every minute)")
+	return nil
 }
 
 func (s *Scheduler) registerCleanupRefreshTokensJob() error {

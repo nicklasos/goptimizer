@@ -27,4 +27,8 @@ type App struct {
 
 	// AuthMiddleware is set by auth.RegisterRoutes; modules registered after it use it to protect routes
 	AuthMiddleware gin.HandlerFunc
+
+	// WakeScans tells the scan worker in this process that a scan was queued. Nil when the worker
+	// runs in cmd/cron instead, which polls.
+	WakeScans func()
 }

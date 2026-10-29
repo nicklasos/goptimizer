@@ -10,6 +10,7 @@ import (
 	"app/config"
 	"app/internal/db"
 	"app/internal/logger"
+	"app/internal/scanner"
 	"app/internal/scheduler"
 )
 
@@ -56,11 +57,12 @@ func main() {
 	tx := db.NewTxRunner(database)
 
 	deps := &scheduler.Dependencies{
-		Config:  cfg,
-		DB:      database,
-		Queries: queries,
-		Tx:      tx,
-		Logger:  appLogger,
+		Config:     cfg,
+		DB:         database,
+		Queries:    queries,
+		Tx:         tx,
+		Logger:     appLogger,
+		ScanWorker: scanner.NewWorker(queries, tx, appLogger),
 	}
 
 	cronScheduler := scheduler.NewScheduler(deps)

@@ -30,6 +30,7 @@ import (
 	"app/internal/logger"
 	"app/internal/mail"
 	"app/internal/middleware"
+	"app/internal/scanner"
 	"app/internal/server"
 	"app/internal/tools"
 	"app/tests"
@@ -71,8 +72,9 @@ type App struct {
 	// Tools stands in for the image programs on PATH: every one is installed until Remove
 	Tools *tools.Fake
 
-	t      *testing.T
-	server *httptest.Server
+	t          *testing.T
+	server     *httptest.Server
+	scanWorker *scanner.Worker
 }
 
 // New starts a test. Pass configure functions to change the config:
@@ -171,11 +173,22 @@ func (a *App) baseURL() string {
 		Mail:    a.Mail,
 		Tools:   a.Tools,
 		Api:     router.Group("/api/v1"),
+
+		WakeScans: a.ScanWorker().Wake,
 	})
 
 	a.server = httptest.NewServer(router)
 	a.t.Cleanup(a.server.Close)
 	return a.server.URL
+}
+
+// ScanWorker is the scan worker on the test's database. It is not started: Drain runs what is
+// queued, synchronously. A test of the start and stop calls Start and registers Stop.
+func (a *App) ScanWorker() *scanner.Worker {
+	if a.scanWorker == nil {
+		a.scanWorker = scanner.NewWorker(a.Queries, a.TxRunner, a.Logger)
+	}
+	return a.scanWorker
 }
 
 // Actor is the user as a policy sees them, for calling a service directly.
