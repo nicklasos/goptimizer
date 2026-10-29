@@ -27,6 +27,20 @@ export class DashboardPage extends BasePage {
     return card.locator('[data-testid^="edit-folder-button-"]')
   }
 
+  imageCount(card: Locator): Locator {
+    return card.locator('[data-testid^="folder-image-count-"]')
+  }
+
+  scanStatus(card: Locator): Locator {
+    return card.locator('[data-testid^="folder-scan-status-"]')
+  }
+
+  /** Opens the card's Scan now menu and picks a quick or full scan. */
+  async scan(card: Locator, kind: 'quick' | 'full'): Promise<void> {
+    await card.locator('[data-testid^="scan-folder-button-"]').click()
+    await this.page.locator(`[data-testid^="${kind}-scan-item-"]`).click()
+  }
+
   async gotoDashboard(): Promise<void> {
     await this.goto('/')
     await expect(this.root).toBeVisible()

@@ -73,6 +73,10 @@
       "png_lossless": "PNG без втрат",
       "jpeg": "JPEG",
       "gif": "GIF"
+    },
+    "scanKind": {
+      "quick": "Швидке",
+      "full": "Повне"
     }
   },
   "folders": {
@@ -112,7 +116,28 @@
     "saved": "Папку збережено",
     "deleted": "Папку видалено",
     "deleteConfirm": "Видалити цю папку?",
-    "deleteHint": "Goptimizer забуде її. Файли на диску залишаться як є."
+    "deleteHint": "Goptimizer забуде її. Файли на диску залишаться як є.",
+    "scan": {
+      "now": "Сканувати",
+      "quick": "Швидке сканування",
+      "full": "Повне сканування",
+      "never": "Ще не сканувалася",
+      "queued": "{{kind}} сканування в черзі",
+      "running_one": "Сканування… {{files}} файл",
+      "running_few": "Сканування… {{files}} файли",
+      "running_many": "Сканування… {{files}} файлів",
+      "running_other": "Сканування… {{files}} файлу",
+      "succeeded_one": "{{kind}} сканування завершено {{ago}}, перевірено {{files}} файл",
+      "succeeded_few": "{{kind}} сканування завершено {{ago}}, перевірено {{files}} файли",
+      "succeeded_many": "{{kind}} сканування завершено {{ago}}, перевірено {{files}} файлів",
+      "succeeded_other": "{{kind}} сканування завершено {{ago}}, перевірено {{files}} файлу",
+      "unchanged": "{{kind}} сканування завершено {{ago}}, змін немає",
+      "failed": "{{kind}} сканування не вдалося {{ago}}: {{error}}",
+      "images_one": "{{images}} зображення",
+      "images_few": "{{images}} зображення",
+      "images_many": "{{images}} зображень",
+      "images_other": "{{images}} зображення"
+    }
   },
   "settings": {
     "title": "Налаштування",
@@ -235,6 +260,8 @@
     "validation.error": "Некоректний запит",
     "crashTitle": "На цій сторінці сталася помилка",
     "crashHint": "Решта застосунку працює. Спробуйте ще раз або перезавантажте сторінку.",
-    "reloadPage": "Перезавантажити сторінку"
+    "reloadPage": "Перезавантажити сторінку",
+    "folders.paused": "Папка на паузі",
+    "scans.in_progress": "Сканування цієї папки вже в черзі або триває"
   }
 }

@@ -2,10 +2,16 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import type { ID } from '@/api/types'
 import { foldersApi } from './api'
-import type { FolderRequest } from './types'
+import { isScanActive } from './scans'
+import type { FolderRequest, ScanKind } from './types'
 
+/** Refetches every 2 s while any folder has a scan queued or running, and not at all otherwise. */
 export function useFolders() {
-  return useQuery({ queryKey: qk.folders.list(), queryFn: foldersApi.list })
+  return useQuery({
+    queryKey: qk.folders.list(),
+    queryFn: foldersApi.list,
+    refetchInterval: (query) => (query.state.data?.some((folder) => isScanActive(folder.last_scan)) ? 2000 : false),
+  })
 }
 
 export function useFolder(id: ID | undefined) {
@@ -40,5 +46,13 @@ export function useDeleteFolder() {
   return useMutation({
     mutationFn: (id: ID) => foldersApi.remove(id),
     onSuccess: () => client.invalidateQueries({ queryKey: qk.folders.all }),
+  })
+}
+
+export function useStartScan() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, kind }: { id: ID; kind: ScanKind }) => foldersApi.startScan(id, kind),
+    onSettled: () => client.invalidateQueries({ queryKey: qk.folders.all }),
   })
 }

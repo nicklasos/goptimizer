@@ -49,6 +49,7 @@ Import with the `@/` alias. A feature imports from `api`, `auth`, `layout` and `
 
 ## Folders and settings
 - `/` is the dashboard: one card per folder (`features/folders/pages/FoldersPage`), with a pause switch and an edit link. It keeps the test id `dashboard-page`.
+- Each card shows how many images the index holds (every status but gone: `indexedImages` in `features/folders/scans.ts`) and one line about the folder's `last_scan`. Scan now (`scan-folder-button-<id>`, then `quick-scan-item-<id>` or `full-scan-item-<id>`) queues a scan; it is disabled while one is queued or running and for a paused folder. `useFolders` refetches every 2 s while any folder's scan is queued or running, and not at all otherwise.
 - `/folders/new` and `/folders/:id/edit` are `FolderEditorPage`, the long-form pattern: `useUnsavedChangesGuard`, `useGuardedNavigate`, `applyFormErrors`. Form field names are the API's paths (`['profile', 'jpeg_max_quality']`), so server errors land under their fields. Lossy-only fields are not rendered in lossless mode, so the page submits `form.getFieldsValue(true)`.
 - `NEW_FOLDER` in `features/folders/folderForm.ts` mirrors the API's default profile and intervals; change both together.
 - `/settings` (`features/settings/pages/SettingsPage`) lists the image tools from `GET /tools` and saves the global settings. A tool's purpose is translated by `settings.purpose.<name>`, with the API's English text as the fallback.
@@ -117,7 +118,8 @@ make build
 - A spec runs in the project of the folder it is in; nothing has to be registered.
 - Users are seeded straight into the test database (`helpers/db-helper.ts`); emails start with `e2e-` so cleanup finds them. Use `uniqueEmail()` for users created through the UI.
 - Folders made through the UI are named `E2E ...` so cleanup finds them, and point at a directory the spec creates under `os.tmpdir()` (the API runs on the same machine). The folders table is shared by every spec, so never assert on the whole list or the empty state.
-- The API is started with `AUTH_RATE_LIMIT=false` and `APP_DEBUG=true` (no throttling, mail only logged).
+- The API is started with `AUTH_RATE_LIMIT=false` and `APP_DEBUG=true` (no throttling, mail only logged), after migrating the test database: its scan worker reads the `scans` table at boot, and Playwright starts it before `globalSetup`.
+- The test API runs the scheduler and the scan worker, so a folder a spec creates gets its first scan within a minute. A spec that clicks Scan now accepts 409 `scans.in_progress` for the rare run where the schedule queued one first.
 - Emailed links cannot be read back (only a hash is stored): plant a token with `dbHelper.createEmailToken(userId, purpose)`.
 - Requires `TEST_DATABASE_PATH` (a SQLite file whose name ends in `_test.db`, relative to `../backend`) in `../backend/.env`. The helper opens the same file the API writes.
 

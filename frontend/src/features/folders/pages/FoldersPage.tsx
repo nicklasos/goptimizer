@@ -1,13 +1,16 @@
-import { Button, Card, Col, Empty, Row, Space, Switch, Tag, Typography, theme } from 'antd'
-import { EditOutlined, FolderOutlined, PlusOutlined } from '@ant-design/icons'
+import { Button, Card, Col, Dropdown, Empty, Row, Space, Switch, Tag, Typography, theme } from 'antd'
+import { DownOutlined, EditOutlined, FolderOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/shared/components/PageHeader'
 import { PageError, PageLoading } from '@/shared/components/PageState'
 import { PageStack } from '@/shared/components/PageStack'
 import { enumLabel } from '@/shared/utils/enums'
-import { useFolders, useSetFolderEnabled } from '../hooks'
-import type { Folder } from '../types'
+import { formatNumber, formatRelative } from '@/shared/utils/format'
+import type { Translate } from '@/shared/utils/serverErrors'
+import { useFolders, useSetFolderEnabled, useStartScan } from '../hooks'
+import { indexedImages, isScanActive } from '../scans'
+import { SCAN_KINDS, type Folder, type Scan, type ScanKind } from '../types'
 
 /** The dashboard: one card per folder. */
 export default function FoldersPage() {
@@ -65,8 +68,12 @@ function FolderCard({ folder }: { folder: Folder }) {
   const { token } = theme.useToken()
   const navigate = useNavigate()
   const setEnabled = useSetFolderEnabled()
+  const startScan = useStartScan()
   const pending = setEnabled.isPending ? setEnabled.variables : undefined
   const enabled = pending?.id === folder.id ? pending.enabled : folder.enabled
+  const scan = folder.last_scan
+  const scanning = isScanActive(scan)
+  const images = indexedImages(folder)
 
   return (
     <Card
@@ -84,6 +91,28 @@ function FolderCard({ folder }: { folder: Folder }) {
         </Space>
       }
       actions={[
+        <Dropdown
+          key="scan"
+          trigger={['click']}
+          disabled={!enabled || scanning}
+          menu={{
+            items: SCAN_KINDS.map((kind) => ({
+              key: kind,
+              label: <span data-testid={`${kind}-scan-item-${folder.id}`}>{t(`folders.scan.${kind}`)}</span>,
+            })),
+            onClick: ({ key }) => startScan.mutate({ id: folder.id, kind: key as ScanKind }),
+          }}
+        >
+          <Button
+            type="link"
+            icon={<SyncOutlined spin={scanning} />}
+            loading={startScan.isPending}
+            disabled={!enabled || scanning}
+            data-testid={`scan-folder-button-${folder.id}`}
+          >
+            {t('folders.scan.now')} <DownOutlined />
+          </Button>
+        </Dropdown>,
         <Button
           key="edit"
           type="link"
@@ -112,7 +141,35 @@ function FolderCard({ folder }: { folder: Folder }) {
             {t('folders.scanSummary', { minutes: folder.scan_interval_minutes, hours: folder.full_scan_interval_hours })}
           </Typography.Text>
         </Space>
+        <Typography.Text strong data-testid={`folder-image-count-${folder.id}`} data-count={images}>
+          {t('folders.scan.images', { count: images, images: formatNumber(images, 0) })}
+        </Typography.Text>
+        <Typography.Text
+          type={scan?.status === 'failed' ? 'danger' : 'secondary'}
+          data-testid={`folder-scan-status-${folder.id}`}
+          data-status={scan?.status ?? 'none'}
+        >
+          {scanLine(t, scan)}
+        </Typography.Text>
       </Space>
     </Card>
   )
+}
+
+/** The last scan in one line: queued, its progress, what it found, or why it failed. */
+function scanLine(t: Translate, scan: Scan | null | undefined): string {
+  if (!scan) return t('folders.scan.never')
+  const kind = enumLabel(t, 'scanKind', scan.kind)
+  const ago = formatRelative(scan.finished_at)
+  const files = { count: scan.files_seen, files: formatNumber(scan.files_seen, 0) }
+  switch (scan.status) {
+    case 'queued':
+      return t('folders.scan.queued', { kind })
+    case 'running':
+      return t('folders.scan.running', files)
+    case 'failed':
+      return t('folders.scan.failed', { kind, ago, error: scan.error })
+    case 'succeeded':
+      return scan.files_seen > 0 ? t('folders.scan.succeeded', { kind, ago, ...files }) : t('folders.scan.unchanged', { kind, ago })
+  }
 }

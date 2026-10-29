@@ -69,6 +69,10 @@
       "png_lossless": "PNG lossless",
       "jpeg": "JPEG",
       "gif": "GIF"
+    },
+    "scanKind": {
+      "quick": "Quick",
+      "full": "Full"
     }
   },
   "folders": {
@@ -108,7 +112,22 @@
     "saved": "Folder saved",
     "deleted": "Folder deleted",
     "deleteConfirm": "Delete this folder?",
-    "deleteHint": "Goptimizer forgets it. The files on disk stay as they are."
+    "deleteHint": "Goptimizer forgets it. The files on disk stay as they are.",
+    "scan": {
+      "now": "Scan now",
+      "quick": "Quick scan",
+      "full": "Full scan",
+      "never": "Not scanned yet",
+      "queued": "{{kind}} scan queued",
+      "running_one": "Scanning… {{files}} file",
+      "running_other": "Scanning… {{files}} files",
+      "succeeded_one": "{{kind}} scan finished {{ago}}, {{files}} file checked",
+      "succeeded_other": "{{kind}} scan finished {{ago}}, {{files}} files checked",
+      "unchanged": "{{kind}} scan finished {{ago}}, nothing changed",
+      "failed": "{{kind}} scan failed {{ago}}: {{error}}",
+      "images_one": "{{images}} image",
+      "images_other": "{{images}} images"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -229,6 +248,8 @@
     "validation.error": "Invalid request",
     "crashTitle": "This page ran into a problem",
     "crashHint": "The rest of the app still works. Try again, or reload the page.",
-    "reloadPage": "Reload page"
+    "reloadPage": "Reload page",
+    "folders.paused": "The folder is paused",
+    "scans.in_progress": "A scan of this folder is already queued or running"
   }
 }

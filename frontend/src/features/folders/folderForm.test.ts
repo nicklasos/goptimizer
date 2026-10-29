@@ -12,6 +12,8 @@ const folder: Folder = {
   scan_interval_minutes: 15,
   full_scan_interval_hours: 48,
   profile: { ...NEW_FOLDER.profile, mode: 'lossless', excludes: ['cache/**'] },
+  last_scan: null,
+  image_counts: {},
   created_at: '2026-10-28T10:00:00Z',
   updated_at: '2026-10-28T10:00:00Z',
 }

@@ -7,13 +7,20 @@ import { DashboardPage } from '../pages/DashboardPage'
 import { FolderEditorPage } from '../pages/FolderEditorPage'
 
 let dir: string
+let images: string
 
 test.beforeAll(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'goptimizer-e2e-'))
+  images = fs.mkdtempSync(path.join(os.tmpdir(), 'goptimizer-e2e-images-'))
+  fs.mkdirSync(path.join(images, 'nested'))
+  for (const file of ['a.png', 'b.jpg', 'nested/c.gif', 'notes.txt']) {
+    fs.writeFileSync(path.join(images, file), file)
+  }
 })
 
 test.afterAll(() => {
   fs.rmSync(dir, { recursive: true, force: true })
+  fs.rmSync(images, { recursive: true, force: true })
 })
 
 test.describe('Folders', () => {
@@ -56,5 +63,27 @@ test.describe('Folders', () => {
     await editor.delete()
     await expect(dashboard.root).toBeVisible()
     await expect(dashboard.folderCard(renamed)).toHaveCount(0)
+  })
+
+  // The schedule may queue the first scan just before the click does (409); the card ends with the same count.
+  test('Scan now indexes the images and shows the count on the card', async ({ page }) => {
+    await loginAs(page, 'user')
+    const dashboard = new DashboardPage(page)
+    const editor = new FolderEditorPage(page)
+    const name = `E2E Images ${Date.now()}`
+
+    await dashboard.gotoDashboard()
+    await dashboard.addFolderButton.click()
+    await editor.fill(name, images)
+    await editor.saveButton.click()
+    const card = dashboard.folderCard(name)
+    await expect(card).toBeVisible()
+
+    const started = page.waitForResponse((r) => r.url().endsWith('/scans') && r.request().method() === 'POST')
+    await dashboard.scan(card, 'full')
+    expect([202, 409]).toContain((await started).status())
+
+    await expect(dashboard.imageCount(card)).toHaveAttribute('data-count', '3', { timeout: 20_000 })
+    await expect(dashboard.scanStatus(card)).toHaveAttribute('data-status', 'succeeded')
   })
 })
