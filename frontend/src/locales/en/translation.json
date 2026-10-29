@@ -315,7 +315,7 @@
     "filesGone": "Gone",
     "error": "Error",
     "empty": "No scans yet",
-    "filesLine": "{{dirs}} dirs listed, {{seen}} files seen: {{new}} new, {{changed}} changed, {{gone}} gone"
+    "filesLine": "Dirs listed: {{dirs}}. Files seen: {{seen}}, new {{new}}, changed {{changed}}, gone {{gone}}"
   },
   "images": {
     "title": "Images",

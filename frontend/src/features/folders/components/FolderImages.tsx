@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import { Button, Card, Input, Select, Space, Tabs, Tag, Tooltip, Typography, theme } from 'antd'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Button, Card, Grid, Input, Select, Space, Tabs, Tag, Tooltip, Typography, theme } from 'antd'
 import { RedoOutlined, SearchOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ResponsiveTable } from '@/shared/components/ResponsiveTable'
 import { enumLabel } from '@/shared/utils/enums'
-import { EMPTY, formatBytes, formatCount, formatDateTime, formatNumber, formatRelative } from '@/shared/utils/format'
+import { formatBytes, formatCount, formatDateTime, formatNumber, formatRelative } from '@/shared/utils/format'
 import message from '@/shared/utils/message'
 import { useFolderImages, useRetryFailedImages, useRetryImage } from '../hooks'
 import { IMAGE_STATUS, IMAGE_STATUSES, imageSizes, isImageStatus, readImageFilters, writeImageFilters, type ImageFilters } from '../images'
@@ -15,13 +15,14 @@ import { imagesIn } from '../scans'
 import type { Folder, Image, ImageOrder } from '../types'
 
 const SEARCH_DELAY = 300
-const PATH_WIDTH = 360
-const REASON_WIDTH = 420
+const PATH_WIDTH = 280
+const REASON_WIDTH = 320
 
 /** A folder's images by status, searchable by path, with a retry for the failed ones. The filters live in the URL. */
 export function FolderImages({ folder }: { folder: Folder }) {
   const { t } = useTranslation()
   const { token } = theme.useToken()
+  const phone = !Grid.useBreakpoint().md
   const [search, setSearch] = useSearchParams()
   const filters = readImageFilters(search)
   const images = useFolderImages(folder.id, { ...filters, q: filters.q.trim() })
@@ -81,10 +82,36 @@ export function FolderImages({ folder }: { folder: Folder }) {
     { title: t('images.format'), dataIndex: 'format', key: 'format', render: (format: Image['format']) => format.toUpperCase() },
     { title: t('images.size'), key: 'size', render: (_, image) => <ImageSize image={image} /> },
     { title: t('images.status'), key: 'status', render: (_, image) => statusTag(image) },
-    { title: t('images.reason'), key: 'reason', render: (_, image) => <ImageReason image={image} maxWidth={REASON_WIDTH} /> },
+    {
+      title: t('images.reason'),
+      key: 'reason',
+      render: (_, image) => <ImageReason image={image} action={retryButton(image)} maxWidth={REASON_WIDTH} />,
+    },
     { title: t('images.updated'), key: 'updated', render: (_, image) => updated(image) },
-    { key: 'actions', render: (_, image) => retryButton(image) },
   ]
+
+  const statusPicker = phone ? (
+    <Select
+      data-testid="images-status-select"
+      value={filters.status ?? 'all'}
+      onChange={(key: string) => setFilters({ status: isImageStatus(key) ? key : null })}
+      options={tabs.map(({ key, label, count }) => ({ value: key, label: `${label} · ${formatCount(count)}` }))}
+      style={{ width: '100%', marginBottom: token.marginSM }}
+    />
+  ) : (
+    <Tabs
+      activeKey={filters.status ?? 'all'}
+      onChange={(key) => setFilters({ status: isImageStatus(key) ? key : null })}
+      items={tabs.map(({ key, label, count }) => ({
+        key,
+        label: (
+          <span data-testid={`images-tab-${key}`} data-count={count}>
+            {label} <Typography.Text type="secondary">{formatCount(count)}</Typography.Text>
+          </span>
+        ),
+      }))}
+    />
+  )
 
   return (
     <Card
@@ -104,18 +131,7 @@ export function FolderImages({ folder }: { folder: Folder }) {
         )
       }
     >
-      <Tabs
-        activeKey={filters.status ?? 'all'}
-        onChange={(key) => setFilters({ status: isImageStatus(key) ? key : null })}
-        items={tabs.map(({ key, label, count }) => ({
-          key,
-          label: (
-            <span data-testid={`images-tab-${key}`} data-count={count}>
-              {label} <Typography.Text type="secondary">{formatCount(count)}</Typography.Text>
-            </span>
-          ),
-        }))}
-      />
+      {statusPicker}
       <Space wrap size={token.marginSM} style={{ marginBottom: token.margin }}>
         <Input
           allowClear
@@ -155,8 +171,7 @@ export function FolderImages({ folder }: { folder: Folder }) {
             <Typography.Text type="secondary">
               {image.format.toUpperCase()} · <ImageSize image={image} /> · {updated(image)}
             </Typography.Text>
-            <ImageReason image={image} />
-            {retryButton(image)}
+            <ImageReason image={image} action={retryButton(image)} />
           </Space>
         )}
       />
@@ -171,16 +186,17 @@ export function FolderImages({ folder }: { folder: Folder }) {
   )
 }
 
-/** The directory gives way first, so the file name stays readable; the tooltip has all of it. */
+/** The directory gives way to the file name, down to an ellipsis that says it is there; the tooltip has all of it. */
 function ImagePath({ path, maxWidth }: { path: string; maxWidth?: number }) {
   const { token } = theme.useToken()
   const name = path.lastIndexOf('/') + 1
-  const part = { overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 } as const
+  const dir = '2ch'
+  const part = { overflow: 'hidden', textOverflow: 'ellipsis' } as const
   return (
     <Tooltip title={path}>
-      <span style={{ display: 'flex', maxWidth: maxWidth ?? '100%', whiteSpace: 'nowrap', fontFamily: token.fontFamilyCode }}>
-        <span style={{ ...part, flex: '0 100 auto' }}>{path.slice(0, name)}</span>
-        <span style={{ ...part, flex: '0 1 auto' }}>{path.slice(name)}</span>
+      <span style={{ display: 'flex', maxWidth: maxWidth ?? '100%', overflow: 'hidden', whiteSpace: 'nowrap', fontFamily: token.fontFamilyCode }}>
+        {name > 0 && <span style={{ ...part, flex: '0 1 auto', minWidth: dir }}>{path.slice(0, name)}</span>}
+        <span style={{ ...part, flex: 'none', maxWidth: name > 0 ? `calc(100% - ${dir})` : '100%' }}>{path.slice(name)}</span>
       </span>
     </Tooltip>
   )
@@ -197,9 +213,12 @@ function ImageSize({ image }: { image: Image }) {
   )
 }
 
-function ImageReason({ image, maxWidth }: { image: Image; maxWidth?: number }) {
+/** Why the image is as it is, and what can be done about it; nothing for an image with nothing to explain. */
+function ImageReason({ image, action, maxWidth }: { image: Image; action?: ReactNode; maxWidth?: number }) {
   const { t } = useTranslation()
+  const { token } = theme.useToken()
   const { reason, lossless, retry } = explainImage(t, image)
+  if (!reason && !lossless && !retry && !action) return null
   return (
     <div
       data-testid={`image-reason-${image.id}`}
@@ -207,7 +226,6 @@ function ImageReason({ image, maxWidth }: { image: Image; maxWidth?: number }) {
       data-lossless-code={lossless?.code ?? undefined}
       style={{ maxWidth, whiteSpace: 'normal' }}
     >
-      {!reason && !lossless && !retry && EMPTY}
       {reason && <ReasonLine reason={reason} />}
       {lossless && <ReasonLine reason={lossless} />}
       {retry && (
@@ -215,6 +233,7 @@ function ImageReason({ image, maxWidth }: { image: Image; maxWidth?: number }) {
           {retry}
         </Typography.Text>
       )}
+      {action && <div style={{ marginTop: token.marginXS }}>{action}</div>}
     </div>
   )
 }

@@ -9,6 +9,8 @@ import { useFolderScans } from '../hooks'
 import { scanDuration } from '../scans'
 import type { Folder, Scan, ScanStatus } from '../types'
 
+const ERROR_WIDTH = 200
+
 const STATUS_COLOR = {
   queued: 'default',
   running: 'processing',
@@ -49,10 +51,10 @@ export function FolderScans({ folder, refetchInterval }: { folder: Folder; refet
       title: t('scans.error'),
       dataIndex: 'error',
       key: 'error',
-      width: 280,
+      width: ERROR_WIDTH,
       render: (error: string | null | undefined) =>
         error ? (
-          <Typography.Text type="danger" ellipsis={{ tooltip: error }} style={{ maxWidth: 280 }}>
+          <Typography.Text type="danger" ellipsis={{ tooltip: error }} style={{ maxWidth: ERROR_WIDTH }}>
             {error}
           </Typography.Text>
         ) : (
