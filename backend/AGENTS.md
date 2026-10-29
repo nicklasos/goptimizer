@@ -19,6 +19,7 @@
 backend/
 ├── cmd/api/main.go              # Main application entry (--port, --test-db)
 ├── cmd/cli/main.go              # CLI (migrate, create-user, seed, mail, smoke test); global --test flag
+├── cmd/scanbench/main.go        # Measures the scanner on a synthetic tree of a million files
 ├── config/
 │   ├── config.go                # Env → Config
 │   └── testdb.go                # Test-database safety guard
@@ -32,6 +33,9 @@ backend/
 │   │   └── types.go             # Request/response types
 │   ├── users/                   # User management (admins only) and the lockout rule
 │   ├── folders/                 # Folders to keep optimized: kind registry (kinds.go), path rules, Profile
+│   ├── images/                  # Image status and format (the extension registry)
+│   ├── scans/                   # Scan kinds and states, the transitions, Due, /folders/:id/scans
+│   ├── scanner/                 # Scanner (lists a folder into dirs and images) and the scan Worker
 │   ├── settings/                # The settings page: the one settings row, and GET /tools
 │   ├── tools/                   # Finds programs on PATH (System, or Fake in tests) and the image tool registry (images.go)
 │   ├── health/                  # /health and /api/v1/health
@@ -112,9 +116,20 @@ When adding new modules:
 - The image tools are a table in `internal/tools/images.go`: `Programs` (name, purpose, apt package, brew formula) and `NeedSteps` (what PNG lossy, PNG lossless, JPEG and GIF run, with alternatives such as optipng for oxipng). `tools.Check(ctx, finder)` builds the report; `GET /tools` caches it for 30 s unless `?refresh=1`. It is served from `internal/settings` because `tools` cannot import `internal`.
 - Tests get `app.Tools`, a `tools.Fake` with every image tool installed (`testkit.FakeToolVersions`); `Remove` one to test a missing tool.
 
+## Scans and the image index
+- `images` has one row per image file (`folder_id`, `dir`, `name`), `dirs` one row per directory a scan listed with its `mtime_ns`, and `scans` one row per scan. `internal/images` holds the image `Status` and `Format` (`FormatOf` decides by extension which files are indexed); the scanner writes only `pending` and `gone`.
+- A scan's `Kind`, `Trigger` and `Status` live in `internal/scans`. Each transition is one conditional UPDATE in `lifecycle.go`: `ClaimNext` (queued to running, oldest first), `Finish` (running to succeeded or failed), `Recover` (running to failed at the worker's start). `idx_scans_active` allows one queued or running scan per folder; a second insert is `scans.ErrScanInProgress` (409), whoever tries.
+- `scans.Due` decides what the schedule queues. Nothing within `scan_interval_minutes` of the last finished scan, failed ones included; then a full scan if none succeeded or the last is `full_scan_interval_hours` old, else a quick one. The `enqueue-scans` job runs it every minute.
+- `scanner.Scanner.Scan` runs one scan. Both kinds go through one step per directory (`list`), which reconciles its entries with its rows: new files become pending, changed ones pending again with their history kept, missing ones gone, and back-again ones pending. A full scan lists every directory; a quick scan lstats the known ones and lists the changed and new ones. The rules that are easy to break, each with a test in `tests/integration/scanner_test.go`: a directory changed within 2 s of its listing is stored with mtime 0 so it is listed again; a new directory's row is written before its parent's mtime, so a stopped scan converges; a directory that is gone, excluded, a symlink or on another filesystem takes every image under it to gone; symlinks are never followed; writes go out 1,000 per transaction, in the order they were queued.
+- `scanner.Worker` runs queued scans, at most `settings.scan_workers` at once (read before each claim). The scheduler starts and stops it (`scheduler.Dependencies.ScanWorker`), so scans run in the API, or in `cmd/cron` with `ENABLE_SCHEDULER=false`. `app.WakeScans` wakes it when the API queues a scan; it is nil when cmd/cron runs the worker, which polls every 5 s.
+- Folder responses carry `last_scan` and `image_counts`; the list reads them for every folder in one query each.
+- Tests: `scanner.New(...)` with `Now` set drives the rules on a real temp directory (`newTree` in `scanner_test.go`). `app.ScanWorker()` is an unstarted worker: `Drain` runs what is queued, synchronously; `Start` and `Stop` test the lifecycle.
+- `go run ./cmd/scanbench` measures the scanner on a million files; the results are in `../docs/benchmarks/scanner.md`.
+
 ## Factories and seed data
 - `internal/factory` creates records with defaults. In a test it is `app.Create`: `app.Create.User()`, `app.Create.User(factory.Admin(), factory.Unverified())`. Elsewhere: `factory.New(t, conn)`.
-- Every new table gets a factory. Factories write through the `Factory*` queries in `internal/db/queries/factory.sql`; tests still never write `INSERT` statements by hand.
+- Every new table gets a factory. Factories write through the `Factory*` queries in `internal/db/queries/factory.sql`; tests still never write `INSERT` statements by hand. `dirs` has none: its rows only mean something for a real tree, so a test scans one.
+- `app.Create.Scan(folder, factory.WithScanStatus(...), factory.StartedAt(...))` and `app.Create.Image(folder, factory.At(dir, name), factory.Optimized(originalSize))`.
 - Users from a factory have the password `factory.DefaultPassword` and a verified email unless `factory.Unverified()` is passed.
 - `make seed` fills an empty development database through the same factories (`cmd/cli/internal/commands/seed.go`); add a new module's sample data there.
 
@@ -139,7 +154,7 @@ Transactions take SQLite's write lock when they begin (`_txlock=immediate`), so 
 - `/health` reports the database. Add a check there for each new dependency the API cannot serve without.
 
 ## Scheduler
-- By default the API process runs the cron jobs: `cmd/api/main.go` starts `internal/scheduler` on boot and stops it on shutdown.
+- By default the API process runs the cron jobs and the scan worker: `cmd/api/main.go` starts `internal/scheduler` on boot and stops it on shutdown. The worker reads its table at boot, so the database must be migrated before the API starts.
 - `ENABLE_SCHEDULER=false` turns that off, and `cmd/cron` (`bin/goptimizer-cron`) runs the same jobs as its own process. Run one or the other, never both.
 - `testkit` never starts it; test a job by calling its `Execute` (`docs/recipes/add-scheduled-job.md`).
 

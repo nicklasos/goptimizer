@@ -40,6 +40,7 @@ make install-remote  # add the app to a server that already has everything (depl
 make deploy-remote   # release the current code to the server with Ansible
 make deploy          # run on the server (install.yml or by hand): pull, build, migrate, restart
 node scripts/screenshots/shoot.mjs   # regenerate the README screenshots after a UI change (demo data from backend/cmd/screenshots-seed)
+(cd backend && go run ./cmd/scanbench)   # measure the scanner on a million files (docs/benchmarks/scanner.md)
 node scripts/logo/build.mjs          # regenerate the logo files from docs/images/logo.svg
 ```
 

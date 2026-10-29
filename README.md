@@ -21,10 +21,10 @@
 
 > [!WARNING]
 > **Goptimizer is in early development and does not optimize images yet.** You can add and configure
-> folders, check the image tools on the server and manage accounts. Scanning and optimizing are being
-> built in the order of the [roadmap](#roadmap).
+> folders, scan them into an index of their images, check the image tools on the server and manage
+> accounts. Optimizing is being built in the order of the [roadmap](#roadmap).
 
-![The folders page: one card per project folder, with its path, compression mode, scan intervals and a pause switch](docs/images/dashboard.png)
+![The folders page: one card per project folder, with its path, compression mode, scan intervals, image count, last scan, a Scan now menu and a pause switch](docs/images/dashboard.png)
 
 ## Why
 
@@ -44,6 +44,13 @@ installed on the server, and shows per folder how many images it handled and how
   similarity threshold, the minimum saving and exclude patterns such as `cache/**`. The path is checked
   when you save it: it has to exist, symlinks are stored as the directory they point to, system folders
   such as `/etc` and `/usr` are refused, and one folder never sits inside another.
+- **Scanning.** Each folder is scanned on its own schedule into an index of its images, and Scan now
+  starts a scan by hand. A quick scan lists only the directories whose modification time changed, so a
+  folder of a million files with nothing new costs one `stat` per directory: 18 ms on a laptop. A full
+  scan, once a day by default, also finds files rewritten in place: 12.6 s for the same million files
+  ([measured](docs/benchmarks/scanner.md)). Each folder card shows how many images the index holds and
+  what the last scan found. Scans are rows in SQLite, so a folder never has two at once and a restart
+  loses nothing. The images are only indexed: nothing is optimized yet.
 - **Tools page.** The settings page lists every program Goptimizer uses, whether the API finds it, its
   version and path, and the `apt` and `brew` commands that install it. A warning names any format that
   cannot be optimized until a program is installed.
@@ -59,11 +66,7 @@ This part is being built now. [docs/PLAN.md](docs/PLAN.md) has the full design.
 - **TinyPNG-like compression.** By default PNGs go through `pngquant` palette quantization (the same
   approach as TinyPNG) and then `oxipng`, or `optipng` where `oxipng` is missing. JPEGs are re-encoded by `jpegoptim` with a quality cap. GIFs go
   through `gifsicle`. Any folder can switch to lossless, where every pixel stays the same.
-- **Fast scans of huge folders.** A quick scan checks only each directory's modification time and lists
-  just the directories that changed, so a folder with a million images costs about one `stat` per
-  directory when nothing is new. A full scan, once a day by default, catches files overwritten in place.
-- **No overlapping work.** Scans and images are rows in SQLite, not jobs in memory. A folder has at most one
-  scan at a time, so an hourly check never starts on top of a long first run. One pool of workers takes
+- **No overlapping work.** Images are rows in SQLite, not jobs in memory, as scans already are. One pool of workers takes
   images from every folder in turn, so a first run of millions of images does not hold up a small folder's
   new uploads. After a restart, everything carries on where it stopped.
 - **Light on the server.** You choose how many images are optimized at once. The tools run under `nice`
@@ -115,8 +118,8 @@ Still, lossy compression changes pixels by design. Try a folder on a copy first 
 |---|---|---|
 | 1 | Base: sign-in, users, deploy, on [Gogokit](https://github.com/nicklasos/gogokit) | Done |
 | 2 | Folders and the tools page | Done |
-| 3 | Scanner: quick and full scans, measured on a million files | Next |
-| 4 | Optimizer: pipelines, verification, the shared worker pool | Planned |
+| 3 | Scanner: quick and full scans, measured on a million files | Done |
+| 4 | Optimizer: pipelines, verification, the shared worker pool | Next |
 | 5 | Dashboard: statistics per folder, scans and images by status, a 30-day chart | Planned |
 | 6 | Deploy: image tools installed by the playbooks | Planned |
 
@@ -182,7 +185,7 @@ before the first run.
 | [backend/](backend) | Go API: Gin, SQLite through sqlc, JWT auth with admins and users, an in-process scheduler |
 | [frontend/](frontend) | Admin panel: React, TypeScript, Ant Design, TanStack Query |
 | [deploy/](deploy) | Ansible: provision a server, install on an existing one, release |
-| [docs/](docs) | The plan, the logo and the screenshots |
+| [docs/](docs) | The plan, the benchmarks, the logo and the screenshots |
 | [scripts/](scripts) | `logo/build.mjs` renders the logo files, `screenshots/shoot.mjs` the screenshots |
 
 ## Contributing
