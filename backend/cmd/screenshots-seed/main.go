@@ -2,13 +2,11 @@
 // accounts, folders, scans, images and daily stats the README screenshots show. It writes through the
 // factories, which do not check that a folder's path exists, so the pictures can show /var/www
 // paths this machine lacks. The API there runs no scheduler, so no scan changes what is seeded.
-//
-// The numbers agree with each other as the optimizer would have left them: each optimized image is
-// counted in the daily stats of the day it was optimized, and the folder totals are their sums.
 package main
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"os"
 	"time"
 
@@ -27,33 +25,22 @@ func (reporter) Fatalf(format string, args ...any) {
 	os.Exit(1)
 }
 
-// random is a fixed sequence, so every run seeds the same pictures.
-type random uint32
-
-func (r *random) next(n int) int {
-	*r ^= *r << 13
-	*r ^= *r >> 17
-	*r ^= *r << 5
-	return int(uint32(*r) % uint32(n))
-}
-
-// left is an image the optimizer left as it was, with its status and reason.
-type left struct {
+type imageGroup struct {
 	status images.Status
 	reason string
 	count  int
 }
 
+// A folder's optimized images are spread over its last spreadDays days, skipping every
+// quietEvery-th day, and each result is about resultPercent of its original's size.
 type folderPlan struct {
-	folder    *db.Folder
-	paths     func(i int) (dir, name string)
-	optimized int
-	// days is over how many days before today its optimizations are spread, and quiet is how often
-	// a day had none.
-	days, quiet int
-	// ratio is the result's size in percent of the original's, on average.
-	ratio int
-	left  []left
+	folder        *db.Folder
+	paths         func(i int) (dir, name string)
+	optimized     int
+	spreadDays    int
+	quietEvery    int
+	resultPercent int
+	others        []imageGroup
 }
 
 func main() {
@@ -94,8 +81,8 @@ func main() {
 				ext := []string{".jpg", ".jpg", ".png", ".jpg", ".gif"}[i%5]
 				return fmt.Sprintf("products/2025/%02d", 1+i%12), fmt.Sprintf("%s-%d%s", products[i%len(products)], 1000+i, ext)
 			},
-			optimized: 1150, days: 30, quiet: 9, ratio: 41,
-			left: []left{
+			optimized: 1150, spreadDays: 30, quietEvery: 9, resultPercent: 41,
+			others: []imageGroup{
 				{images.StatusKept, "no_saving: 182044 bytes to 179311", 14},
 				{images.StatusKept, "ssim_below_threshold: 0.7934, below 0.8500, at 384,128; lossless: no_saving: 96112 bytes to 95870", 9},
 				{images.StatusKept, "already_optimized", 7},
@@ -118,33 +105,32 @@ func main() {
 			paths: func(i int) (string, string) {
 				return fmt.Sprintf("2025/%02d", 1+i%10), fmt.Sprintf("%s-%d.jpg", posts[i%len(posts)], i)
 			},
-			optimized: 312, days: 2, quiet: 0, ratio: 57,
-			left: []left{{images.StatusOptimizing, "", 3}, {images.StatusPending, "", 545}},
+			optimized: 312, spreadDays: 2, resultPercent: 57,
+			others: []imageGroup{{images.StatusOptimizing, "", 3}, {images.StatusPending, "", 545}},
 		},
 		{
 			folder: docs,
 			paths: func(i int) (string, string) {
 				return "guides/" + guides[i%len(guides)], fmt.Sprintf("step-%02d.png", i)
 			},
-			optimized: 298, days: 12, quiet: 3, ratio: 79,
-			left: []left{{images.StatusKept, "no_saving: 40211 bytes to 39877", 11}, {images.StatusKept, "pixels_changed: first at 0,12", 3}},
+			optimized: 298, spreadDays: 12, quietEvery: 3, resultPercent: 79,
+			others: []imageGroup{{images.StatusKept, "no_saving: 40211 bytes to 39877", 11}, {images.StatusKept, "pixels_changed: first at 0,12", 3}},
 		},
 		{
 			folder: landing,
 			paths: func(i int) (string, string) {
 				return "img", fmt.Sprintf("hero-%d.png", i)
 			},
-			left: []left{{images.StatusPending, "", 96}},
+			others: []imageGroup{{images.StatusPending, "", 96}},
 		},
 	}
-	r := random(2463534242)
+	r := rand.New(rand.NewPCG(5, 2025))
 	for _, plan := range plans {
-		seedImages(create, &r, plan, now)
+		seedImages(create, r, plan, now)
 	}
 }
 
-// seedImages writes a folder's images and the daily stats of its optimized ones.
-func seedImages(create *factory.Factory, r *random, plan folderPlan, now time.Time) {
+func seedImages(create *factory.Factory, r *rand.Rand, plan folderPlan, now time.Time) {
 	type day struct {
 		at                   time.Time
 		count, before, after int64
@@ -152,13 +138,13 @@ func seedImages(create *factory.Factory, r *random, plan folderPlan, now time.Ti
 	byDay := map[string]*day{}
 	i := 0
 	for ; i < plan.optimized; i++ {
-		before := int64(40_000 + r.next(900_000))
-		after := before * int64(plan.ratio-12+r.next(24)) / 100
-		ago := r.next(plan.days)
-		for plan.quiet > 0 && ago%plan.quiet == 1 {
-			ago = r.next(plan.days)
+		before := int64(40_000 + r.IntN(900_000))
+		after := before * int64(plan.resultPercent-12+r.IntN(24)) / 100
+		ago := r.IntN(plan.spreadDays)
+		for plan.quietEvery > 0 && ago%plan.quietEvery == 1 {
+			ago = r.IntN(plan.spreadDays)
 		}
-		at := now.Add(-time.Duration(ago)*24*time.Hour - time.Duration(r.next(36_000))*time.Second)
+		at := now.Add(-time.Duration(ago)*24*time.Hour - time.Duration(r.IntN(36_000))*time.Second)
 		dir, name := plan.paths(i)
 		create.Image(plan.folder, factory.At(dir, name), factory.AsOnDisk(after, 1), factory.Optimized(before), factory.UpdatedAt(at))
 		key := images.Day(at)
@@ -169,21 +155,21 @@ func seedImages(create *factory.Factory, r *random, plan folderPlan, now time.Ti
 		byDay[key].before += before
 		byDay[key].after += after
 	}
-	for _, group := range plan.left {
+	for _, group := range plan.others {
 		for range group.count {
 			dir, name := plan.paths(i)
 			i++
-			at := now.Add(-time.Duration(r.next(20*86_400)) * time.Second)
+			at := now.Add(-time.Duration(r.IntN(20*86_400)) * time.Second)
 			if group.status == images.StatusPending || group.status == images.StatusOptimizing {
-				at = now.Add(-time.Duration(r.next(3_600)) * time.Second)
+				at = now.Add(-time.Duration(r.IntN(3_600)) * time.Second)
 			}
-			opts := []factory.ImageOption{factory.At(dir, name), factory.AsOnDisk(int64(30_000+r.next(600_000)), 1), factory.UpdatedAt(at)}
+			opts := []factory.ImageOption{factory.At(dir, name), factory.AsOnDisk(int64(30_000+r.IntN(600_000)), 1), factory.UpdatedAt(at)}
 			switch group.status {
 			case images.StatusFailed:
 				retryAt := time.Time{}
 				attempts := int64(images.MaxAttempts)
-				if r.next(2) == 0 {
-					retryAt, attempts = now.Add(time.Duration(10+r.next(40))*time.Minute), 1
+				if r.IntN(2) == 0 {
+					retryAt, attempts = now.Add(time.Duration(10+r.IntN(40))*time.Minute), 1
 				}
 				opts = append(opts, factory.Failed(attempts, retryAt))
 			default:
@@ -200,8 +186,6 @@ func seedImages(create *factory.Factory, r *random, plan folderPlan, now time.Ti
 	}
 }
 
-// seedScans gives each folder the scans its schedule would have run: a quick one every hour and a
-// full one a day, with one that failed and one running.
 func seedScans(create *factory.Factory, now time.Time, shop, blog, docs, landing *db.Folder) {
 	succeeded, full := factory.WithScanStatus(scans.StatusSucceeded), factory.WithScanKind(scans.KindFull)
 	for h := 47; h >= 1; h-- {
