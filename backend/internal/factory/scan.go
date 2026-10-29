@@ -10,8 +10,10 @@ import (
 
 type scanAttrs struct {
 	kind      scans.Kind
+	trigger   scans.Trigger
 	status    scans.Status
 	startedAt time.Time
+	took      time.Duration
 	err       string
 	counts    scans.Counts
 }
@@ -28,6 +30,11 @@ func WithScanStatus(status scans.Status) ScanOption {
 // StartedAt sets when a running or finished scan started.
 func StartedAt(at time.Time) ScanOption { return func(a *scanAttrs) { a.startedAt = at } }
 
+// Took sets how long a finished scan ran: it finished that long after it started.
+func Took(d time.Duration) ScanOption { return func(a *scanAttrs) { a.took = d } }
+
+func WithTrigger(trigger scans.Trigger) ScanOption { return func(a *scanAttrs) { a.trigger = trigger } }
+
 func WithScanError(message string) ScanOption { return func(a *scanAttrs) { a.err = message } }
 
 func WithScanCounts(counts scans.Counts) ScanOption { return func(a *scanAttrs) { a.counts = counts } }
@@ -36,7 +43,7 @@ func WithScanCounts(counts scans.Counts) ScanOption { return func(a *scanAttrs) 
 func (f *Factory) Scan(folder *db.Folder, opts ...ScanOption) *db.Scan {
 	f.t.Helper()
 
-	attrs := scanAttrs{kind: scans.KindQuick, status: scans.StatusQueued, startedAt: time.Now()}
+	attrs := scanAttrs{kind: scans.KindQuick, trigger: scans.TriggerSchedule, status: scans.StatusQueued, startedAt: time.Now()}
 	for _, opt := range opts {
 		opt(&attrs)
 	}
@@ -44,7 +51,7 @@ func (f *Factory) Scan(folder *db.Folder, opts ...ScanOption) *db.Scan {
 	params := db.FactoryCreateScanParams{
 		FolderID: folder.ID,
 		Kind:     string(attrs.kind),
-		Trigger:  string(scans.TriggerSchedule),
+		Trigger:  string(attrs.trigger),
 		Status:   string(attrs.status),
 		QueuedAt: attrs.startedAt.UTC(),
 		Error:    sql.NullString{String: attrs.err, Valid: attrs.err != ""},
@@ -60,7 +67,7 @@ func (f *Factory) Scan(folder *db.Folder, opts ...ScanOption) *db.Scan {
 		params.StartedAt = sql.NullTime{Time: attrs.startedAt.UTC(), Valid: true}
 	}
 	if attrs.status == scans.StatusSucceeded || attrs.status == scans.StatusFailed {
-		params.FinishedAt = sql.NullTime{Time: attrs.startedAt.UTC(), Valid: true}
+		params.FinishedAt = sql.NullTime{Time: attrs.startedAt.Add(attrs.took).UTC(), Valid: true}
 	}
 	scan, err := f.queries.FactoryCreateScan(ctx, params)
 	if err != nil {
