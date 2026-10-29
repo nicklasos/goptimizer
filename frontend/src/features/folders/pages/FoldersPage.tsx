@@ -8,11 +8,12 @@ import { PageStack } from '@/shared/components/PageStack'
 import { enumLabel } from '@/shared/utils/enums'
 import { formatBytes, formatNumber, formatRelative } from '@/shared/utils/format'
 import type { Translate } from '@/shared/utils/serverErrors'
+import { FolderStats } from '../components/FolderStats'
 import { useFolders, useSetFolderEnabled, useStartScan } from '../hooks'
 import { imagesIn, indexedImages, isScanActive } from '../scans'
 import { SCAN_KINDS, type Folder, type Scan, type ScanKind } from '../types'
 
-/** The dashboard: one card per folder. */
+/** The dashboard: what every folder adds up to, then one card per folder. */
 export default function FoldersPage() {
   const { t } = useTranslation()
   const { token } = theme.useToken()
@@ -49,6 +50,7 @@ export default function FoldersPage() {
             mainAction={addButton}
           />
         </Card>
+        <FolderStats folders={folders.data} testId="overview" />
         <Row gutter={[token.margin, token.margin]}>
           {folders.data.map((folder) => (
             <Col key={folder.id} xs={24} md={12} xl={8}>

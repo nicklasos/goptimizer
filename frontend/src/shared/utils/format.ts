@@ -22,6 +22,13 @@ export function formatNumber(value: number | null | undefined, digits = 2): stri
   return new Intl.NumberFormat(LOCALES[lang], { maximumFractionDigits: digits }).format(value)
 }
 
+/** A count for a headline figure: in full below 10,000, then compact by the language: "12.9k", "1.3m". */
+export function formatCount(value: number | null | undefined): string {
+  if (missing(value)) return EMPTY
+  if (Math.abs(value) < 10_000) return formatNumber(value, 0)
+  return new Intl.NumberFormat(LOCALES[lang], { notation: 'compact', maximumFractionDigits: 1 }).format(value)
+}
+
 /** A timestamp in local time: "11.09.2026 14:05". */
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return EMPTY

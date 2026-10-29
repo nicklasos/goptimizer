@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   EMPTY,
   formatBytes,
+  formatCount,
   formatDateTime,
   formatDuration,
   formatNumber,
@@ -26,6 +27,13 @@ describe('format', () => {
     assert.equal(formatNumber(Number.NaN), EMPTY)
     assert.equal(formatDateTime(null), EMPTY)
     assert.equal(formatBytes(null), EMPTY)
+  })
+
+  it('writes a headline count in full up to 9,999, then compact', () => {
+    assert.equal(plain(formatCount(1284)), '1,284')
+    assert.equal(plain(formatCount(12_940)), '12.9k')
+    assert.equal(plain(formatCount(1_250_000)), '1.3m')
+    assert.equal(formatCount(null), EMPTY)
   })
 
   it('formats a local timestamp', () => {

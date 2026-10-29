@@ -2,23 +2,25 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { qk } from '@/api/queryKeys'
 import type { ID } from '@/api/types'
 import { foldersApi } from './api'
-import { isScanActive } from './scans'
+import { pollInterval } from './overview'
 import type { FolderRequest, ScanKind } from './types'
 
-/** Refetches every 2 s while any folder has a scan queued or running, and not at all otherwise. */
+/** Refetches on its own as `pollInterval` says. */
 export function useFolders() {
   return useQuery({
     queryKey: qk.folders.list(),
     queryFn: foldersApi.list,
-    refetchInterval: (query) => (query.state.data?.some((folder) => isScanActive(folder.last_scan)) ? 2000 : false),
+    refetchInterval: (query) => pollInterval(query.state.data ?? []),
   })
 }
 
-export function useFolder(id: ID | undefined) {
+/** `live` refetches as `pollInterval` says; the editor leaves it off, so a refetch never resets the form. */
+export function useFolder(id: ID | undefined, { live = false } = {}) {
   return useQuery({
     queryKey: qk.folders.detail(id ?? 0),
     queryFn: () => foldersApi.get(id as ID),
     enabled: id != null,
+    refetchInterval: (query) => live && pollInterval(query.state.data ? [query.state.data] : []),
     meta: { silent: true },
   })
 }

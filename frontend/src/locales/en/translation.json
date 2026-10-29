@@ -261,5 +261,13 @@
     "reloadPage": "Reload page",
     "folders.paused": "The folder is paused",
     "scans.in_progress": "A scan of this folder is already queued or running"
+  },
+  "overview": {
+    "saved": "Saved",
+    "optimized": "Optimized",
+    "pending": "Waiting",
+    "failed": "Failed",
+    "optimizing": "Optimizing now",
+    "scans": "Scans running"
   }
 }
