@@ -47,6 +47,34 @@ func TestClaim_ABigFolderDoesNotStarveASmallOne(t *testing.T) {
 		"in flight, the folders take turns until the small one is done")
 }
 
+// With one worker nothing is in flight at a claim, and the folders take turns.
+func TestClaim_WithOneWorkerTheFoldersTakeTurns(t *testing.T) {
+	app := testkit.New(t)
+	big := app.Create.Folder()
+	small := app.Create.Folder()
+	for range 20 {
+		app.Create.Image(big)
+	}
+	for range 3 {
+		app.Create.Image(small)
+	}
+
+	var claims []int64
+	for {
+		job, ok, err := app.Pool().Claim(app.Ctx)
+		require.NoError(t, err)
+		if !ok {
+			break
+		}
+		claims = append(claims, job.Image.FolderID)
+		_, err = images.Record(app.Ctx, app.TxRunner, job.Image, images.Outcome{Status: images.StatusKept, Size: job.Image.Size, MtimeNs: job.Image.MtimeNs}, time.Now())
+		require.NoError(t, err)
+	}
+
+	assert.Equal(t, []int64{big.ID, small.ID, big.ID, small.ID, big.ID, small.ID, big.ID}, claims[:7])
+	assert.Len(t, claims, 23)
+}
+
 func TestClaim_TheFolderWithFewerImagesInFlightGoesFirst(t *testing.T) {
 	app := testkit.New(t)
 	busy := app.Create.Folder()

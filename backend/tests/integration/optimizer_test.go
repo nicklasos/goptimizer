@@ -418,7 +418,7 @@ func TestOptimizer_TheScannerLeavesARowBeingOptimizedAlone(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, ok)
 	}
-	tr.put("a.png", encodePNG(t, photo(16, 16, 3)))
+	tr.put("a.png", encodePNG(t, photo(16, 12, 3)))
 	tr.removeAll("gone")
 	tr.touch("")
 
