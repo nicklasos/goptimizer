@@ -239,6 +239,36 @@ func (q *Queries) FailImage(ctx context.Context, arg FailImageParams) (int64, er
 	return result.RowsAffected()
 }
 
+const getImage = `-- name: GetImage :one
+SELECT id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at, output_sha256, next_attempt_at FROM images WHERE id = ?
+`
+
+func (q *Queries) GetImage(ctx context.Context, id int64) (Image, error) {
+	row := q.db.QueryRowContext(ctx, getImage, id)
+	var i Image
+	err := row.Scan(
+		&i.ID,
+		&i.FolderID,
+		&i.Dir,
+		&i.Name,
+		&i.Format,
+		&i.Size,
+		&i.MtimeNs,
+		&i.Status,
+		&i.OriginalSize,
+		&i.OptimizedSize,
+		&i.Mode,
+		&i.Reason,
+		&i.Attempts,
+		&i.DiscoveredAt,
+		&i.OptimizedAt,
+		&i.UpdatedAt,
+		&i.OutputSha256,
+		&i.NextAttemptAt,
+	)
+	return i, err
+}
+
 const insertImage = `-- name: InsertImage :exec
 INSERT INTO images (folder_id, dir, name, format, size, mtime_ns, status, discovered_at, updated_at)
 VALUES (
@@ -312,6 +342,85 @@ func (q *Queries) LeaveImage(ctx context.Context, arg LeaveImageParams) (int64, 
 	return result.RowsAffected()
 }
 
+const listDailySavings = `-- name: ListDailySavings :many
+SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved
+FROM daily_stats
+WHERE day >= ?1
+GROUP BY day
+ORDER BY day
+`
+
+type ListDailySavingsRow struct {
+	Day       string `db:"day" json:"day"`
+	Optimized int64  `db:"optimized" json:"optimized"`
+	Saved     int64  `db:"saved" json:"saved"`
+}
+
+// Every folder's optimizations per day, from a day on. Days with none have no row.
+func (q *Queries) ListDailySavings(ctx context.Context, since string) ([]ListDailySavingsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDailySavings, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDailySavingsRow
+	for rows.Next() {
+		var i ListDailySavingsRow
+		if err := rows.Scan(&i.Day, &i.Optimized, &i.Saved); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listDailySavingsOfFolder = `-- name: ListDailySavingsOfFolder :many
+SELECT day, optimized, CAST(bytes_before - bytes_after AS INTEGER) AS saved
+FROM daily_stats
+WHERE folder_id = ?1 AND day >= ?2
+ORDER BY day
+`
+
+type ListDailySavingsOfFolderParams struct {
+	FolderID int64  `db:"folder_id" json:"folder_id"`
+	Since    string `db:"since" json:"since"`
+}
+
+type ListDailySavingsOfFolderRow struct {
+	Day       string `db:"day" json:"day"`
+	Optimized int64  `db:"optimized" json:"optimized"`
+	Saved     int64  `db:"saved" json:"saved"`
+}
+
+func (q *Queries) ListDailySavingsOfFolder(ctx context.Context, arg ListDailySavingsOfFolderParams) ([]ListDailySavingsOfFolderRow, error) {
+	rows, err := q.db.QueryContext(ctx, listDailySavingsOfFolder, arg.FolderID, arg.Since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDailySavingsOfFolderRow
+	for rows.Next() {
+		var i ListDailySavingsOfFolderRow
+		if err := rows.Scan(&i.Day, &i.Optimized, &i.Saved); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listDirs = `-- name: ListDirs :many
 SELECT rel_path, mtime_ns FROM dirs
 WHERE folder_id = ?
@@ -333,6 +442,69 @@ func (q *Queries) ListDirs(ctx context.Context, folderID int64) ([]ListDirsRow, 
 	for rows.Next() {
 		var i ListDirsRow
 		if err := rows.Scan(&i.RelPath, &i.MtimeNs); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImagesByUpdated = `-- name: ListImagesByUpdated :many
+SELECT id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at, output_sha256, next_attempt_at FROM images
+WHERE folder_id = ?1 AND (updated_at, id) < (?2, CAST(?3 AS INTEGER))
+ORDER BY updated_at DESC, id DESC
+LIMIT ?4
+`
+
+type ListImagesByUpdatedParams struct {
+	FolderID  int64     `db:"folder_id" json:"folder_id"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+	ID        int64     `db:"id" json:"id"`
+	PageLimit int64     `db:"page_limit" json:"page_limit"`
+}
+
+// One keyset page of a folder's images, the latest change first: a range scan on idx_images_updated
+// from the row after the cursor.
+func (q *Queries) ListImagesByUpdated(ctx context.Context, arg ListImagesByUpdatedParams) ([]Image, error) {
+	rows, err := q.db.QueryContext(ctx, listImagesByUpdated,
+		arg.FolderID,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Image
+	for rows.Next() {
+		var i Image
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Dir,
+			&i.Name,
+			&i.Format,
+			&i.Size,
+			&i.MtimeNs,
+			&i.Status,
+			&i.OriginalSize,
+			&i.OptimizedSize,
+			&i.Mode,
+			&i.Reason,
+			&i.Attempts,
+			&i.DiscoveredAt,
+			&i.OptimizedAt,
+			&i.UpdatedAt,
+			&i.OutputSha256,
+			&i.NextAttemptAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -379,6 +551,135 @@ func (q *Queries) ListImagesInDir(ctx context.Context, arg ListImagesInDirParams
 			&i.Size,
 			&i.MtimeNs,
 			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImagesOfStatusByUpdated = `-- name: ListImagesOfStatusByUpdated :many
+SELECT id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at, output_sha256, next_attempt_at FROM images
+WHERE folder_id = ?1 AND status = ?2 AND (updated_at, id) < (?3, CAST(?4 AS INTEGER))
+ORDER BY updated_at DESC, id DESC
+LIMIT ?5
+`
+
+type ListImagesOfStatusByUpdatedParams struct {
+	FolderID  int64     `db:"folder_id" json:"folder_id"`
+	Status    string    `db:"status" json:"status"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+	ID        int64     `db:"id" json:"id"`
+	PageLimit int64     `db:"page_limit" json:"page_limit"`
+}
+
+func (q *Queries) ListImagesOfStatusByUpdated(ctx context.Context, arg ListImagesOfStatusByUpdatedParams) ([]Image, error) {
+	rows, err := q.db.QueryContext(ctx, listImagesOfStatusByUpdated,
+		arg.FolderID,
+		arg.Status,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Image
+	for rows.Next() {
+		var i Image
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Dir,
+			&i.Name,
+			&i.Format,
+			&i.Size,
+			&i.MtimeNs,
+			&i.Status,
+			&i.OriginalSize,
+			&i.OptimizedSize,
+			&i.Mode,
+			&i.Reason,
+			&i.Attempts,
+			&i.DiscoveredAt,
+			&i.OptimizedAt,
+			&i.UpdatedAt,
+			&i.OutputSha256,
+			&i.NextAttemptAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOptimizedImagesBySaved = `-- name: ListOptimizedImagesBySaved :many
+SELECT id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at, output_sha256, next_attempt_at FROM images
+WHERE folder_id = ?1 AND status = 'optimized'
+  AND original_size - optimized_size <= ?2
+  AND (original_size - optimized_size < ?2 OR id < ?3)
+ORDER BY original_size - optimized_size DESC, id DESC
+LIMIT ?4
+`
+
+type ListOptimizedImagesBySavedParams struct {
+	FolderID  int64         `db:"folder_id" json:"folder_id"`
+	Saved     sql.NullInt64 `db:"saved" json:"saved"`
+	ID        int64         `db:"id" json:"id"`
+	PageLimit int64         `db:"page_limit" json:"page_limit"`
+}
+
+// The status is a literal so that idx_images_saved, which holds only optimized images, applies.
+// SQLite seeks that index on the <= term, which neither a row value on an expression nor a CAST
+// of the parameter gives it; the OR then drops the rows of the same saving up to the cursor.
+func (q *Queries) ListOptimizedImagesBySaved(ctx context.Context, arg ListOptimizedImagesBySavedParams) ([]Image, error) {
+	rows, err := q.db.QueryContext(ctx, listOptimizedImagesBySaved,
+		arg.FolderID,
+		arg.Saved,
+		arg.ID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Image
+	for rows.Next() {
+		var i Image
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Dir,
+			&i.Name,
+			&i.Format,
+			&i.Size,
+			&i.MtimeNs,
+			&i.Status,
+			&i.OriginalSize,
+			&i.OptimizedSize,
+			&i.Mode,
+			&i.Reason,
+			&i.Attempts,
+			&i.DiscoveredAt,
+			&i.OptimizedAt,
+			&i.UpdatedAt,
+			&i.OutputSha256,
+			&i.NextAttemptAt,
 		); err != nil {
 			return nil, err
 		}
@@ -637,6 +938,179 @@ func (q *Queries) RestoreOptimized(ctx context.Context, arg RestoreOptimizedPara
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const retryFailedImages = `-- name: RetryFailedImages :execrows
+UPDATE images
+SET status = 'pending', attempts = 0, next_attempt_at = NULL, updated_at = ?1
+WHERE folder_id = ?2 AND status = 'failed'
+`
+
+type RetryFailedImagesParams struct {
+	Now      time.Time `db:"now" json:"now"`
+	FolderID int64     `db:"folder_id" json:"folder_id"`
+}
+
+func (q *Queries) RetryFailedImages(ctx context.Context, arg RetryFailedImagesParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, retryFailedImages, arg.Now, arg.FolderID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const retryImage = `-- name: RetryImage :execrows
+UPDATE images
+SET status = 'pending', attempts = 0, next_attempt_at = NULL, updated_at = ?1
+WHERE id = ?2 AND status = 'failed'
+`
+
+type RetryImageParams struct {
+	Now time.Time `db:"now" json:"now"`
+	ID  int64     `db:"id" json:"id"`
+}
+
+// A failed image is pending again with its attempts back, as for a new file. Its reason stays
+// until the next attempt replaces it, as when a retry comes due on its own.
+func (q *Queries) RetryImage(ctx context.Context, arg RetryImageParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, retryImage, arg.Now, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const searchImages = `-- name: SearchImages :many
+SELECT id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at, output_sha256, next_attempt_at FROM images
+WHERE folder_id = ?1 AND (dir, name) > (?2, ?3)
+  AND instr(lower(dir || '/' || name), ?4) > 0
+ORDER BY dir, name
+LIMIT ?5
+`
+
+type SearchImagesParams struct {
+	FolderID  int64  `db:"folder_id" json:"folder_id"`
+	Dir       string `db:"dir" json:"dir"`
+	Name      string `db:"name" json:"name"`
+	Needle    string `db:"needle" json:"needle"`
+	PageLimit int64  `db:"page_limit" json:"page_limit"`
+}
+
+// Paths that contain a text, ignoring ASCII case, in path order. The match reads only dir and name,
+// which idx_images_path holds, so a row is read only for a path that matches: one pass over the
+// index at worst, not over the table. needle is lower case.
+func (q *Queries) SearchImages(ctx context.Context, arg SearchImagesParams) ([]Image, error) {
+	rows, err := q.db.QueryContext(ctx, searchImages,
+		arg.FolderID,
+		arg.Dir,
+		arg.Name,
+		arg.Needle,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Image
+	for rows.Next() {
+		var i Image
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Dir,
+			&i.Name,
+			&i.Format,
+			&i.Size,
+			&i.MtimeNs,
+			&i.Status,
+			&i.OriginalSize,
+			&i.OptimizedSize,
+			&i.Mode,
+			&i.Reason,
+			&i.Attempts,
+			&i.DiscoveredAt,
+			&i.OptimizedAt,
+			&i.UpdatedAt,
+			&i.OutputSha256,
+			&i.NextAttemptAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchImagesOfStatus = `-- name: SearchImagesOfStatus :many
+SELECT id, folder_id, dir, name, format, size, mtime_ns, status, original_size, optimized_size, mode, reason, attempts, discovered_at, optimized_at, updated_at, output_sha256, next_attempt_at FROM images
+WHERE folder_id = ?1 AND status = ?2 AND (dir, name) > (?3, ?4)
+  AND instr(lower(dir || '/' || name), ?5) > 0
+ORDER BY dir, name
+LIMIT ?6
+`
+
+type SearchImagesOfStatusParams struct {
+	FolderID  int64  `db:"folder_id" json:"folder_id"`
+	Status    string `db:"status" json:"status"`
+	Dir       string `db:"dir" json:"dir"`
+	Name      string `db:"name" json:"name"`
+	Needle    string `db:"needle" json:"needle"`
+	PageLimit int64  `db:"page_limit" json:"page_limit"`
+}
+
+func (q *Queries) SearchImagesOfStatus(ctx context.Context, arg SearchImagesOfStatusParams) ([]Image, error) {
+	rows, err := q.db.QueryContext(ctx, searchImagesOfStatus,
+		arg.FolderID,
+		arg.Status,
+		arg.Dir,
+		arg.Name,
+		arg.Needle,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Image
+	for rows.Next() {
+		var i Image
+		if err := rows.Scan(
+			&i.ID,
+			&i.FolderID,
+			&i.Dir,
+			&i.Name,
+			&i.Format,
+			&i.Size,
+			&i.MtimeNs,
+			&i.Status,
+			&i.OriginalSize,
+			&i.OptimizedSize,
+			&i.Mode,
+			&i.Reason,
+			&i.Attempts,
+			&i.DiscoveredAt,
+			&i.OptimizedAt,
+			&i.UpdatedAt,
+			&i.OutputSha256,
+			&i.NextAttemptAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const setImageOutputHash = `-- name: SetImageOutputHash :execrows

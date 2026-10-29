@@ -5,6 +5,7 @@ import (
 	"go/parser"
 	"go/token"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -64,6 +65,13 @@ func TestImageReasons_EveryReasonTheOptimizerRecordsHasACode(t *testing.T) {
 		reason, _ := images.ParseReason(value)
 		assert.NotEmpty(t, reason.Code, "%s = %q has no code in images.ReasonCodes", name, value)
 	}
+}
+
+func TestImageReasons_TheAPIEnumListsEveryCode(t *testing.T) {
+	field, ok := reflect.TypeOf(images.ReasonResponse{}).FieldByName("Code")
+	require.True(t, ok)
+
+	assert.ElementsMatch(t, images.ReasonCodes, strings.Split(field.Tag.Get("enums"), ","))
 }
 
 func TestParseReason(t *testing.T) {

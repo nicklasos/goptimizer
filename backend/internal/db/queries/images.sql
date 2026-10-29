@@ -161,3 +161,74 @@ GROUP BY folder_id;
 -- name: SumBytesSavedOfFolder :one
 SELECT CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved FROM daily_stats
 WHERE folder_id = ?;
+
+-- name: GetImage :one
+SELECT * FROM images WHERE id = ?;
+
+-- name: ListImagesByUpdated :many
+-- One keyset page of a folder's images, the latest change first: a range scan on idx_images_updated
+-- from the row after the cursor.
+SELECT * FROM images
+WHERE folder_id = sqlc.arg(folder_id) AND (updated_at, id) < (sqlc.arg(updated_at), CAST(sqlc.arg(id) AS INTEGER))
+ORDER BY updated_at DESC, id DESC
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListImagesOfStatusByUpdated :many
+SELECT * FROM images
+WHERE folder_id = sqlc.arg(folder_id) AND status = sqlc.arg(status) AND (updated_at, id) < (sqlc.arg(updated_at), CAST(sqlc.arg(id) AS INTEGER))
+ORDER BY updated_at DESC, id DESC
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListOptimizedImagesBySaved :many
+-- The status is a literal so that idx_images_saved, which holds only optimized images, applies.
+-- SQLite seeks that index on the <= term, which neither a row value on an expression nor a CAST
+-- of the parameter gives it; the OR then drops the rows of the same saving up to the cursor.
+SELECT * FROM images
+WHERE folder_id = sqlc.arg(folder_id) AND status = 'optimized'
+  AND original_size - optimized_size <= sqlc.arg(saved)
+  AND (original_size - optimized_size < sqlc.arg(saved) OR id < sqlc.arg(id))
+ORDER BY original_size - optimized_size DESC, id DESC
+LIMIT sqlc.arg(page_limit);
+
+-- name: SearchImages :many
+-- Paths that contain a text, ignoring ASCII case, in path order. The match reads only dir and name,
+-- which idx_images_path holds, so a row is read only for a path that matches: one pass over the
+-- index at worst, not over the table. needle is lower case.
+SELECT * FROM images
+WHERE folder_id = sqlc.arg(folder_id) AND (dir, name) > (sqlc.arg(dir), sqlc.arg(name))
+  AND instr(lower(dir || '/' || name), sqlc.arg(needle)) > 0
+ORDER BY dir, name
+LIMIT sqlc.arg(page_limit);
+
+-- name: SearchImagesOfStatus :many
+SELECT * FROM images
+WHERE folder_id = sqlc.arg(folder_id) AND status = sqlc.arg(status) AND (dir, name) > (sqlc.arg(dir), sqlc.arg(name))
+  AND instr(lower(dir || '/' || name), sqlc.arg(needle)) > 0
+ORDER BY dir, name
+LIMIT sqlc.arg(page_limit);
+
+-- name: RetryImage :execrows
+-- A failed image is pending again with its attempts back, as for a new file. Its reason stays
+-- until the next attempt replaces it, as when a retry comes due on its own.
+UPDATE images
+SET status = 'pending', attempts = 0, next_attempt_at = NULL, updated_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id) AND status = 'failed';
+
+-- name: RetryFailedImages :execrows
+UPDATE images
+SET status = 'pending', attempts = 0, next_attempt_at = NULL, updated_at = sqlc.arg(now)
+WHERE folder_id = sqlc.arg(folder_id) AND status = 'failed';
+
+-- name: ListDailySavings :many
+-- Every folder's optimizations per day, from a day on. Days with none have no row.
+SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved
+FROM daily_stats
+WHERE day >= sqlc.arg(since)
+GROUP BY day
+ORDER BY day;
+
+-- name: ListDailySavingsOfFolder :many
+SELECT day, optimized, CAST(bytes_before - bytes_after AS INTEGER) AS saved
+FROM daily_stats
+WHERE folder_id = sqlc.arg(folder_id) AND day >= sqlc.arg(since)
+ORDER BY day;

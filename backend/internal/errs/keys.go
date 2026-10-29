@@ -51,6 +51,12 @@ const (
 	ErrKeyScansInProgress = "scans.in_progress"
 )
 
+// Images error keys
+const (
+	ErrKeyImagesNotFound  = "images.not_found"
+	ErrKeyImagesNotFailed = "images.not_failed"
+)
+
 // Validation error keys
 const (
 	ErrKeyValidationFailed       = "validation.failed"

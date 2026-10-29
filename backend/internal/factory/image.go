@@ -23,6 +23,7 @@ type imageAttrs struct {
 	nextAttemptAt sql.NullTime
 	outputSHA256  []byte
 	optimizedAt   sql.NullTime
+	updatedAt     time.Time
 }
 
 type ImageOption func(*imageAttrs)
@@ -54,6 +55,9 @@ func WithImageStatus(status images.Status) ImageOption {
 	return func(a *imageAttrs) { a.status = status }
 }
 
+// UpdatedAt sets when the row last changed, which the folder page sorts by.
+func UpdatedAt(at time.Time) ImageOption { return func(a *imageAttrs) { a.updatedAt = at } }
+
 func WithReason(reason string) ImageOption {
 	return func(a *imageAttrs) { a.reason = sql.NullString{String: reason, Valid: true} }
 }
@@ -71,7 +75,7 @@ func Failed(attempts int64, retryAt time.Time) ImageOption {
 func (f *Factory) Image(folder *db.Folder, opts ...ImageOption) *db.Image {
 	f.t.Helper()
 
-	attrs := imageAttrs{name: "image-" + unique() + ".png", size: 1024, mtimeNs: 1, status: images.StatusPending}
+	attrs := imageAttrs{name: "image-" + unique() + ".png", size: 1024, mtimeNs: 1, status: images.StatusPending, updatedAt: time.Now()}
 	for _, opt := range opts {
 		opt(&attrs)
 	}
@@ -95,7 +99,7 @@ func (f *Factory) Image(folder *db.Folder, opts ...ImageOption) *db.Image {
 		NextAttemptAt: attrs.nextAttemptAt,
 		OutputSha256:  attrs.outputSHA256,
 		OptimizedAt:   attrs.optimizedAt,
-		Now:           time.Now().UTC(),
+		Now:           attrs.updatedAt.UTC(),
 	})
 	if err != nil {
 		f.t.Fatalf("factory.Image: %v", err)

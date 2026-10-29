@@ -49,6 +49,28 @@ export interface AppInternalToolsReport {
   programs: AppInternalToolsProgramStatus[];
 }
 
+export interface ImageResponse {
+  attempts: number;
+  folder_id: number;
+  format: "png" | "jpeg" | "gif";
+  id: number;
+  lossless_reason?: ReasonResponse | null;
+  next_attempt_at?: string | null;
+  original_size?: number | null;
+  path: string;
+  reason?: ReasonResponse | null;
+  size: number;
+  status:
+    | "pending"
+    | "optimizing"
+    | "optimized"
+    | "kept"
+    | "skipped"
+    | "failed"
+    | "gone";
+  updated_at: string;
+}
+
 export interface InternalAuthForgotPasswordRequest {
   email: string;
 }
@@ -194,6 +216,38 @@ export interface InternalFoldersSetEnabledRequest {
   enabled: boolean;
 }
 
+export interface InternalImagesDailySavingsResponse {
+  data: InternalImagesDaySavingsResponse[];
+}
+
+export interface InternalImagesDaySavingsResponse {
+  bytes_saved: number;
+  day: string;
+  optimized: number;
+}
+
+export interface InternalImagesImageDataResponse {
+  data: ImageResponse;
+}
+
+export interface InternalImagesImagesPage {
+  items: ImageResponse[];
+  next_cursor?: string | null;
+  order: "updated" | "saved" | "path";
+}
+
+export interface InternalImagesImagesPageResponse {
+  data: InternalImagesImagesPage;
+}
+
+export interface InternalImagesRetriedData {
+  retried: number;
+}
+
+export interface InternalImagesRetriedResponse {
+  data: InternalImagesRetriedData;
+}
+
 export interface InternalMessageData {
   message: string;
 }
@@ -292,6 +346,39 @@ export interface InternalUsersUserResponse {
   is_admin: boolean;
   name: string;
   updated_at: string;
+}
+
+export interface ReasonResponse {
+  code?:
+    | "symlink"
+    | "not_regular_file"
+    | "hard_link"
+    | "access_control_list"
+    | "wrong_content"
+    | "apng"
+    | "extra_data"
+    | "too_many_pixels"
+    | "too_large"
+    | "unreadable"
+    | "already_optimized"
+    | "too_new"
+    | "changed_while_optimizing"
+    | "interrupted"
+    | "tool_missing"
+    | "tool_failed"
+    | "swap_failed"
+    | "no_saving"
+    | "format_changed"
+    | "result_undecodable"
+    | "dimensions_changed"
+    | "frames_changed"
+    | "animation_changed"
+    | "pixels_changed"
+    | "ssim_below_threshold"
+    | "color_changed"
+    | "metadata_changed"
+    | null;
+  detail?: string | null;
 }
 
 export interface ScanResponse {

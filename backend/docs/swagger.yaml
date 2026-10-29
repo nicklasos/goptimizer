@@ -1,5 +1,103 @@
 basePath: /
 definitions:
+  ImageResponse:
+    properties:
+      attempts:
+        type: integer
+      folder_id:
+        type: integer
+      format:
+        enum:
+        - png
+        - jpeg
+        - gif
+        type: string
+      id:
+        type: integer
+      lossless_reason:
+        allOf:
+        - $ref: '#/definitions/ReasonResponse'
+        x-nullable: true
+      next_attempt_at:
+        type: string
+        x-nullable: true
+      original_size:
+        type: integer
+        x-nullable: true
+      path:
+        type: string
+      reason:
+        allOf:
+        - $ref: '#/definitions/ReasonResponse'
+        x-nullable: true
+      size:
+        type: integer
+      status:
+        enum:
+        - pending
+        - optimizing
+        - optimized
+        - kept
+        - skipped
+        - failed
+        - gone
+        type: string
+      updated_at:
+        type: string
+    required:
+    - attempts
+    - folder_id
+    - format
+    - id
+    - lossless_reason
+    - next_attempt_at
+    - original_size
+    - path
+    - reason
+    - size
+    - status
+    - updated_at
+    type: object
+  ReasonResponse:
+    properties:
+      code:
+        enum:
+        - symlink
+        - not_regular_file
+        - hard_link
+        - access_control_list
+        - wrong_content
+        - apng
+        - extra_data
+        - too_many_pixels
+        - too_large
+        - unreadable
+        - already_optimized
+        - too_new
+        - changed_while_optimizing
+        - interrupted
+        - tool_missing
+        - tool_failed
+        - swap_failed
+        - no_saving
+        - format_changed
+        - result_undecodable
+        - dimensions_changed
+        - frames_changed
+        - animation_changed
+        - pixels_changed
+        - ssim_below_threshold
+        - color_changed
+        - metadata_changed
+        type: string
+        x-nullable: true
+      detail:
+        type: string
+        x-nullable: true
+    required:
+    - code
+    - detail
+    type: object
   ScanResponse:
     properties:
       dirs_listed:
@@ -515,6 +613,76 @@ definitions:
         type: boolean
     required:
     - enabled
+    type: object
+  internal_images.DailySavingsResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/internal_images.DaySavingsResponse'
+        type: array
+    required:
+    - data
+    type: object
+  internal_images.DaySavingsResponse:
+    properties:
+      bytes_saved:
+        type: integer
+      day:
+        type: string
+      optimized:
+        type: integer
+    required:
+    - bytes_saved
+    - day
+    - optimized
+    type: object
+  internal_images.ImageDataResponse:
+    properties:
+      data:
+        $ref: '#/definitions/ImageResponse'
+    required:
+    - data
+    type: object
+  internal_images.ImagesPage:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/ImageResponse'
+        type: array
+      next_cursor:
+        type: string
+        x-nullable: true
+      order:
+        enum:
+        - updated
+        - saved
+        - path
+        type: string
+    required:
+    - items
+    - next_cursor
+    - order
+    type: object
+  internal_images.ImagesPageResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_images.ImagesPage'
+    required:
+    - data
+    type: object
+  internal_images.RetriedData:
+    properties:
+      retried:
+        type: integer
+    required:
+    - retried
+    type: object
+  internal_images.RetriedResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_images.RetriedData'
+    required:
+    - data
     type: object
   internal_scans.Kind:
     enum:
@@ -1041,6 +1209,44 @@ paths:
       summary: Verify email
       tags:
       - auth
+  /api/v1/daily-savings:
+    get:
+      description: The bytes the optimizations saved on each of the last 30 UTC days,
+        oldest first, today last, a day without any as zero. One folder with folder_id,
+        every folder together without.
+      parameters:
+      - description: Folder ID
+        in: query
+        name: folder_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_images.DailySavingsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Daily savings
+      tags:
+      - images
   /api/v1/folders:
     get:
       description: Every folder, ordered by name, with its latest scan, its image
@@ -1264,6 +1470,121 @@ paths:
       summary: Pause or resume folder
       tags:
       - folders
+  /api/v1/folders/{id}/images:
+    get:
+      description: 'One keyset page of the folder''s images: every status or one,
+        the latest change first, or with sort=saved and status=optimized the most
+        bytes saved first. q keeps the paths that contain it, ignoring ASCII case,
+        listed by path; on a million images a search that matches little reads the
+        whole path index, about 0.1 s. Pass the response''s next_cursor as cursor
+        for the next page.'
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Status
+        enum:
+        - pending
+        - optimizing
+        - optimized
+        - kept
+        - skipped
+        - failed
+        - gone
+        in: query
+        name: status
+        type: string
+      - description: Text the path contains
+        in: query
+        name: q
+        type: string
+      - default: updated
+        description: Order
+        enum:
+        - updated
+        - saved
+        in: query
+        name: sort
+        type: string
+      - description: next_cursor of the previous page
+        in: query
+        name: cursor
+        type: string
+      - default: 50
+        description: Page size
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_images.ImagesPageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List folder images
+      tags:
+      - images
+  /api/v1/folders/{id}/images/retry-failed:
+    post:
+      description: Every failed image of the folder goes back to pending with its
+        attempts reset. Returns how many.
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_images.RetriedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Retry failed images
+      tags:
+      - images
   /api/v1/folders/{id}/scans:
     get:
       description: One page of the folder's scans, newest first. A folder keeps its
@@ -1363,6 +1684,49 @@ paths:
       summary: Scan folder now
       tags:
       - scans
+  /api/v1/images/{id}/retry:
+    post:
+      description: A failed image goes back to pending with its attempts reset, and
+        the optimizer takes it again. 409 images.not_failed for an image in any other
+        status.
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_images.ImageDataResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/app_internal_errs.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Retry image
+      tags:
+      - images
   /api/v1/settings:
     get:
       produces:

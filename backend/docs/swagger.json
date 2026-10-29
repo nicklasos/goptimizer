@@ -538,6 +538,63 @@
                 }
             }
         },
+        "/api/v1/daily-savings": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "The bytes the optimizations saved on each of the last 30 UTC days, oldest first, today last, a day without any as zero. One folder with folder_id, every folder together without.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "images"
+                ],
+                "summary": "Daily savings",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Folder ID",
+                        "name": "folder_id",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_images.DailySavingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/folders": {
             "get": {
                 "security": [
@@ -880,6 +937,169 @@
                 }
             }
         },
+        "/api/v1/folders/{id}/images": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "One keyset page of the folder's images: every status or one, the latest change first, or with sort=saved and status=optimized the most bytes saved first. q keeps the paths that contain it, ignoring ASCII case, listed by path; on a million images a search that matches little reads the whole path index, about 0.1 s. Pass the response's next_cursor as cursor for the next page.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "images"
+                ],
+                "summary": "List folder images",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Folder ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "enum": [
+                            "pending",
+                            "optimizing",
+                            "optimized",
+                            "kept",
+                            "skipped",
+                            "failed",
+                            "gone"
+                        ],
+                        "type": "string",
+                        "description": "Status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Text the path contains",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "enum": [
+                            "updated",
+                            "saved"
+                        ],
+                        "type": "string",
+                        "default": "updated",
+                        "description": "Order",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "next_cursor of the previous page",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "minimum": 1,
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_images.ImagesPageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/folders/{id}/images/retry-failed": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Every failed image of the folder goes back to pending with its attempts reset. Returns how many.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "images"
+                ],
+                "summary": "Retry failed images",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Folder ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_images.RetriedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/folders/{id}/scans": {
             "get": {
                 "security": [
@@ -991,6 +1211,70 @@
                         "description": "Accepted",
                         "schema": {
                             "$ref": "#/definitions/internal_scans.ScanDataResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/app_internal_errs.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/images/{id}/retry": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "A failed image goes back to pending with its attempts reset, and the optimizer takes it again. 409 images.not_failed for an image in any other status.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "images"
+                ],
+                "summary": "Retry image",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Image ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_images.ImageDataResponse"
                         }
                     },
                     "400": {
@@ -1522,6 +1806,133 @@
         }
     },
     "definitions": {
+        "ImageResponse": {
+            "type": "object",
+            "required": [
+                "attempts",
+                "folder_id",
+                "format",
+                "id",
+                "lossless_reason",
+                "next_attempt_at",
+                "original_size",
+                "path",
+                "reason",
+                "size",
+                "status",
+                "updated_at"
+            ],
+            "properties": {
+                "attempts": {
+                    "type": "integer"
+                },
+                "folder_id": {
+                    "type": "integer"
+                },
+                "format": {
+                    "type": "string",
+                    "enum": [
+                        "png",
+                        "jpeg",
+                        "gif"
+                    ]
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "lossless_reason": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ReasonResponse"
+                        }
+                    ],
+                    "x-nullable": true
+                },
+                "next_attempt_at": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "original_size": {
+                    "type": "integer",
+                    "x-nullable": true
+                },
+                "path": {
+                    "type": "string"
+                },
+                "reason": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/ReasonResponse"
+                        }
+                    ],
+                    "x-nullable": true
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "pending",
+                        "optimizing",
+                        "optimized",
+                        "kept",
+                        "skipped",
+                        "failed",
+                        "gone"
+                    ]
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "ReasonResponse": {
+            "type": "object",
+            "required": [
+                "code",
+                "detail"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "enum": [
+                        "symlink",
+                        "not_regular_file",
+                        "hard_link",
+                        "access_control_list",
+                        "wrong_content",
+                        "apng",
+                        "extra_data",
+                        "too_many_pixels",
+                        "too_large",
+                        "unreadable",
+                        "already_optimized",
+                        "too_new",
+                        "changed_while_optimizing",
+                        "interrupted",
+                        "tool_missing",
+                        "tool_failed",
+                        "swap_failed",
+                        "no_saving",
+                        "format_changed",
+                        "result_undecodable",
+                        "dimensions_changed",
+                        "frames_changed",
+                        "animation_changed",
+                        "pixels_changed",
+                        "ssim_below_threshold",
+                        "color_changed",
+                        "metadata_changed"
+                    ],
+                    "x-nullable": true
+                },
+                "detail": {
+                    "type": "string",
+                    "x-nullable": true
+                }
+            }
+        },
         "ScanResponse": {
             "type": "object",
             "required": [
@@ -2267,6 +2678,111 @@
             "properties": {
                 "enabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_images.DailySavingsResponse": {
+            "type": "object",
+            "required": [
+                "data"
+            ],
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_images.DaySavingsResponse"
+                    }
+                }
+            }
+        },
+        "internal_images.DaySavingsResponse": {
+            "type": "object",
+            "required": [
+                "bytes_saved",
+                "day",
+                "optimized"
+            ],
+            "properties": {
+                "bytes_saved": {
+                    "type": "integer"
+                },
+                "day": {
+                    "type": "string"
+                },
+                "optimized": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_images.ImageDataResponse": {
+            "type": "object",
+            "required": [
+                "data"
+            ],
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/ImageResponse"
+                }
+            }
+        },
+        "internal_images.ImagesPage": {
+            "type": "object",
+            "required": [
+                "items",
+                "next_cursor",
+                "order"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ImageResponse"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string",
+                    "x-nullable": true
+                },
+                "order": {
+                    "type": "string",
+                    "enum": [
+                        "updated",
+                        "saved",
+                        "path"
+                    ]
+                }
+            }
+        },
+        "internal_images.ImagesPageResponse": {
+            "type": "object",
+            "required": [
+                "data"
+            ],
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_images.ImagesPage"
+                }
+            }
+        },
+        "internal_images.RetriedData": {
+            "type": "object",
+            "required": [
+                "retried"
+            ],
+            "properties": {
+                "retried": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_images.RetriedResponse": {
+            "type": "object",
+            "required": [
+                "data"
+            ],
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_images.RetriedData"
                 }
             }
         },
