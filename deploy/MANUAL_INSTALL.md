@@ -30,10 +30,11 @@ git clone git@github.com:nicklasos/goptimizer.git /var/www/goptimizer
 cd /var/www/goptimizer
 
 mkdir -p shared/database /var/log/goptimizer /var/lib/goptimizer/work
+chown root:root shared/database /var/lib/goptimizer/work
 chmod 700 shared/database /var/lib/goptimizer/work
 
 cp backend/.env.example backend/.env        # then apply deploy/examples/backend.env
-chmod 600 backend/.env
+chown root:root backend/.env && chmod 600 backend/.env
 printf 'VITE_API_URL=/api/v1\nVITE_APP_NAME="Goptimizer"\n' > frontend/.env
 
 make deploy SUPERVISOR_PROGRAM=             # first build and migrations; nothing to restart yet

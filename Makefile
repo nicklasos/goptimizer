@@ -69,8 +69,9 @@ deploy: ## Run on the server: pull, build, migrate, restart, wait for /health
 	cd frontend && npm ci --no-audit --no-fund && npm run build
 	@if [ -n "$(SUPERVISOR_PROGRAM)" ]; then \
 		sudo supervisorctl restart $(SUPERVISOR_PROGRAM) || exit 1; \
-		url=http://127.0.0.1:$$(sed -n 's/^PORT=//p' backend/.env)/health; \
-		for i in $$(seq 30); do curl -fsS -o /dev/null $$url && echo "$(SUPERVISOR_PROGRAM) is healthy" && exit 0; sleep 2; done; \
+		port=$$(sed -n 's/^PORT=["'\'']\{0,1\}\([0-9]*\).*/\1/p' backend/.env | tail -n 1); \
+		url="http://127.0.0.1:$${port:-8747}/health"; \
+		for i in $$(seq 30); do curl -fsS -o /dev/null "$$url" && echo "$(SUPERVISOR_PROGRAM) is healthy" && exit 0; sleep 2; done; \
 		echo "$(SUPERVISOR_PROGRAM) did not answer $$url within a minute" >&2; exit 1; \
 	fi
 

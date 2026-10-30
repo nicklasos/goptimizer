@@ -27,6 +27,17 @@
           for the host in inventory/hosts.yml.
         quiet: true
 
+    # make deploy builds and restarts the API only, which runs as root and runs the scheduled jobs
+    - name: Check the settings this playbook no longer takes
+      ansible.builtin.assert:
+        that:
+          - install_user is not defined
+          - scheduler_in_api | bool
+        fail_msg: >-
+          install.yml runs the API as root, and the API runs the scheduled jobs. Remove install_user
+          and scheduler_in_api from the inventory.
+        quiet: true
+
     - name: Load the Cloudflare address ranges
       ansible.builtin.include_vars:
         file: roles/nginx/defaults/main.yml

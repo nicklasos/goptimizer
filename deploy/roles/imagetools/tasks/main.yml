@@ -8,6 +8,8 @@
     state: present
     update_cache: true
     cache_valid_time: 3600
+    # unattended-upgrades can hold the lock for minutes
+    lock_timeout: 600
 
 # On another architecture there is no oxipng, and the lossless PNG step runs optipng.
 - name: Install oxipng {{ oxipng_version }}
@@ -30,10 +32,18 @@
         remote_src: true
         owner: root
         group: root
+        extra_opts: [--no-same-owner]
         creates: "/opt/{{ oxipng_build }}/oxipng"
 
+    - name: Look for an oxipng installed by hand
+      ansible.builtin.stat:
+        path: /usr/local/bin/oxipng
+      register: oxipng_bin
+
+    # A file there is someone's own oxipng: it stays, and the settings page shows its version
     - name: Put oxipng on the PATH
       ansible.builtin.file:
         src: "/opt/{{ oxipng_build }}/oxipng"
         dest: /usr/local/bin/oxipng
         state: link
+      when: not oxipng_bin.stat.exists or oxipng_bin.stat.islnk

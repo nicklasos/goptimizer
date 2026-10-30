@@ -45,7 +45,8 @@ api_port: 8747
 # The API runs the scheduled jobs. false runs them in a separate <app>-cron supervisor program instead.
 scheduler_in_api: true
 
-# Open POST /auth/register to anyone
+# Open POST /auth/register to anyone. Every account can add folders anywhere outside the system
+# directories, and the service rewrites them as root, so leave this off.
 allow_registration: false
 
 # Serve the API documentation at /swagger/
