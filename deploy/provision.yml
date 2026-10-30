@@ -12,5 +12,6 @@
     - common
     - golang
     - nodejs
+    - imagetools
     - app
     - nginx

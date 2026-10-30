@@ -1,0 +1,7 @@
+# Ubuntu has no oxipng package, so it comes from its GitHub release, checked against these sums
+# (the digests GitHub lists for the musl builds, which run on any Ubuntu release).
+# To upgrade: https://github.com/oxipng/oxipng/releases, then both sums.
+oxipng_version: "10.2.1"
+oxipng_sha256:
+  x86_64: 1813750ef592c5350ca79c88f98b2c0876d05c826dc7156245256d4255c1ad17
+  aarch64: ff21aa2a005b324c8dfbdf13cd2f469fb6728b27dacded82635824ecd12e3b35

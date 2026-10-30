@@ -1,4 +1,5 @@
-# Releases the current code of repo_branch: pull, build, migrate, restart, check.
+# Releases the current code of repo_branch: the image tools it needs, then pull, build, migrate,
+# restart and wait for /health.
 #
 #   ansible-playbook deploy.yml
 - name: Deploy the application
@@ -9,5 +10,6 @@
       ansible.builtin.import_tasks: preflight.yml
       tags: always
   roles:
+    - imagetools
     - app
     - nginx

@@ -1,0 +1,39 @@
+- name: Install the image tools
+  ansible.builtin.apt:
+    name:
+      - pngquant
+      - jpegoptim
+      - optipng
+      - gifsicle
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# On another architecture there is no oxipng, and the lossless PNG step runs optipng.
+- name: Install oxipng {{ oxipng_version }}
+  when: ansible_architecture in oxipng_sha256
+  vars:
+    oxipng_build: "oxipng-{{ oxipng_version }}-{{ ansible_architecture }}-unknown-linux-musl"
+  block:
+    - name: Download oxipng
+      ansible.builtin.get_url:
+        url: "https://github.com/oxipng/oxipng/releases/download/v{{ oxipng_version }}/{{ oxipng_build }}.tar.gz"
+        dest: "/opt/{{ oxipng_build }}.tar.gz"
+        checksum: "sha256:{{ oxipng_sha256[ansible_architecture] }}"
+        mode: "0644"
+
+    # root runs it, so no file of it may keep the owner it had in the archive
+    - name: Unpack oxipng
+      ansible.builtin.unarchive:
+        src: "/opt/{{ oxipng_build }}.tar.gz"
+        dest: /opt
+        remote_src: true
+        owner: root
+        group: root
+        creates: "/opt/{{ oxipng_build }}/oxipng"
+
+    - name: Put oxipng on the PATH
+      ansible.builtin.file:
+        src: "/opt/{{ oxipng_build }}/oxipng"
+        dest: /usr/local/bin/oxipng
+        state: link
