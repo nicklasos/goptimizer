@@ -20,11 +20,11 @@
 </p>
 
 > [!WARNING]
-> **Goptimizer is in early development.** It optimizes images in place and keeps no copy of the
-> originals. Every result has to pass the checks under [Safety](#safety) first. The checks were tested
-> on macOS with Homebrew's builds of the tools, not yet on a Linux server. The deploy playbooks do not
-> install the image tools or run the service as root until phase 6, so on a server deployed today it
-> can only rewrite files its own user owns. Try it on a copy of a folder first.
+> **Goptimizer replaces images in place and keeps no copy of the originals, by design.** Every result
+> has to pass the checks under [Safety](#safety) first, and lossy compression still changes pixels.
+> The checks and the deploy were verified on macOS and on Ubuntu 24.04: the playbooks and a folder of
+> `www-data` files optimized through nginx, in disposable containers on arm64. Not yet on a real
+> server, on x86_64 or on Ubuntu 22.04. Try it on a copy of a folder first.
 
 ![The folders page: totals for every folder (bytes saved, images optimized, waiting and failed, what is running now), a chart of the bytes saved on each of the last 30 days, and one card per project folder with its path, compression mode, scan intervals, last scan, savings, a Scan now menu and a pause switch](docs/images/dashboard.png)
 
@@ -61,6 +61,10 @@ installed on the server, and shows per folder how many images it handled and how
   cannot be optimized until a program is installed.
 - **Global settings.** How many images are optimized at once (by default one less than the CPU count),
   how many folders are scanned at once, and whether the tools run at low priority.
+- **Deploy.** `make provision` sets up a fresh Ubuntu server with the image tools, the service and
+  nginx, `make install-remote` adds them to a server that already runs other sites, and
+  `make deploy-remote` releases new code and waits until the API answers. The service runs as root and
+  listens on `127.0.0.1` only, behind nginx.
 - **Accounts.** Every account can work with every folder and the settings. Admins also create, edit and
   delete accounts, and can make other admins. Nobody can lock the last admin out.
 
@@ -78,9 +82,9 @@ installed on the server, and shows per folder how many images it handled and how
   a small folder's new uploads. After a restart, everything carries on where it stopped. A tool that
   crashes or hangs is stopped, and the image is tried again after 10 minutes and after an hour.
 - **Light on the server.** You choose how many images are optimized at once. The tools run under `nice`,
-  and `ionice` where it exists, by default, so the sites on the same server stay fast. Seven workers
-  handled 2.75 images a second on a busy 8-core laptop, and four handled 2.48
-  ([measured](docs/benchmarks/optimizer.md)).
+  and `ionice` where it exists, by default, so the sites on the same server stay fast: on Ubuntu they run
+  at niceness 10 in the idle I/O class. Seven workers handled 2.75 images a second on a busy 8-core
+  laptop, and four handled 2.48 ([measured](docs/benchmarks/optimizer.md)).
 - **A dashboard that answers the usual questions.** The folders page adds up every folder: bytes saved,
   images optimized, waiting and failed, and the scans and optimizations running now, with a chart of
   the bytes saved on each of the last 30 days. It refreshes on its own while work is in flight. Each
@@ -142,31 +146,50 @@ Still, lossy compression changes pixels by design. Try a folder on a copy first 
 | 3 | Scanner: quick and full scans, measured on a million files | Done |
 | 4 | Optimizer: pipelines, verification, the shared worker pool | Done |
 | 5 | Dashboard: statistics per folder, scans and images by status, a 30-day chart | Done |
-| 6 | Deploy: image tools installed by the playbooks | Next |
+| 6 | Deploy: the image tools and the service, as root behind nginx, verified on Ubuntu 24.04 | Done |
+
+Later, as new kinds of folder and output: folders on SSH servers, in Amazon S3 and in Google Cloud
+Storage, and WebP and AVIF copies of the images.
 
 The design, the data model and the reasoning behind each decision are in [docs/PLAN.md](docs/PLAN.md).
 
 ## Requirements
 
 - A Linux server. The playbooks target Ubuntu 22.04 and 24.04.
-- The image tools: `pngquant`, `oxipng` (or `optipng`), `jpegoptim` and `gifsicle`. On Ubuntu:
-  `sudo apt install pngquant optipng jpegoptim gifsicle`; Ubuntu has no `oxipng` package, and `optipng`
-  does its work. The settings page shows which ones the API finds.
+- The image tools: `pngquant`, `oxipng` (or `optipng`), `jpegoptim` and `gifsicle`. The playbooks
+  install them: the first four from Ubuntu, and `oxipng`, which Ubuntu does not package, from its
+  GitHub release, checked against a pinned SHA-256. By hand, see
+  [deploy/MANUAL_INSTALL.md](deploy/MANUAL_INSTALL.md). The settings page shows which ones the API finds.
 - Goptimizer runs as root, because it rewrites files that belong to other users and gives each one back its
-  owner and mode. nginx serves the admin panel, and phase 6 binds the API to `127.0.0.1` so only nginx
-  can reach it.
+  owner and mode. The API listens on `127.0.0.1` only; nginx serves the admin panel and is the only way in.
 
 ## Install on a server
 
-Three commands, with Ansible from your machine. [deploy/README.md](deploy/README.md) explains the settings.
+From your machine, with Ansible 2.15 or newer (`brew install ansible` or `pipx install --include-deps ansible`),
+for a fresh Ubuntu 22.04 or 24.04 server you can reach over SSH as root or a user who can `sudo`:
 
 ```bash
-make provision        # a fresh server: packages, Go, Node.js, nginx, TLS, then the app
-make install-remote   # a server that already runs other apps: only the app
-make deploy-remote    # release new code: pull, build, migrate, restart, health check
+git clone https://github.com/nicklasos/goptimizer.git && cd goptimizer
+make deploy-setup                                                  # the Ansible collections
+
+cp deploy/inventory/hosts.example.yml deploy/inventory/hosts.yml   # the server's address and SSH user
+cp deploy/secrets.example.yml deploy/group_vars/all/secrets.yml    # jwt_secret: openssl rand -hex 32
+$EDITOR deploy/group_vars/all/main.yml                             # domain, repo_url, tls_mode, letsencrypt_email
+
+make provision
 ```
 
-On the server itself, `make deploy` does the same release without Ansible.
+- `repo_url` is the repository the server clones: `https://github.com/nicklasos/goptimizer.git`, or your fork.
+- With `tls_mode: letsencrypt`, point the domain's DNS at the server first: the certificate request needs it.
+- `make provision` installs the packages, a firewall, Go, Node.js, the image tools, the app and nginx. It
+  ends by printing the command that creates the first admin; run it on the server, then sign in at your domain.
+
+Each release after that is `make deploy-remote`: the tools it needs, pull, build, migrate, restart, and
+a wait until the API answers `/health`.
+
+On a server that already runs other sites, run `make install-remote` instead of `make provision`: it
+installs only the app and the image tools, and later releases are `make deploy` on the server.
+[deploy/README.md](deploy/README.md) explains every setting and what ends up on the server.
 
 ## Run it locally
 
