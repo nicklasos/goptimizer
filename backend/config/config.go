@@ -3,7 +3,9 @@ package config
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
@@ -71,8 +73,11 @@ type Config struct {
 
 // Load loads configuration from environment
 func Load() (*Config, error) {
-	// Load .env file if it exists (ignore error if missing)
-	_ = godotenv.Load()
+	// A missing .env is fine. One that exists but cannot be read is not: on a server it is root's
+	// alone, and another user would otherwise run on the defaults, with a database of their own.
+	if err := godotenv.Load(); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return nil, fmt.Errorf("read .env: %w", err)
+	}
 
 	environment := getEnv("APP_ENV", "development")
 	return &Config{

@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -100,4 +101,18 @@ func TestConfig_ListenAddress(t *testing.T) {
 			assert.Equal(t, tc.want, cfg.ListenAddress())
 		})
 	}
+}
+
+func TestConfig_LoadRefusesAnUnreadableEnvFile(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads every file")
+	}
+	dir := t.TempDir()
+	t.Chdir(dir)
+	_, err := config.Load()
+	assert.NoError(t, err, "no .env is fine")
+
+	assert.NoError(t, os.WriteFile(filepath.Join(dir, ".env"), []byte("PORT=9999\n"), 0o000))
+	_, err = config.Load()
+	assert.ErrorIs(t, err, fs.ErrPermission, "a .env the process cannot read stops it")
 }

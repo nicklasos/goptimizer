@@ -77,6 +77,9 @@ func TestOptimizer_SkipsAFileWithAnACL(t *testing.T) {
 // class where ionice exists (Linux); with it off, at the service's own priority.
 func TestOptimizer_ToolsRunAtLowPriorityWhenTheSettingSaysSo(t *testing.T) {
 	base := niceness(t)
+	if base > 9 {
+		t.Skipf("the tests already run at niceness %d, where 10 more cannot show", base)
+	}
 	_, ionice := exec.LookPath("ionice")
 	for _, low := range []bool{true, false} {
 		t.Run("nice "+strconv.FormatBool(low), func(t *testing.T) {
@@ -92,7 +95,7 @@ func TestOptimizer_ToolsRunAtLowPriorityWhenTheSettingSaysSo(t *testing.T) {
 
 			want := base
 			if low {
-				want = min(base+10, 19)
+				want = base + 10
 			}
 			assert.Equal(t, strconv.Itoa(want), readTrimmed(t, filepath.Join(seen, "nice")), "the tool's niceness")
 			if ionice == nil {
