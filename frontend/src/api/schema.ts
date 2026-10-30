@@ -358,7 +358,6 @@ export interface ReasonResponse {
     | "access_control_list"
     | "wrong_content"
     | "apng"
-    | "extra_data"
     | "too_many_pixels"
     | "too_large"
     | "unreadable"

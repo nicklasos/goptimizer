@@ -46,7 +46,6 @@ const (
 	ReasonACL              = "access_control_list"
 	ReasonWrongContent     = "wrong_content"
 	ReasonAPNG             = "apng"
-	ReasonExtraData        = "extra_data"
 	ReasonTooManyPixels    = "too_many_pixels"
 	ReasonTooLarge         = "too_large"
 	ReasonUnreadable       = "unreadable"
@@ -129,14 +128,13 @@ func (o *Optimizer) Process(ctx context.Context, job Job) images.Outcome {
 	case err != nil:
 		return leave(onDisk, images.StatusSkipped, ReasonUnreadable)
 	}
-	if real, ok := verify.Sniff(original); !ok || real != format {
+	// The content decides the format: a PNG named .jpg is optimized as the PNG it is, and keeps its name.
+	format, ok := verify.Sniff(original)
+	if !ok {
 		return leave(onDisk, images.StatusSkipped, ReasonWrongContent)
 	}
 	if format == images.FormatPNG && verify.IsAPNG(original) {
 		return leave(onDisk, images.StatusSkipped, ReasonAPNG)
-	}
-	if extra := verify.Extra(original, format); extra != "" {
-		return leave(onDisk, images.StatusSkipped, ReasonExtraData+": "+extra)
 	}
 	pixels, err := verify.Pixels(original, format)
 	switch {
@@ -160,11 +158,12 @@ func (o *Optimizer) Process(ctx context.Context, job Job) images.Outcome {
 		return leave(onDisk, images.StatusPending, ReasonToolMissing)
 	}
 	profile := job.Profile
-	result, refused, err := o.attempt(ctx, job, profile, format, original)
+	input := verify.Strip(original, format)
+	result, refused, err := o.attempt(ctx, job, profile, format, original, input)
 	if refused != nil && profile.Mode == folders.ModeLossy {
 		lossless := profile
 		lossless.Mode = folders.ModeLossless
-		fallback, again, err := o.attempt(ctx, job, lossless, format, original)
+		fallback, again, err := o.attempt(ctx, job, lossless, format, original, input)
 		switch {
 		case err != nil:
 			refused.Detail += images.LosslessJoin + ReasonToolFailed + ": " + err.Error()
@@ -200,15 +199,16 @@ func settle(dir *os.File, name string, st unix.Stat_t, o images.Outcome) images.
 	return o
 }
 
-// attempt runs the profile's pipeline on the original and verifies the result. A lossy result that
+// attempt runs the profile's pipeline on input, the original stripped of what browsers do not
+// show, and verifies the result against the original. A lossy result that
 // is refused gets one more attempt from the caller, with the lossless pipeline and its stricter
 // check: every pixel the same. A refusal is not an error; a tool that fails is.
-func (o *Optimizer) attempt(ctx context.Context, job Job, profile folders.Profile, format images.Format, original []byte) ([]byte, *verify.Failure, error) {
+func (o *Optimizer) attempt(ctx context.Context, job Job, profile folders.Profile, format images.Format, original, input []byte) ([]byte, *verify.Failure, error) {
 	steps, ok := Pipeline(format, profile, job.Report)
 	if !ok {
 		return nil, &verify.Failure{Reason: ReasonToolMissing}, nil
 	}
-	result, err := RunPipeline(ctx, o.workDir, steps, profile, job.Nice, o.ToolTimeout, extension(format, job.Image.Name), original)
+	result, err := RunPipeline(ctx, o.workDir, steps, profile, job.Nice, o.ToolTimeout, extension(format, job.Image.Name), input)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -298,10 +298,11 @@ func gone(err error) bool {
 	return errors.Is(err, unix.ENOENT) || errors.Is(err, unix.ENOTDIR) || errors.Is(err, unix.ELOOP)
 }
 
-// extension keeps the image's own extension on the work copy; some tools pick their behavior by it.
+// extension keeps the image's own extension on the work copy, since some tools pick their behavior
+// by it, unless it names another format than the content's.
 func extension(format images.Format, name string) string {
-	if ext := path.Ext(name); ext != "" {
-		return ext
+	if named, ok := images.FormatOf(name); ok && named == format {
+		return path.Ext(name)
 	}
 	return "." + string(format)
 }

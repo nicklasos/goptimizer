@@ -14,7 +14,6 @@ export const REASON_CODES = {
   access_control_list: 'images.reasons.access_control_list',
   wrong_content: 'images.reasons.wrong_content',
   apng: 'images.reasons.apng',
-  extra_data: 'images.reasons.extra_data',
   too_many_pixels: 'images.reasons.too_many_pixels',
   too_large: 'images.reasons.too_large',
   unreadable: 'images.reasons.unreadable',

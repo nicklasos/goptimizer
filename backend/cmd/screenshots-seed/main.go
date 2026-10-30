@@ -89,7 +89,7 @@ func main() {
 				{images.StatusKept, "metadata_changed: the iCCP profile changed", 4},
 				{images.StatusKept, "color_changed: a block's average color moved 14.2 levels; lossless: no_saving: 51200 bytes to 50980", 3},
 				{images.StatusSkipped, "apng", 3},
-				{images.StatusSkipped, "extra_data: a motion photo's video after the end of the JPEG", 2},
+				{images.StatusSkipped, "apng", 2},
 				{images.StatusSkipped, "too_many_pixels", 1},
 				{images.StatusSkipped, "symlink", 2},
 				{images.StatusFailed, "tool_failed: pngquant: signal: killed", 2},

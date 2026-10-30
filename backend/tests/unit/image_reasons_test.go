@@ -77,7 +77,7 @@ func TestParseReason(t *testing.T) {
 		lossless *images.Reason
 	}{
 		{"apng", images.Reason{Code: "apng"}, nil},
-		{"extra_data: bytes after the end", images.Reason{Code: "extra_data", Detail: "bytes after the end"}, nil},
+		{"tool_failed: pngquant crashed", images.Reason{Code: "tool_failed", Detail: "pngquant crashed"}, nil},
 		{"tool_failed: oxipng: exit status 1: bad", images.Reason{Code: "tool_failed", Detail: "oxipng: exit status 1: bad"}, nil},
 		{images.ReasonDied, images.Reason{Code: "interrupted", Detail: "the process died while optimizing it"}, nil},
 		{

@@ -263,42 +263,43 @@ func TestSniffAndAPNG(t *testing.T) {
 	assert.True(t, verify.IsAPNG(withChunks(original, chunk("acTL", []byte{0, 0, 0, 2, 0, 0, 0, 0}))))
 }
 
-func TestExtra(t *testing.T) {
+func TestStrip(t *testing.T) {
 	plainPNG := pngOf(t, gradient(16, 16))
 	plainJPEG := jpegOf(t, gradient(16, 16))
 	var buf bytes.Buffer
 	require.NoError(t, gif.Encode(&buf, image.NewPaletted(image.Rect(0, 0, 4, 4), color.Palette{color.Black, color.White}), nil))
 	plainGIF := buf.Bytes()
-	xmp := segment(0xE1, []byte("http://ns.adobe.com/xap/1.0/\x00<x:xmpmeta><Container:Directory><GContainer:Item/></x:xmpmeta>"))
+	plus := func(data []byte, tail string) []byte { return append(append([]byte{}, data...), tail...) }
 
 	for _, tc := range []struct {
 		name   string
 		data   []byte
 		format images.Format
-		extra  bool
+		want   []byte
 	}{
-		{"a plain PNG", plainPNG, images.FormatPNG, false},
-		{"a PNG with bytes after IEND", append(append([]byte{}, plainPNG...), "trailing"...), images.FormatPNG, true},
-		{"a PNG with content credentials", withChunks(plainPNG, chunk("caBX", []byte("jumb"))), images.FormatPNG, true},
-		{"a plain JPEG", plainJPEG, images.FormatJPEG, false},
-		{"a JPEG with a second image after it, as a gain map is", append(append([]byte{}, plainJPEG...), plainJPEG...), images.FormatJPEG, true},
-		{"a JPEG with an MPF index", withSegments(plainJPEG, segment(0xE2, []byte("MPF\x00MM\x00\x2a"))), images.FormatJPEG, true},
-		{"a JPEG with a JUMBF box", withSegments(plainJPEG, segment(0xEB, []byte("JP\x00\x01"))), images.FormatJPEG, true},
-		{"a JPEG whose XMP points at a container", withSegments(plainJPEG, xmp), images.FormatJPEG, true},
-		{"a plain GIF", plainGIF, images.FormatGIF, false},
-		{"a GIF with bytes after the trailer", append(append([]byte{}, plainGIF...), "trailing"...), images.FormatGIF, true},
+		{"a plain PNG", plainPNG, images.FormatPNG, plainPNG},
+		{"a PNG with bytes after IEND", plus(plainPNG, "trailing"), images.FormatPNG, plainPNG},
+		{"a PNG with content credentials", withChunks(plainPNG, chunk("caBX", []byte("jumb"))), images.FormatPNG, plainPNG},
+		{"a plain JPEG", plainJPEG, images.FormatJPEG, plainJPEG},
+		{"a JPEG with a second image after it, as a gain map or a motion photo's video is", plus(plainJPEG, string(plainJPEG)), images.FormatJPEG, plainJPEG},
+		{"a JPEG with an MPF index", withSegments(plainJPEG, segment(0xE2, []byte("MPF\x00MM\x00\x2a"))), images.FormatJPEG, plainJPEG},
+		{"a JPEG with a JUMBF box", withSegments(plainJPEG, segment(0xEB, []byte("JP\x00\x01"))), images.FormatJPEG, plainJPEG},
+		{"a JPEG keeps its EXIF", withSegments(plainJPEG, exifOrientation(6)), images.FormatJPEG, withSegments(plainJPEG, exifOrientation(6))},
+		{"a plain GIF", plainGIF, images.FormatGIF, plainGIF},
+		{"a GIF with bytes after the trailer", plus(plainGIF, "trailing"), images.FormatGIF, plainGIF},
+		{"a truncated JPEG comes back as it is", plainJPEG[:len(plainJPEG)/2], images.FormatJPEG, plainJPEG[:len(plainJPEG)/2]},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.extra, verify.Extra(tc.data, tc.format) != "", verify.Extra(tc.data, tc.format))
+			assert.Equal(t, tc.want, verify.Strip(tc.data, tc.format))
 		})
 	}
 
-	// Real encoders' files, progressive and with restart markers, have nothing extra.
+	// Real encoders' files, progressive and with restart markers, have nothing to strip.
 	for _, name := range []string{"video-001.progressive.jpeg", "video-001.restart2.jpeg", "video-001.q50.420.progressive.jpeg", "video-001.png", "video-001.gif", "video-001.interlaced.gif"} {
 		data, err := os.ReadFile(filepath.Join(runtime.GOROOT(), "src", "image", "testdata", name))
 		require.NoError(t, err)
 		format, _ := verify.Sniff(data)
-		assert.Empty(t, verify.Extra(data, format), name)
+		assert.Equal(t, data, verify.Strip(data, format), name)
 	}
 }
 

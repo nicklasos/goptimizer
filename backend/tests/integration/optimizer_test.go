@@ -20,6 +20,7 @@ import (
 	"app/internal/folders"
 	"app/internal/images"
 	"app/internal/scans"
+	"app/internal/verify"
 	"app/tests/testkit"
 
 	"github.com/stretchr/testify/assert"
@@ -225,11 +226,8 @@ func TestOptimizer_FilesItMustNotTouch(t *testing.T) {
 			require.NoError(t, os.Link(tr.path("a.png"), filepath.Join(t.TempDir(), "elsewhere.png")))
 		}, nil, images.StatusSkipped, "hard_link"},
 		{"an animated PNG", func(t *testing.T, tr *tree) { tr.put("a.png", apng) }, nil, images.StatusSkipped, "apng"},
-		{"a JPEG named .png", func(t *testing.T, tr *tree) { tr.put("a.png", encodeJPEG(t, photo(32, 32, 5), 90)) }, nil, images.StatusSkipped, "wrong_content"},
+		{"an SVG named .png", func(t *testing.T, tr *tree) { tr.put("a.png", []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`)) }, nil, images.StatusSkipped, "wrong_content"},
 		{"a file over the pixel limit", func(t *testing.T, tr *tree) { tr.put("a.png", bomb) }, nil, images.StatusSkipped, "too_many_pixels"},
-		{"a PNG with data after its end, as a gain map or a video would be", func(t *testing.T, tr *tree) {
-			tr.put("a.png", append(encodePNG(t, photo(32, 32, 8)), "trailing"...))
-		}, nil, images.StatusSkipped, "extra_data: 8 bytes after IEND"},
 		{"a file rewritten since the scan, younger than min_age_minutes", func(t *testing.T, tr *tree) {
 			tr.put("a.png", encodePNG(t, photo(32, 32, 6)))
 		}, func(t *testing.T, tr *tree) {
@@ -254,6 +252,57 @@ func TestOptimizer_FilesItMustNotTouch(t *testing.T) {
 			assertNoTempFiles(t, tr.root)
 			app.AssertDatabaseHas("images", tr.imageWith("", "a.png", tc.status))
 			assert.Equal(t, tc.reason, reasonOfImage(t, app, tr, "a.png"))
+		})
+	}
+}
+
+// What browsers do not show goes: an attachment after the end, content credentials, a motion
+// photo's video and its MPF index. A file is optimized as the format its content is, under its name.
+func TestOptimizer_StripsHiddenDataAndGoesByTheContent(t *testing.T) {
+	jpegWith := func(data []byte, segments ...[]byte) []byte {
+		out := append([]byte{}, data[:2]...)
+		for _, s := range segments {
+			out = append(out, s...)
+		}
+		return append(out, data[2:]...)
+	}
+	app0 := func(marker byte, body string) []byte {
+		return append([]byte{0xFF, marker, byte((len(body) + 2) >> 8), byte(len(body) + 2)}, body...)
+	}
+	cases := []struct {
+		name    string
+		file    string
+		content func(t *testing.T) []byte
+		format  images.Format
+	}{
+		{"a PNG with an attachment and content credentials", "a.png", func(t *testing.T) []byte {
+			return append(withPNGChunk(encodePNG(t, flat(160, 120)), "caBX", []byte("CREDENTIALS")), "ATTACHMENT"...)
+		}, images.FormatPNG},
+		{"a motion photo with content credentials", "a.jpg", func(t *testing.T) []byte {
+			photoJPEG := encodeJPEG(t, photo(320, 240, 4), 95)
+			withMeta := jpegWith(photoJPEG, app0(0xE2, "MPF\x00MM\x00\x2aMPFINDEX"), app0(0xEB, "JPCREDENTIALS"))
+			return append(withMeta, append([]byte("ATTACHMENT"), encodeJPEG(t, photo(64, 48, 5), 90)...)...)
+		}, images.FormatJPEG},
+		{"a PNG named .jpg", "a.jpg", func(t *testing.T) []byte { return encodePNG(t, flat(160, 120)) }, images.FormatPNG},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app := testkit.New(t)
+			useRealTools(t, app, "pngquant", "oxipng", "jpegoptim")
+			tr := optTree(t, app, lossy())
+			tr.put(tc.file, tc.content(t))
+			before := stateOf(t, tr.path(tc.file))
+
+			assert.Equal(t, 1, tr.optimize())
+
+			after := assertSwapped(t, tr.path(tc.file), before)
+			format, _ := verify.Sniff(after.data)
+			assert.Equal(t, tc.format, format)
+			assertDecodesLike(t, before.data, after.data)
+			for _, hidden := range []string{"ATTACHMENT", "CREDENTIALS", "MPFINDEX"} {
+				assert.NotContains(t, string(after.data), hidden)
+			}
+			app.AssertDatabaseHas("images", tr.imageWith("", tc.file, images.StatusOptimized))
 		})
 	}
 }

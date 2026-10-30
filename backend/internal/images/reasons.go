@@ -4,7 +4,7 @@ import "strings"
 
 var ReasonCodes = []string{
 	"symlink", "not_regular_file", "hard_link", "access_control_list", "wrong_content", "apng",
-	"extra_data", "too_many_pixels", "too_large", "unreadable", "already_optimized", "too_new",
+	"too_many_pixels", "too_large", "unreadable", "already_optimized", "too_new",
 	"changed_while_optimizing", "interrupted", "tool_missing", "tool_failed", "swap_failed",
 	"no_saving", "format_changed", "result_undecodable", "dimensions_changed", "frames_changed",
 	"animation_changed", "pixels_changed", "ssim_below_threshold", "color_changed", "metadata_changed",

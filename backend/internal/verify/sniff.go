@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
+	"hash/crc32"
 	"image/jpeg"
 	"image/png"
 
@@ -160,43 +160,50 @@ func walkGIF(data []byte) (gifInfo, error) {
 	return g, errMalformed
 }
 
-// Extra names data an image carries that the tools drop and no check would notice, or is "" when
-// it has none: bytes after the end of the image (where a motion photo keeps its video and an
-// Ultra HDR photo its gain map), a JPEG's MPF index or JUMBF box (C2PA), XMP that points at such
-// data, or a PNG's caBX chunk (C2PA). Such files are left alone.
-func Extra(data []byte, format images.Format) string {
+// Strip is the image without the data it carries beyond what a browser shows: bytes after the end
+// of the image (a motion photo's video, an Ultra HDR gain map, the second picture of an MPF file,
+// or anything appended to it), a JPEG's MPF index and JUMBF boxes, and a PNG's caBX chunks (both
+// content credentials). The tools are given the stripped image, so none of it survives
+// optimizing. A file whose structure cannot be walked comes back as it is.
+func Strip(data []byte, format images.Format) []byte {
 	switch format {
 	case images.FormatPNG:
-		end := len(pngMagic)
-		for _, c := range pngChunks(data) {
-			end += 12 + len(c.data)
-			if c.kind == "caBX" {
-				return "content credentials (caBX)"
-			}
-		}
-		if end < len(data) {
-			return fmt.Sprintf("%d bytes after IEND", len(data)-end)
-		}
+		return pngStrip(data)
 	case images.FormatJPEG:
-		return jpegExtra(data)
+		return jpegStrip(data)
 	case images.FormatGIF:
-		g, err := walkGIF(data)
-		if err == nil && g.end < len(data) {
-			return fmt.Sprintf("%d bytes after the trailer", len(data)-g.end)
+		if g, err := walkGIF(data); err == nil {
+			return data[:g.end]
 		}
 	}
-	return ""
+	return data
 }
 
-var xmpPointers = [][]byte{[]byte("GContainer"), []byte("hdrgm"), []byte("MotionPhoto"), []byte("MicroVideo")}
+func pngStrip(data []byte) []byte {
+	out := append([]byte{}, pngMagic...)
+	for _, c := range pngChunks(data) {
+		if c.kind == "caBX" {
+			continue
+		}
+		out = binary.BigEndian.AppendUint32(out, uint32(len(c.data)))
+		out = append(out, c.kind...)
+		out = append(out, c.data...)
+		out = binary.BigEndian.AppendUint32(out, crc32.ChecksumIEEE(append([]byte(c.kind), c.data...)))
+		if c.kind == "IEND" {
+			return out
+		}
+	}
+	return data
+}
 
-// jpegExtra walks the segments and the entropy-coded data of every scan to the end of the primary
+// jpegStrip walks the segments and the entropy-coded data of every scan to the end of the primary
 // image, since an appended video or gain map can contain an end marker of its own.
-func jpegExtra(data []byte) string {
+func jpegStrip(data []byte) []byte {
+	out := append([]byte{}, data[:min(2, len(data))]...)
 	i := 2
-	for i+4 <= len(data) {
+	for i+2 <= len(data) {
 		if data[i] != 0xFF {
-			return "unexpected bytes between segments"
+			return data
 		}
 		marker := data[i+1]
 		switch {
@@ -204,37 +211,32 @@ func jpegExtra(data []byte) string {
 			i++
 			continue
 		case marker == 0xD9:
-			if end := i + 2; end < len(data) {
-				return fmt.Sprintf("%d bytes after the end of the image", len(data)-end)
-			}
-			return ""
+			return append(out, 0xFF, 0xD9)
 		case marker >= 0xD0 && marker <= 0xD7, marker == 0x01:
+			out = append(out, data[i:i+2]...)
 			i += 2
 			continue
 		}
+		if i+4 > len(data) {
+			return data
+		}
 		n := int(binary.BigEndian.Uint16(data[i+2:]))
 		if n < 2 || i+2+n > len(data) {
-			return ""
+			return data
 		}
 		segment := data[i+4 : i+2+n]
-		switch {
-		case marker == 0xE2 && bytes.HasPrefix(segment, []byte("MPF\x00")):
-			return "a multi-picture index (MPF)"
-		case marker == 0xEB:
-			return "a JUMBF box (APP11)"
-		case marker == 0xE1 && bytes.HasPrefix(segment, []byte("http://ns.adobe.com/xap/1.0/")):
-			for _, p := range xmpPointers {
-				if bytes.Contains(segment, p) {
-					return "XMP that refers to embedded media (" + string(p) + ")"
-				}
-			}
+		mpf := marker == 0xE2 && bytes.HasPrefix(segment, []byte("MPF\x00"))
+		if !mpf && marker != 0xEB {
+			out = append(out, data[i:i+2+n]...)
 		}
 		i += 2 + n
 		if marker == 0xDA {
-			i = skipEntropyCoded(data, i)
+			end := skipEntropyCoded(data, i)
+			out = append(out, data[i:end]...)
+			i = end
 		}
 	}
-	return ""
+	return data
 }
 
 // skipEntropyCoded returns the position of the first marker after a scan's data: 0xFF followed by

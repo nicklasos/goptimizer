@@ -23,7 +23,7 @@ type DailySavingsQuery struct {
 // version knows, and detail is then all of it. detail is what was measured, in English, such as
 // "0.7100, below 0.8500, at 128,64".
 type ReasonResponse struct {
-	Code   *string `json:"code" extensions:"x-nullable" enums:"symlink,not_regular_file,hard_link,access_control_list,wrong_content,apng,extra_data,too_many_pixels,too_large,unreadable,already_optimized,too_new,changed_while_optimizing,interrupted,tool_missing,tool_failed,swap_failed,no_saving,format_changed,result_undecodable,dimensions_changed,frames_changed,animation_changed,pixels_changed,ssim_below_threshold,color_changed,metadata_changed"`
+	Code   *string `json:"code" extensions:"x-nullable" enums:"symlink,not_regular_file,hard_link,access_control_list,wrong_content,apng,too_many_pixels,too_large,unreadable,already_optimized,too_new,changed_while_optimizing,interrupted,tool_missing,tool_failed,swap_failed,no_saving,format_changed,result_undecodable,dimensions_changed,frames_changed,animation_changed,pixels_changed,ssim_below_threshold,color_changed,metadata_changed"`
 	Detail *string `json:"detail" extensions:"x-nullable"`
 } //	@name	ReasonResponse
 
