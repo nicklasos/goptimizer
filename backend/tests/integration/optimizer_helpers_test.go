@@ -10,6 +10,7 @@ import (
 	"image/gif"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"io/fs"
 	"math"
 	"os"
@@ -93,7 +94,10 @@ func stateOf(t *testing.T, path string) fileState {
 		require.NoError(t, err)
 		return s
 	}
-	s.data, err = os.ReadFile(path)
+	f, err := os.OpenFile(path, os.O_RDONLY|oNoAtime, 0)
+	require.NoError(t, err)
+	defer f.Close()
+	s.data, err = io.ReadAll(f)
 	require.NoError(t, err)
 	return s
 }
