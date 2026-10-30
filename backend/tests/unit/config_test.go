@@ -79,3 +79,25 @@ func TestConfig_OptimizerWorkDir(t *testing.T) {
 	assert.Equal(t, dev.OptimizerWorkDir(), (&config.Config{DatabasePath: "./data/goptimizer.db"}).OptimizerWorkDir(), "and a restart finds its own again")
 	assert.Equal(t, "/srv/work", (&config.Config{DatabasePath: "x.db", WorkDir: "/srv/work"}).OptimizerWorkDir())
 }
+
+func TestConfig_ListenAddress(t *testing.T) {
+	cases := []struct {
+		env, bind, want string
+	}{
+		{"production", "", "127.0.0.1:8747"},
+		{"Production", "", "127.0.0.1:8747"},
+		{"development", "", ":8747"},
+		{"production", "0.0.0.0", "0.0.0.0:8747"},
+		{"production", "::1", "[::1]:8747"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.env+" "+tc.bind, func(t *testing.T) {
+			t.Setenv("APP_ENV", tc.env)
+			t.Setenv("BIND_ADDRESS", tc.bind)
+			t.Setenv("PORT", "8747")
+			cfg, err := config.Load()
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, cfg.ListenAddress())
+		})
+	}
+}

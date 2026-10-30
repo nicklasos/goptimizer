@@ -18,7 +18,9 @@ COPY --from=build /out/api /out/cron /out/cli /app/
 COPY docker/entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 USER app
+# Docker publishes the port from outside the container, so the API listens on every interface in it
 ENV DATABASE_PATH=/data/db/goptimizer.db \
+    BIND_ADDRESS=0.0.0.0 \
     LOG_OUTPUT=stdout \
     LOG_FORMAT=json
 EXPOSE 8747

@@ -151,7 +151,7 @@ func main() {
 	docs.SwaggerInfo.Host = cfg.AppURL
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	address := ":" + cfg.Port
+	address := cfg.ListenAddress()
 	srv := &http.Server{
 		Addr:              address,
 		Handler:           r.Handler(),

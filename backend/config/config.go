@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -28,6 +29,11 @@ type Config struct {
 	LogOutput        string
 	JWTSecret        string
 	AppURL           string
+
+	// BindAddress is BIND_ADDRESS, the address the API listens on; empty is every interface.
+	// Production defaults to 127.0.0.1: the API runs as root, and nginx on the same machine is
+	// the way in.
+	BindAddress string
 
 	// Auth
 	AccessTokenTTL       time.Duration
@@ -68,14 +74,16 @@ func Load() (*Config, error) {
 	// Load .env file if it exists (ignore error if missing)
 	_ = godotenv.Load()
 
+	environment := getEnv("APP_ENV", "development")
 	return &Config{
 		AppName:    getEnv("APP_NAME", "Goptimizer"),
 		AppVersion: "1.0.0",
 
 		DatabasePath:     getEnv("DATABASE_PATH", "./data/goptimizer.db"),
 		TestDatabasePath: getEnv("TEST_DATABASE_PATH", "./data/goptimizer_test.db"),
+		BindAddress:      getEnv("BIND_ADDRESS", defaultBindAddress(environment)),
 		Port:             getEnv("PORT", "8747"),
-		Environment:      getEnv("APP_ENV", "development"),
+		Environment:      environment,
 		Debug:            getEnvBool("APP_DEBUG", false),
 		LogLevel:         getEnv("LOG_LEVEL", "info"),
 		LogFormat:        getEnv("LOG_FORMAT", "json"),
@@ -173,7 +181,23 @@ func (c *Config) OptimizerWorkDir() string {
 }
 
 func (c *Config) IsProduction() bool {
-	return strings.EqualFold(c.Environment, "production")
+	return isProduction(c.Environment)
+}
+
+func isProduction(environment string) bool {
+	return strings.EqualFold(environment, "production")
+}
+
+func defaultBindAddress(environment string) string {
+	if isProduction(environment) {
+		return "127.0.0.1"
+	}
+	return ""
+}
+
+// ListenAddress is where the API listens: BindAddress and Port.
+func (c *Config) ListenAddress() string {
+	return net.JoinHostPort(c.BindAddress, c.Port)
 }
 
 // JWTSecretIsWeak reports a secret that is too short or is the value shipped in .env.example.
