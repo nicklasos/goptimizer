@@ -1,6 +1,6 @@
 # Installs the application on a server that already runs other things and already has Go,
-# Node.js, nginx and supervisor. Unlike provision.yml it installs no packages
-# and touches nothing but this application's own files. Safe to run again.
+# Node.js, nginx and supervisor. Unlike provision.yml it installs no packages but the image
+# tools, and touches nothing but this application's own files. Safe to run again.
 #
 #   ansible-playbook install.yml
 #
@@ -9,8 +9,6 @@
   hosts: all
   become: true
   vars:
-    # The account the API runs as. The checkout stays with root, who also builds and pulls.
-    app_user: "{{ install_user | default('www-data') }}"
     nginx_hide_server_header: false
     tls_ready: false
   pre_tasks:
@@ -33,6 +31,8 @@
       ansible.builtin.include_vars:
         file: roles/nginx/defaults/main.yml
         name: nginx_defaults
+  roles:
+    - imagetools
   tasks:
     # As root, so the server's own access to the repository is what counts
     - name: Clone the repository
@@ -43,25 +43,28 @@
         accept_hostkey: true
         update: false
 
-    - name: Create the folders the API writes to
+    # The service runs as root, like everything here. The work dir must be root's alone, or the
+    # API refuses to start.
+    - name: Create the folders the service writes to
       ansible.builtin.file:
         path: "{{ item.path }}"
         state: directory
-        owner: "{{ item.owner }}"
-        group: "{{ item.owner }}"
-        mode: "0755"
+        owner: root
+        group: root
+        mode: "{{ item.mode }}"
       loop:
-        - { path: "{{ app_root }}/shared", owner: root }
-        - { path: "{{ database_path | dirname }}", owner: "{{ app_user }}" }
-        - { path: "{{ log_dir }}", owner: root }
+        - { path: "{{ app_root }}/shared", mode: "0755" }
+        - { path: "{{ database_path | dirname }}", mode: "0700" }
+        - { path: "{{ work_dir }}", mode: "0700" }
+        - { path: "{{ log_dir }}", mode: "0755" }
 
     - name: Write the backend environment file
       ansible.builtin.template:
         src: roles/app/templates/backend.env.j2
         dest: "{{ backend_dir }}/.env"
         owner: root
-        group: "{{ app_user }}"
-        mode: "0640"
+        group: root
+        mode: "0600"
       register: backend_env
 
     - name: Write the frontend environment file
@@ -146,6 +149,6 @@
         msg: |
           Installed. If there are no accounts yet, create the first admin on the server:
 
-            cd {{ backend_dir }} && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password" --admin
+            cd {{ backend_dir }} && sudo ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password" --admin
 
           Then sign in at {{ site_url }}. Later releases: cd {{ app_root }} && make deploy

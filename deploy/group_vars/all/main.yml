@@ -27,7 +27,8 @@ tls_mode: letsencrypt
 letsencrypt_email: you@example.com
 
 # --- Server -----------------------------------------------------------------
-# The unprivileged account that owns the code and runs the API
+# The unprivileged account that owns the code and builds it. The service itself runs as root,
+# so it can rewrite any project's images and give each one back its owner and mode.
 app_user: deploy
 app_root: "/var/www/{{ app_name }}"
 timezone: Etc/UTC
@@ -68,6 +69,8 @@ database_path: "{{ app_root }}/shared/database/{{ app_name }}.db"
 site_scheme: "{{ 'http' if tls_mode == 'none' else 'https' }}"
 site_url: "{{ site_scheme }}://{{ domain }}"
 log_dir: "/var/log/{{ app_name }}"
+# The optimizer's tools work on copies of the images here
+work_dir: "/var/lib/{{ app_name }}/work"
 backend_dir: "{{ app_root }}/backend"
 frontend_dir: "{{ app_root }}/frontend"
 go_env:

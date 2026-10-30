@@ -1,9 +1,10 @@
 ; Written by Ansible (deploy/roles/app).
+; root, so the service can rewrite any project's images and give each one back its owner and mode.
 
 [program:{{ app_name }}-api]
 command={{ backend_dir }}/bin/api
 directory={{ backend_dir }}
-user={{ app_user }}
+user=root
 autostart=true
 autorestart=true
 startsecs=5
@@ -22,7 +23,7 @@ stopwaitsecs=45
 [program:{{ app_name }}-cron]
 command={{ backend_dir }}/bin/goptimizer-cron
 directory={{ backend_dir }}
-user={{ app_user }}
+user=root
 autostart=true
 autorestart=true
 startsecs=5

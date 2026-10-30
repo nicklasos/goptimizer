@@ -8,8 +8,19 @@
   loop:
     - "{{ app_root }}"
     - "{{ app_root }}/shared"
-    - "{{ database_path | dirname }}"
-    - "{{ log_dir }}"
+
+# The service runs as root. The work dir must be root's alone, or the API refuses to start.
+- name: Create the directories of the service
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "{{ database_path | dirname }}", mode: "0700" }
+    - { path: "{{ work_dir }}", mode: "0700" }
+    - { path: "{{ log_dir }}", mode: "0755" }
 
 - name: Read the deploy key
   ansible.builtin.slurp:
@@ -53,8 +64,8 @@
   ansible.builtin.template:
     src: backend.env.j2
     dest: "{{ backend_dir }}/.env"
-    owner: "{{ app_user }}"
-    group: "{{ app_user }}"
+    owner: root
+    group: root
     mode: "0600"
   register: backend_env
 
@@ -98,8 +109,6 @@
   ansible.builtin.command: ./bin/goptimizer-cli migrate up
   args:
     chdir: "{{ backend_dir }}"
-  become: true
-  become_user: "{{ app_user }}"
   register: migrations
   changed_when: "'no migrations to run' not in migrations.stderr"
 
@@ -159,8 +168,6 @@
 - name: Count the accounts
   ansible.builtin.command:
     argv: [sqlite3, "{{ database_path }}", "SELECT count(*) FROM users"]
-  become: true
-  become_user: "{{ app_user }}"
   register: accounts
   changed_when: false
 
@@ -169,7 +176,7 @@
     msg: |
       The application is up and has no accounts yet. Create the first admin on the server:
 
-        sudo -u {{ app_user }} sh -c 'cd {{ backend_dir }} && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password" --admin'
+        sudo sh -c 'cd {{ backend_dir }} && ./bin/goptimizer-cli create-user --email you@example.com --password "a-long-password" --admin'
 
       Then sign in at {{ site_url }}
   when: accounts.stdout | int == 0
