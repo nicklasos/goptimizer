@@ -149,8 +149,8 @@
       "images_other": "{{images}} images"
     },
     "optimize": {
-      "summary_one": "{{images}} optimized, {{saved}} saved",
-      "summary_other": "{{images}} optimized, {{saved}} saved",
+      "summary_one": "{{images}} optimized, {{saved}} of {{before}} saved ({{percent}})",
+      "summary_other": "{{images}} optimized, {{saved}} of {{before}} saved ({{percent}})",
       "none": "Nothing optimized yet",
       "failed_one": "{{images}} failed",
       "failed_other": "{{images}} failed",
@@ -290,16 +290,18 @@
     "pending": "Waiting",
     "failed": "Failed",
     "optimizing": "Optimizing now",
-    "scans": "Scans running"
+    "scans": "Scans running",
+    "savedOf": "{{percent}} of {{before}}"
   },
   "savings": {
     "title": "Saved per day",
-    "total": "{{saved}} in the last 30 days",
+    "total": "{{saved}} of {{before}} ({{percent}}) in the last 30 days",
     "none": "Nothing saved in the last 30 days",
-    "saved": "{{saved}} saved",
+    "saved": "{{saved}} saved ({{percent}})",
     "images_one": "{{images}} image optimized",
     "images_other": "{{images}} images optimized",
-    "chartLabel": "Bytes saved on each of the last 30 days. Use the arrow keys to move between days."
+    "chartLabel": "Bytes saved on each of the last 30 days. Use the arrow keys to move between days.",
+    "sizes": "{{before}} → {{after}}"
   },
   "scans": {
     "title": "Scans",

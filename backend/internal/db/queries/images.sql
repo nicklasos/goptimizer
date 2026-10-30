@@ -154,11 +154,15 @@ ON CONFLICT (folder_id, day) DO UPDATE SET
     bytes_after = bytes_after + excluded.bytes_after;
 
 -- name: SumBytesSavedByFolder :many
-SELECT folder_id, CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved FROM daily_stats
+SELECT folder_id, CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved,
+    CAST(COALESCE(SUM(bytes_before), 0) AS INTEGER) AS original
+FROM daily_stats
 GROUP BY folder_id;
 
 -- name: SumBytesSavedOfFolder :one
-SELECT CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved FROM daily_stats
+SELECT CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved,
+    CAST(COALESCE(SUM(bytes_before), 0) AS INTEGER) AS original
+FROM daily_stats
 WHERE folder_id = ?;
 
 -- name: GetImage :one
@@ -214,14 +218,15 @@ SET status = 'pending', attempts = 0, next_attempt_at = NULL, updated_at = sqlc.
 WHERE folder_id = sqlc.arg(folder_id) AND status = 'failed';
 
 -- name: ListDailySavings :many
-SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved
+SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved,
+    CAST(SUM(bytes_before) AS INTEGER) AS original
 FROM daily_stats
 WHERE day >= sqlc.arg(since)
 GROUP BY day
 ORDER BY day;
 
 -- name: ListDailySavingsOfFolder :many
-SELECT day, optimized, CAST(bytes_before - bytes_after AS INTEGER) AS saved
+SELECT day, optimized, CAST(bytes_before - bytes_after AS INTEGER) AS saved, bytes_before AS original
 FROM daily_stats
 WHERE folder_id = sqlc.arg(folder_id) AND day >= sqlc.arg(since)
 ORDER BY day;

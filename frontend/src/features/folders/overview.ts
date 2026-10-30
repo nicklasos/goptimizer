@@ -4,6 +4,8 @@ import type { Folder } from './types'
 /** What the folders add up to: the figures of the overview tiles. */
 export interface Totals {
   bytesSaved: number
+  /** What the optimized images weighed before. */
+  bytesBefore: number
   optimized: number
   pending: number
   failed: number
@@ -16,6 +18,7 @@ export function folderTotals(folders: readonly Folder[]): Totals {
   const sum = (count: (folder: Folder) => number) => folders.reduce((total, folder) => total + count(folder), 0)
   return {
     bytesSaved: sum((folder) => folder.bytes_saved),
+    bytesBefore: sum((folder) => folder.bytes_before),
     optimized: sum((folder) => imagesIn(folder, 'optimized')),
     pending: sum((folder) => imagesIn(folder, 'pending')),
     failed: sum((folder) => imagesIn(folder, 'failed')),

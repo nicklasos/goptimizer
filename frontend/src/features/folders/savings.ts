@@ -21,6 +21,17 @@ export function byteTicks(max: number): number[] {
   return Array.from({ length: count + 1 }, (_, i) => Math.round(i * step * unit))
 }
 
-export function totalSaved(days: readonly DaySavings[]): number {
-  return days.reduce((total, day) => total + day.bytes_saved, 0)
+export interface Savings {
+  saved: number
+  /** What the optimized images weighed before. */
+  before: number
+}
+
+export function totalSavings(days: readonly DaySavings[]): Savings {
+  return days.reduce((total, day) => ({ saved: total.saved + day.bytes_saved, before: total.before + day.bytes_before }), { saved: 0, before: 0 })
+}
+
+/** The share of the original size that was saved, 0 to 100; null before anything was optimized. */
+export function savedPercent({ saved, before }: Savings): number | null {
+  return before > 0 ? (saved / before) * 100 : null
 }

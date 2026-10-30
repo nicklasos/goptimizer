@@ -232,12 +232,15 @@ func TestFoldersAPI_ShowWhatOptimizingSaved(t *testing.T) {
 	app.As(user).GET("/api/v1/folders").
 		AssertOK().
 		AssertJSONPath("data.0.bytes_saved", 6000).
+		AssertJSONPath("data.0.bytes_before", 14000).
 		AssertJSONPath("data.0.image_counts", map[string]int{"optimized": 1, "failed": 1}).
 		AssertJSONPath("data.0.missing_tools", []string{}).
-		AssertJSONPath("data.1.bytes_saved", 0)
+		AssertJSONPath("data.1.bytes_saved", 0).
+		AssertJSONPath("data.1.bytes_before", 0)
 	app.As(user).GET("/api/v1/folders/%d", shop.ID).
 		AssertOK().
-		AssertJSONPath("data.bytes_saved", 6000)
+		AssertJSONPath("data.bytes_saved", 6000).
+		AssertJSONPath("data.bytes_before", 14000)
 }
 
 func TestFoldersAPI_NameTheToolsAFolderWaitsFor(t *testing.T) {

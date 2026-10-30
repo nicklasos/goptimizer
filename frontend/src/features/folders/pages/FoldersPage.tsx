@@ -5,13 +5,14 @@ import { useTranslation } from 'react-i18next'
 import { PageHeader } from '@/shared/components/PageHeader'
 import { PageError, PageLoading } from '@/shared/components/PageState'
 import { PageStack } from '@/shared/components/PageStack'
-import { formatBytes, formatNumber } from '@/shared/utils/format'
+import { formatBytes, formatNumber, formatPercent } from '@/shared/utils/format'
 import { FolderModeTag, MissingToolsAlert } from '../components/FolderSummary'
 import { FolderStats } from '../components/FolderStats'
 import { SavingsCard } from '../components/SavingsCard'
 import { useFolderControls } from '../components/useFolderControls'
 import { useFolders } from '../hooks'
 import { pollInterval } from '../overview'
+import { savedPercent } from '../savings'
 import { imagesIn, indexedImages, scanLine } from '../scans'
 import type { Folder } from '../types'
 
@@ -112,7 +113,13 @@ function FolderCard({ folder }: { folder: Folder }) {
         <Space size={token.marginXS} wrap>
           <Typography.Text data-testid={`folder-optimized-${folder.id}`} data-count={optimized} data-bytes={folder.bytes_saved}>
             {optimized > 0 || folder.bytes_saved > 0
-              ? t('folders.optimize.summary', { count: optimized, images: formatNumber(optimized, 0), saved: formatBytes(folder.bytes_saved) })
+              ? t('folders.optimize.summary', {
+                  count: optimized,
+                  images: formatNumber(optimized, 0),
+                  saved: formatBytes(folder.bytes_saved),
+                  before: formatBytes(folder.bytes_before),
+                  percent: formatPercent(savedPercent({ saved: folder.bytes_saved, before: folder.bytes_before })),
+                })
               : t('folders.optimize.none')}
           </Typography.Text>
           {failed > 0 && (

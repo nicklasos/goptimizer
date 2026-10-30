@@ -176,6 +176,7 @@ export interface InternalFoldersFolderRequest {
 }
 
 export interface InternalFoldersFolderResponse {
+  bytes_before: number;
   bytes_saved: number;
   created_at: string;
   enabled: boolean;
@@ -221,6 +222,7 @@ export interface InternalImagesDailySavingsResponse {
 }
 
 export interface InternalImagesDaySavingsResponse {
+  bytes_before: number;
   bytes_saved: number;
   day: string;
   optimized: number;

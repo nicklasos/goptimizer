@@ -343,7 +343,8 @@ func (q *Queries) LeaveImage(ctx context.Context, arg LeaveImageParams) (int64, 
 }
 
 const listDailySavings = `-- name: ListDailySavings :many
-SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved
+SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved,
+    CAST(SUM(bytes_before) AS INTEGER) AS original
 FROM daily_stats
 WHERE day >= ?1
 GROUP BY day
@@ -354,6 +355,7 @@ type ListDailySavingsRow struct {
 	Day       string `db:"day" json:"day"`
 	Optimized int64  `db:"optimized" json:"optimized"`
 	Saved     int64  `db:"saved" json:"saved"`
+	Original  int64  `db:"original" json:"original"`
 }
 
 func (q *Queries) ListDailySavings(ctx context.Context, since string) ([]ListDailySavingsRow, error) {
@@ -365,7 +367,12 @@ func (q *Queries) ListDailySavings(ctx context.Context, since string) ([]ListDai
 	var items []ListDailySavingsRow
 	for rows.Next() {
 		var i ListDailySavingsRow
-		if err := rows.Scan(&i.Day, &i.Optimized, &i.Saved); err != nil {
+		if err := rows.Scan(
+			&i.Day,
+			&i.Optimized,
+			&i.Saved,
+			&i.Original,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -380,7 +387,7 @@ func (q *Queries) ListDailySavings(ctx context.Context, since string) ([]ListDai
 }
 
 const listDailySavingsOfFolder = `-- name: ListDailySavingsOfFolder :many
-SELECT day, optimized, CAST(bytes_before - bytes_after AS INTEGER) AS saved
+SELECT day, optimized, CAST(bytes_before - bytes_after AS INTEGER) AS saved, bytes_before AS original
 FROM daily_stats
 WHERE folder_id = ?1 AND day >= ?2
 ORDER BY day
@@ -395,6 +402,7 @@ type ListDailySavingsOfFolderRow struct {
 	Day       string `db:"day" json:"day"`
 	Optimized int64  `db:"optimized" json:"optimized"`
 	Saved     int64  `db:"saved" json:"saved"`
+	Original  int64  `db:"original" json:"original"`
 }
 
 func (q *Queries) ListDailySavingsOfFolder(ctx context.Context, arg ListDailySavingsOfFolderParams) ([]ListDailySavingsOfFolderRow, error) {
@@ -406,7 +414,12 @@ func (q *Queries) ListDailySavingsOfFolder(ctx context.Context, arg ListDailySav
 	var items []ListDailySavingsOfFolderRow
 	for rows.Next() {
 		var i ListDailySavingsOfFolderRow
-		if err := rows.Scan(&i.Day, &i.Optimized, &i.Saved); err != nil {
+		if err := rows.Scan(
+			&i.Day,
+			&i.Optimized,
+			&i.Saved,
+			&i.Original,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1129,13 +1142,16 @@ func (q *Queries) SetImageOutputHash(ctx context.Context, arg SetImageOutputHash
 }
 
 const sumBytesSavedByFolder = `-- name: SumBytesSavedByFolder :many
-SELECT folder_id, CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved FROM daily_stats
+SELECT folder_id, CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved,
+    CAST(COALESCE(SUM(bytes_before), 0) AS INTEGER) AS original
+FROM daily_stats
 GROUP BY folder_id
 `
 
 type SumBytesSavedByFolderRow struct {
 	FolderID int64 `db:"folder_id" json:"folder_id"`
 	Saved    int64 `db:"saved" json:"saved"`
+	Original int64 `db:"original" json:"original"`
 }
 
 func (q *Queries) SumBytesSavedByFolder(ctx context.Context) ([]SumBytesSavedByFolderRow, error) {
@@ -1147,7 +1163,7 @@ func (q *Queries) SumBytesSavedByFolder(ctx context.Context) ([]SumBytesSavedByF
 	var items []SumBytesSavedByFolderRow
 	for rows.Next() {
 		var i SumBytesSavedByFolderRow
-		if err := rows.Scan(&i.FolderID, &i.Saved); err != nil {
+		if err := rows.Scan(&i.FolderID, &i.Saved, &i.Original); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1162,15 +1178,22 @@ func (q *Queries) SumBytesSavedByFolder(ctx context.Context) ([]SumBytesSavedByF
 }
 
 const sumBytesSavedOfFolder = `-- name: SumBytesSavedOfFolder :one
-SELECT CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved FROM daily_stats
+SELECT CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved,
+    CAST(COALESCE(SUM(bytes_before), 0) AS INTEGER) AS original
+FROM daily_stats
 WHERE folder_id = ?
 `
 
-func (q *Queries) SumBytesSavedOfFolder(ctx context.Context, folderID int64) (int64, error) {
+type SumBytesSavedOfFolderRow struct {
+	Saved    int64 `db:"saved" json:"saved"`
+	Original int64 `db:"original" json:"original"`
+}
+
+func (q *Queries) SumBytesSavedOfFolder(ctx context.Context, folderID int64) (SumBytesSavedOfFolderRow, error) {
 	row := q.db.QueryRowContext(ctx, sumBytesSavedOfFolder, folderID)
-	var saved int64
-	err := row.Scan(&saved)
-	return saved, err
+	var i SumBytesSavedOfFolderRow
+	err := row.Scan(&i.Saved, &i.Original)
+	return i, err
 }
 
 const upsertDir = `-- name: UpsertDir :exec

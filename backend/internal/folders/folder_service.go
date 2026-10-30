@@ -25,14 +25,15 @@ func NewFolderService(queries *db.Queries, reporter *tools.Reporter) *FolderServ
 }
 
 // Folder is a folder with the state of its index: its latest scan, nil before the first, how many
-// images it has in each status, the bytes its optimizations saved, and the programs its profile
-// needs that are not installed.
+// images it has in each status, the bytes its optimizations saved out of the bytes the optimized
+// images had before, and the programs its profile needs that are not installed.
 type Folder struct {
 	db.Folder
 	Profile      Profile
 	LastScan     *db.Scan
 	ImageCounts  map[string]int64
 	BytesSaved   int64
+	BytesBefore  int64
 	MissingTools []string
 }
 
@@ -54,9 +55,9 @@ func (s *FolderService) List(ctx context.Context) ([]Folder, error) {
 	if err != nil {
 		return nil, errs.WrapDatabaseError(err)
 	}
-	saved := make(map[int64]int64, len(savings))
+	saved := make(map[int64]db.SumBytesSavedByFolderRow, len(savings))
 	for _, row := range savings {
-		saved[row.FolderID] = row.Saved
+		saved[row.FolderID] = row
 	}
 	report := s.reporter.Report(ctx)
 	scans := make(map[int64]*db.Scan, len(latest))
@@ -72,7 +73,7 @@ func (s *FolderService) List(ctx context.Context) ([]Folder, error) {
 	}
 	result := make([]Folder, len(folders))
 	for i, folder := range folders {
-		result[i] = withProfile(Folder{Folder: folder, LastScan: scans[folder.ID], ImageCounts: byFolder[folder.ID], BytesSaved: saved[folder.ID]}, report)
+		result[i] = withProfile(Folder{Folder: folder, LastScan: scans[folder.ID], ImageCounts: byFolder[folder.ID], BytesSaved: saved[folder.ID].Saved, BytesBefore: saved[folder.ID].Original}, report)
 		if result[i].ImageCounts == nil {
 			result[i].ImageCounts = map[string]int64{}
 		}
@@ -223,9 +224,11 @@ func (s *FolderService) withIndex(ctx context.Context, folder db.Folder) (*Folde
 	for _, c := range counts {
 		result.ImageCounts[c.Status] = c.Count
 	}
-	if result.BytesSaved, err = s.queries.SumBytesSavedOfFolder(ctx, folder.ID); err != nil {
+	sums, err := s.queries.SumBytesSavedOfFolder(ctx, folder.ID)
+	if err != nil {
 		return nil, errs.WrapDatabaseError(err)
 	}
+	result.BytesSaved, result.BytesBefore = sums.Saved, sums.Original
 	return &result, nil
 }
 

@@ -2515,6 +2515,7 @@ const docTemplate = `{
         "internal_folders.FolderResponse": {
             "type": "object",
             "required": [
+                "bytes_before",
                 "bytes_saved",
                 "created_at",
                 "enabled",
@@ -2531,6 +2532,9 @@ const docTemplate = `{
                 "updated_at"
             ],
             "properties": {
+                "bytes_before": {
+                    "type": "integer"
+                },
                 "bytes_saved": {
                     "type": "integer"
                 },
@@ -2709,11 +2713,15 @@ const docTemplate = `{
         "internal_images.DaySavingsResponse": {
             "type": "object",
             "required": [
+                "bytes_before",
                 "bytes_saved",
                 "day",
                 "optimized"
             ],
             "properties": {
+                "bytes_before": {
+                    "type": "integer"
+                },
                 "bytes_saved": {
                     "type": "integer"
                 },

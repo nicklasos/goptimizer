@@ -235,17 +235,21 @@ func TestImagesAPI_DailySavings(t *testing.T) {
 		AssertJSONPath("data.0.day", images.Day(today.AddDate(0, 0, -29))).
 		AssertJSONPath("data.0.optimized", 4).
 		AssertJSONPath("data.0.bytes_saved", 4000).
+		AssertJSONPath("data.0.bytes_before", 9000).
 		AssertJSONPath("data.1.optimized", 0).
 		AssertJSONPath("data.1.bytes_saved", 0).
+		AssertJSONPath("data.1.bytes_before", 0).
 		AssertJSONPath("data.29.day", images.Day(today)).
 		AssertJSONPath("data.29.optimized", 3).
-		AssertJSONPath("data.29.bytes_saved", 2100)
+		AssertJSONPath("data.29.bytes_saved", 2100).
+		AssertJSONPath("data.29.bytes_before", 3500)
 	app.As(user).GET("/api/v1/daily-savings?folder_id=%d", blog.ID).
 		AssertOK().
 		AssertJSONCount("data", images.ChartDays).
 		AssertJSONPath("data.0.bytes_saved", 0).
 		AssertJSONPath("data.29.optimized", 1).
-		AssertJSONPath("data.29.bytes_saved", 100)
+		AssertJSONPath("data.29.bytes_saved", 100).
+		AssertJSONPath("data.29.bytes_before", 500)
 
 	app.GET("/api/v1/daily-savings").AssertUnauthorized()
 	app.As(user).GET("/api/v1/daily-savings?folder_id=999999").AssertError(http.StatusNotFound, errs.ErrKeyFoldersNotFound)

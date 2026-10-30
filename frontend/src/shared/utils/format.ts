@@ -47,6 +47,12 @@ export function formatDay(day: string, style: 'short' | 'long' = 'short'): strin
   return new Intl.DateTimeFormat(LOCALES[lang], { ...options, timeZone: 'UTC' }).format(date)
 }
 
+/** A share out of 100, whole: "24%". */
+export function formatPercent(value: number | null | undefined): string {
+  if (missing(value)) return EMPTY
+  return `${formatNumber(value, 0)}%`
+}
+
 /** A byte count in binary units: "512 B", "1.5 KB", "3.2 MB". */
 export function formatBytes(bytes: number | null | undefined): string {
   if (missing(bytes)) return EMPTY

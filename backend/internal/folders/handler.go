@@ -37,6 +37,7 @@ func folderResponse(folder Folder) FolderResponse {
 		LastScan:              lastScan,
 		ImageCounts:           folder.ImageCounts,
 		BytesSaved:            folder.BytesSaved,
+		BytesBefore:           folder.BytesBefore,
 		MissingTools:          folder.MissingTools,
 		CreatedAt:             internal.FormatTime(folder.CreatedAt),
 		UpdatedAt:             internal.FormatTime(folder.UpdatedAt),

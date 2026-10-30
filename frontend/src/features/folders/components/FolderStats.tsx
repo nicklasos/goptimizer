@@ -2,14 +2,17 @@ import type { ReactNode } from 'react'
 import { Card, Col, Row, Typography, theme } from 'antd'
 import { ExclamationCircleOutlined, SyncOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
-import { formatBytes, formatCount } from '@/shared/utils/format'
+import { formatBytes, formatCount, formatPercent } from '@/shared/utils/format'
 import { folderTotals } from '../overview'
+import { savedPercent } from '../savings'
 import type { Folder } from '../types'
 
 interface Tile {
   id: 'saved' | 'optimized' | 'pending' | 'failed' | 'optimizing' | 'scans'
   total: number
   value: string
+  /** A line under the value. */
+  caption?: string
   icon?: ReactNode
   danger?: boolean
 }
@@ -19,10 +22,16 @@ export function FolderStats({ folders, testId }: { folders: readonly Folder[]; t
   const { t } = useTranslation()
   const { token } = theme.useToken()
   const totals = folderTotals(folders)
+  const percent = savedPercent({ saved: totals.bytesSaved, before: totals.bytesBefore })
   const working = (count: number) => (count > 0 ? <SyncOutlined spin /> : undefined)
 
   const tiles: Tile[] = [
-    { id: 'saved', total: totals.bytesSaved, value: formatBytes(totals.bytesSaved) },
+    {
+      id: 'saved',
+      total: totals.bytesSaved,
+      value: formatBytes(totals.bytesSaved),
+      caption: percent === null ? undefined : t('overview.savedOf', { percent: formatPercent(percent), before: formatBytes(totals.bytesBefore) }),
+    },
     { id: 'optimized', total: totals.optimized, value: formatCount(totals.optimized) },
     { id: 'pending', total: totals.pending, value: formatCount(totals.pending) },
     {
@@ -57,6 +66,11 @@ export function FolderStats({ folders, testId }: { folders: readonly Folder[]; t
               {tile.icon && <span style={{ fontSize: token.fontSizeLG, color: tile.danger ? undefined : token.colorPrimary }}>{tile.icon}</span>}
               {tile.value}
             </div>
+            {tile.caption && (
+              <Typography.Text type="secondary" data-testid={`${testId}-${tile.id}-caption`} style={{ fontSize: token.fontSizeSM }}>
+                {tile.caption}
+              </Typography.Text>
+            )}
           </Card>
         </Col>
       ))}

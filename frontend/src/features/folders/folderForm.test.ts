@@ -15,6 +15,7 @@ const folder: Folder = {
   last_scan: null,
   image_counts: {},
   bytes_saved: 0,
+  bytes_before: 0,
   missing_tools: [],
   created_at: '2026-10-28T10:00:00Z',
   updated_at: '2026-10-28T10:00:00Z',

@@ -180,7 +180,7 @@ func (h *Handler) DailySavings(c *gin.Context) {
 	}
 	items := make([]DaySavingsResponse, len(days))
 	for i, day := range days {
-		items[i] = DaySavingsResponse{Day: day.Day, Optimized: day.Optimized, BytesSaved: day.BytesSaved}
+		items[i] = DaySavingsResponse{Day: day.Day, Optimized: day.Optimized, BytesSaved: day.BytesSaved, BytesBefore: day.BytesBefore}
 	}
 	c.JSON(http.StatusOK, DailySavingsResponse{Data: items})
 }

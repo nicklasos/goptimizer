@@ -498,6 +498,8 @@ definitions:
     type: object
   internal_folders.FolderResponse:
     properties:
+      bytes_before:
+        type: integer
       bytes_saved:
         type: integer
       created_at:
@@ -536,6 +538,7 @@ definitions:
       updated_at:
         type: string
     required:
+    - bytes_before
     - bytes_saved
     - created_at
     - enabled
@@ -629,6 +632,8 @@ definitions:
     type: object
   internal_images.DaySavingsResponse:
     properties:
+      bytes_before:
+        type: integer
       bytes_saved:
         type: integer
       day:
@@ -636,6 +641,7 @@ definitions:
       optimized:
         type: integer
     required:
+    - bytes_before
     - bytes_saved
     - day
     - optimized

@@ -58,9 +58,10 @@ type Page struct {
 }
 
 type DaySavings struct {
-	Day        string
-	Optimized  int64
-	BytesSaved int64
+	Day         string
+	Optimized   int64
+	BytesSaved  int64
+	BytesBefore int64
 }
 
 type ImageService struct {
@@ -182,7 +183,7 @@ func (s *ImageService) Savings(ctx context.Context, folderID *int64, now time.Ti
 			return nil, errs.WrapDatabaseError(err)
 		}
 		for _, row := range rows {
-			byDay[row.Day] = DaySavings{Day: row.Day, Optimized: row.Optimized, BytesSaved: row.Saved}
+			byDay[row.Day] = DaySavings{Day: row.Day, Optimized: row.Optimized, BytesSaved: row.Saved, BytesBefore: row.Original}
 		}
 	} else {
 		if err := s.folderExists(ctx, *folderID); err != nil {
@@ -193,7 +194,7 @@ func (s *ImageService) Savings(ctx context.Context, folderID *int64, now time.Ti
 			return nil, errs.WrapDatabaseError(err)
 		}
 		for _, row := range rows {
-			byDay[row.Day] = DaySavings{Day: row.Day, Optimized: row.Optimized, BytesSaved: row.Saved}
+			byDay[row.Day] = DaySavings{Day: row.Day, Optimized: row.Optimized, BytesSaved: row.Saved, BytesBefore: row.Original}
 		}
 	}
 	days := make([]DaySavings, ChartDays)

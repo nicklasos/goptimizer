@@ -159,10 +159,10 @@
       "images_other": "{{images}} зображення"
     },
     "optimize": {
-      "summary_one": "{{images}} оптимізовано, заощаджено {{saved}}",
-      "summary_few": "{{images}} оптимізовано, заощаджено {{saved}}",
-      "summary_many": "{{images}} оптимізовано, заощаджено {{saved}}",
-      "summary_other": "{{images}} оптимізовано, заощаджено {{saved}}",
+      "summary_one": "{{images}} оптимізовано, заощаджено {{saved}} з {{before}} ({{percent}})",
+      "summary_few": "{{images}} оптимізовано, заощаджено {{saved}} з {{before}} ({{percent}})",
+      "summary_many": "{{images}} оптимізовано, заощаджено {{saved}} з {{before}} ({{percent}})",
+      "summary_other": "{{images}} оптимізовано, заощаджено {{saved}} з {{before}} ({{percent}})",
       "none": "Ще нічого не оптимізовано",
       "failed_one": "Не вдалося: {{images}}",
       "failed_few": "Не вдалося: {{images}}",
@@ -308,18 +308,20 @@
     "pending": "Очікують",
     "failed": "Не вдалося",
     "optimizing": "Оптимізуються зараз",
-    "scans": "Активні сканування"
+    "scans": "Активні сканування",
+    "savedOf": "{{percent}} від {{before}}"
   },
   "savings": {
     "title": "Заощаджено за днями",
-    "total": "{{saved}} за останні 30 днів",
+    "total": "{{saved}} з {{before}} ({{percent}}) за останні 30 днів",
     "none": "За останні 30 днів нічого не заощаджено",
-    "saved": "Заощаджено {{saved}}",
+    "saved": "Заощаджено {{saved}} ({{percent}})",
     "images_one": "Оптимізовано {{images}} зображення",
     "images_few": "Оптимізовано {{images}} зображення",
     "images_many": "Оптимізовано {{images}} зображень",
     "images_other": "Оптимізовано {{images}} зображення",
-    "chartLabel": "Заощаджені байти за кожен з останніх 30 днів. Між днями можна переходити стрілками."
+    "chartLabel": "Заощаджені байти за кожен з останніх 30 днів. Між днями можна переходити стрілками.",
+    "sizes": "{{before}} → {{after}}"
   },
   "scans": {
     "title": "Сканування",
