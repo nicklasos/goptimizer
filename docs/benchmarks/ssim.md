@@ -5,7 +5,8 @@ tile of the image. PNG and GIF are scored on each of red, green and blue, compos
 on white, and the worst counts. JPEG is scored on luma. On the 96 images below, every result with
 visible damage scored 0.793 or less, and no result above 0.85 showed any. Some results under 0.85
 look fine too, such as an aerial photo at 0.689: the threshold refuses them, on the side of keeping
-the original.
+the original. The threshold also holds with Ubuntu 24.04's builds of the tools
+([On Linux](#on-linux)).
 
 A lossy result under the threshold is not the end for the image: the optimizer then runs the
 lossless pipeline and replaces the file only if every pixel is the same. On this corpus that
@@ -123,9 +124,49 @@ lossless step ran. A result banded that way by another tool would pass.
 
 18 of 50 PNG results were refused before scoring because a chunk changed. On macOS, pngquant 3.0.3
 strips metadata by default (`--strip` is "default on Mac"), so it dropped `iCCP`, `cICP` and `gAMA`.
-On Linux it does not strip by default; the Linux behavior was not measured. oxipng 10.2.1 replaces
+Ubuntu's pngquant 2.18.0 strips the same color chunks ([On Linux](#on-linux)). oxipng 10.2.1 replaces
 a standard sRGB ICC profile with an `sRGB` chunk and drops `iCCP` from an image it reduces to gray;
 the check refuses both, so those PNGs stay as they are.
+
+## On Linux
+
+The same 96 images through the same pipelines on Ubuntu 24.04 (arm64, in a container), with its
+builds of the tools: pngquant 2.18.0, jpegoptim 1.4.7 and gifsicle 1.94 from apt, and the same
+oxipng 10.2.1, from its release. **0.85 still holds.** Every result scored at or above it that
+differs from macOS was looked at next to its original, at 1:1: none shows damage. The lowest are
+`docs/images/mobile-dashboard.png` at 0.874 and an animated GIF of a talk at 0.880. Every result
+under it with visible damage on macOS is still under it.
+
+| Kind | Images | Lowest score, macOS / Linux | Median | Refused for metadata | Pass at 0.85 |
+|---|---|---|---|---|---|
+| Photos, JPEG | 24 | 0.875 / 0.875 | 0.965 / 0.965 | 0 / 0 | 24 / 24 |
+| Illustrations, JPEG | 6 | 0.939 / 0.939 | 0.984 / 0.984 | 0 / 0 | 6 / 6 |
+| Generated, JPEG | 2 | 0.990 / 0.990 | 1.000 / 1.000 | 0 / 0 | 2 / 2 |
+| Screenshots, PNG | 11 | 0.303 / 0.220 | 0.768 / 0.788 | 0 / 0 | 3 / 3 |
+| UI art, PNG | 8 | 0.347 / 0.305 | 0.635 / 0.624 | 2 / 2 | 1 / 1 |
+| Illustrations, PNG | 12 | 0.021 / 0.079 | 0.389 / 0.379 | 7 / 7 | 0 / 0 |
+| Transparent, PNG | 12 | 0.602 / 0.673 | 0.907 / 0.952 | 9 / 9 | 1 / 1 |
+| Photos, PNG | 2 | 0.689 / 0.652 | 1.000 / 0.759 | 0 / 1 | 1 / 0 |
+| Generated, PNG | 5 | 0.466 / 0.466 | 1.000 / 1.000 | 0 / 0 | 3 / 3 |
+| GIF | 14 | 0.958 / 0.759 | 0.993 / 0.960 | 0 / 0 | 9 / 9 |
+
+The macOS column is recomputed from the phase 4 run by the script that made the Linux one; it
+reproduces the table above except the GIF median, which recomputes as 0.993, not 0.996.
+
+- **JPEG** scores are identical on all 32 files, and so are the savings (68.9%); jpegoptim 1.4.7
+  writes at most 18 bytes more per file than 1.5.6.
+- **PNG.** pngquant 2.18.0 quantizes differently. The light blue tags of `docs/images/users.png` and
+  `dashboard.png` stay blue, so they score 0.805 and 0.788 instead of 0.768 and 0.494, and look the
+  same as the originals; the threshold still refuses them, on the safe side.
+- **Metadata.** pngquant 2.18.0 strips too: it drops `cICP`, `iCCP`, `cHRM` and `eXIf`, and `gAMA`
+  where `cHRM` is next to it, and adds `gAMA` next to an existing `sRGB`. Unlike 3.0.3 it never
+  writes `sRGB` in place of what it dropped. 19 of 50 PNG results are refused for metadata (18 on
+  macOS); the extra one is a photo that 3.0.3 left alone (exit 99) and 2.18.0 quantized.
+- **GIF.** gifsicle 1.94 at `--lossy=30` takes more than 1.98: 33.6% of the GIF bytes instead of
+  18.5%. Two onboarding animations that passed at 0.985 on macOS score 0.759 and 0.778, with faint
+  dither on flat orange, and are refused.
+- **Lossless.** The PNG results are byte for byte the same on both systems (the same oxipng), and so
+  is the fallback for the PNGs whose lossy result is refused: 22 files, 4.31 of 19.80 MB.
 
 ## Rerun
 

@@ -6,7 +6,9 @@ with 7**, median of 5 alternated runs each. The tools use 92% of the CPU time; G
 the rest. From 4 workers to 7 the rate grows by 11%, because 4 workers already keep 5.3 cores busy:
 oxipng runs several threads per image, and the machine has 8 cores and other load.
 
-Measured on macOS, on a laptop that was busy with other work. A Linux server was not measured.
+Measured on macOS, on a laptop that was busy with other work. On Ubuntu, in a 4-core container, the
+oxipng the deploy installs makes it 1.63 images a second with 3 workers, 2.7 times what optipng
+does ([On Linux](#on-linux)).
 
 ## What runs
 
@@ -78,3 +80,37 @@ second while folders are being worked through for the first time, about 9,000 an
 backlog of 100,000 images in about 11 hours. `nice` keeps the sites on the same server ahead of the
 tools, so the rate drops when the sites are busy. Fewer workers leave more cores to the sites at
 little cost in rate: 4 workers did 90% of what 7 did.
+
+## On Linux
+
+Ubuntu has no `oxipng` package, so the deploy had to choose between its release binary and leaving
+the lossless PNG step to `optipng`. Measured on Ubuntu 24.04 in a container with 4 cores of an M2
+(arm64), on the same corpus, 5 runs of each side, alternated.
+
+**End to end, with optbench and 3 workers**, the default for 4 cores:
+
+| Lossless PNG step | Median images/s | Range | Wall time | CPU time | Bytes after (from 69,782,498) | Optimized, kept, skipped, failed |
+|---|---|---|---|---|---|---|
+| oxipng 10.2.1 | 1.63 | 1.59 to 1.65 | 58.8 s | 207 s | 51,884,235 (25.6% saved) | 80, 11, 5, 0 |
+| optipng 0.7.8 | 0.60 | 0.58 to 0.64 | 159.0 s | 415 s | 52,761,578 (24.4% saved) | 83, 8, 5, 0 |
+
+Every run of a side ended with the same counts and bytes. optipng optimizes 3 more files because it
+keeps `iCCP`, which oxipng drops from some images, so the check refuses oxipng's result for them.
+With oxipng the run kept 3.5 of the 4 cores busy, with no I/O wait, and the tools took 91% of the CPU
+time: bound by cores. optipng runs one thread, so 3 workers keep at most 3 cores busy, and it does
+twice the work.
+
+**The tools alone**, on the 50 PNGs one after another, with the pipeline's arguments:
+
+| Input | Tool | Saved | Wall time | CPU time |
+|---|---|---|---|---|
+| The originals (39.5 MB) | oxipng | 11.27 MB (28.5%) | 65.5 s | 114.6 s |
+| | optipng | 8.61 MB (21.8%) | 294.3 s | 294.1 s |
+| After pngquant (9.96 MB) | oxipng | 1.69 MB (17.0%) | 28.4 s | 51.4 s |
+| | optipng | 0.08 MB (0.8%) | 57.3 s | 57.2 s |
+
+So the deploy installs oxipng: 2.7 times the images per second, half the CPU, more bytes saved, and
+in the lossy pipeline optipng adds almost nothing after pngquant. The other tools are Ubuntu's
+(pngquant 2.18.0, jpegoptim 1.4.7, gifsicle 1.94); their results are in [ssim.md](ssim.md#on-linux).
+The container shared the Docker VM with other test containers during the tool runs, which explains
+the slowest oxipng run (85.6 s); the end-to-end runs had it to themselves.
