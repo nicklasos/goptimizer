@@ -139,6 +139,8 @@ When adding new modules:
 - `verify.Compare` is every check a result must pass; `verify.SSIM`, `verify.SSIMLuma`, `verify.ColorShift` and `verify.Similarity` are the scores, which `cmd/ssimcal` reports for a corpus (`../docs/benchmarks/ssim.md`). `verify.Extra` finds data the tools would drop, such as a motion photo's video; those images are skipped.
 - Every output hash also goes into `optimizer_outputs`, which has no foreign key: it outlives rows and folders, so "never lossy twice" holds after a folder is deleted and added again.
 - Tests: `app.Pool()` is an unstarted pool with its own work dir: `Drain` optimizes what is claimable, synchronously, and `Claim` takes one image without optimizing it. `useFakeTools` (in `tests/integration/optimizer_helpers_test.go`) installs a shell script for every program, `useRealTools` the programs on PATH, skipping the test when one is missing. `assertUntouched`, `assertSwapped` and `assertNoTempFiles` check a file after a run.
+- `tests/integration/optimizer_server_test.go` covers what only a Linux server shows: the swap as root on a file of another user, the skip of a file with a POSIX ACL (needs `setfacl`), and the tools' nice and ionice. Each skips where it cannot run, so run the suite as root on Ubuntu with the image tools to cover them. `stateOf` reads with `O_NOATIME` on Linux, where a read can move the atime the tests compare.
+- On a server the API runs as root and listens on `BIND_ADDRESS`, which is `127.0.0.1` by default with `APP_ENV=production` and every interface otherwise; `WORK_DIR` is a directory of its own, mode 0700 (`../deploy`).
 - `go run ./cmd/optbench -corpus <dir>` measures images per second for several worker counts (`../docs/benchmarks/optimizer.md`).
 
 ## The folder page

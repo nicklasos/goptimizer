@@ -4,32 +4,39 @@ Ansible playbooks that turn a fresh Ubuntu server into a running deployment, and
 
 | Playbook | What it does |
 |---|---|
-| `provision.yml` | Everything, from an empty server: packages, firewall, Go, Node.js, the application, nginx and TLS. Safe to run again. |
-| `deploy.yml` | Releases new code: pull, build, migrate, restart, health check. |
-| `install.yml` | Adds the application to a server that already has everything. Installs no packages. |
+| `provision.yml` | Everything, from an empty server: packages, firewall, Go, Node.js, the image tools, the application, nginx and TLS. Safe to run again. |
+| `deploy.yml` | Releases new code: the image tools it needs, pull, build, migrate, restart, health check. |
+| `install.yml` | Adds the application to a server that already has everything. Installs no packages but the image tools. |
 
 A server that already runs other applications gets `install.yml` instead: see [On a server that already has everything](#on-a-server-that-already-has-everything).
 
-> These playbooks pass Ansible's syntax check and the nginx configuration they generate has been
-> validated with `nginx -t` for every TLS mode. They have **not yet been run against a real server**.
-> Do the first run on a server you can throw away.
+> Verified on Ubuntu 24.04 in disposable containers with systemd and SSH, on arm64: `provision.yml` on a
+> bare image, `deploy.yml` with new commits, and `install.yml` on a server that already had Go, Node.js,
+> nginx and supervisor, each run twice. A folder of `www-data` files was then optimized through nginx.
+> The image tools role also ran on x86_64, and the nginx site passes `nginx -t` in every TLS mode. Not
+> yet run on a real server, on Ubuntu 22.04, or with `tls_mode: letsencrypt`, which needs a public
+> domain. Do the first run on a server you can throw away.
 
 ## What ends up on the server
 
 ```
 /var/www/<app>/
-  repo/                        the git checkout
-  backend  -> repo/backend     Go API; binaries in backend/bin
+  repo/                        the git checkout, owned by the deploy user, who builds it
+  backend  -> repo/backend     Go API; binaries in backend/bin; backend/.env is root's alone
   frontend -> repo/frontend    admin panel; nginx serves frontend/dist
-  shared/database/<app>.db     the SQLite database, outside the checkout
+  shared/database/<app>.db     the SQLite database, outside the checkout, in a folder only root can use
+/var/lib/<app>/work/           where the tools work on copies of the images (root only, 0700)
 /var/log/<app>/                api.log, api-error.log
+/opt/oxipng-<version>-<arch>-unknown-linux-musl/   oxipng, linked from /usr/local/bin/oxipng
 /etc/supervisor/conf.d/<app>.conf
 /etc/nginx/sites-available/<app>.conf
 ```
 
-- **Processes**: supervisor runs `<app>-api` as the unprivileged `deploy` user. The API runs the scheduled jobs itself. Set `scheduler_in_api: false` to run them in a separate `<app>-cron` program.
-- **nginx**: `domain` serves the admin panel and proxies `/api/` and `/health` to the API on `127.0.0.1:8747`. An optional `api_domain` proxies everything to the API.
+- **Processes**: supervisor runs `<app>-api` as root, so the service can rewrite any project's images and give each one back its owner and mode. The API runs the scheduled jobs itself. Set `scheduler_in_api: false` to run them in a separate `<app>-cron` program, also as root.
+- **The API listens on `127.0.0.1:8747` only** (`BIND_ADDRESS` and `PORT` in `backend/.env`). nginx is the way in: `domain` serves the admin panel and proxies `/api/` and `/health` to the API. An optional `api_domain` proxies everything to the API.
+- **The image tools**: `pngquant`, `jpegoptim`, `optipng` and `gifsicle` from Ubuntu, and `oxipng`, which Ubuntu does not package, from its GitHub release: the version and the SHA-256 of each architecture's build are pinned in `roles/imagetools/defaults/main.yml`, and the download must match. On an architecture other than x86_64 and aarch64 there is no oxipng, and `optipng` does the lossless PNG step. The settings page shows what the API finds.
 - **SQLite** is a file the API opens directly; there is no database server. The firewall allows SSH, 80 and 443.
+- **The deploy user** owns and builds the code that root runs, so it is as powerful as root. It has no password and no SSH login; keep it that way.
 
 ## Requirements
 
@@ -98,16 +105,17 @@ The Cloudflare address ranges are in `roles/nginx/defaults/main.yml`; refresh th
 sudo supervisorctl status                       # is it running
 sudo supervisorctl restart <app>-api
 sudo tail -f /var/log/<app>/api.log             # application log (JSON)
-sudo -u deploy sh -c 'cd /var/www/<app>/backend && ./bin/goptimizer-cli help'
+sudo sh -c 'cd /var/www/<app>/backend && ./bin/goptimizer-cli help'
 ```
 
 ## On a server that already has everything
 
 For a server that already runs other applications, with Go, Node.js, nginx and
 supervisor installed. `provision.yml` is not for it: it installs packages and a firewall, replaces
-nginx's default site. `install.yml` only adds this application:
-clone into `/var/www/<app>` (no `repo/` folder and links), the two `.env` files, build, migrations
-(which create the SQLite database in `shared/database/`), one supervisor program and one nginx site.
+nginx's default site. `install.yml` only adds this application and the image tools it needs:
+the tools as above, a clone into `/var/www/<app>` (no `repo/` folder and links), the two `.env` files,
+the work dir, build, migrations (which create the SQLite database in `shared/database/`), one
+supervisor program and one nginx site.
 
 On your machine:
 
@@ -118,7 +126,7 @@ cp secrets.example.yml group_vars/all/secrets.yml           # jwt_secret
 ansible-playbook install.yml                                # or, from the project root: make install-remote
 ```
 
-- The API runs as `www-data` (`install_user`) and runs the scheduled jobs itself (`scheduler_in_api: true`, the default).
+- The API runs as root, listens on `127.0.0.1` only and runs the scheduled jobs itself (`scheduler_in_api: true`, the default).
 - `tls_mode` is `cloudflare` or `none`: the site listens on port 80 and certificates are not handled.
 - `install_nginx: print` shows the nginx site instead of writing it, to paste into a file nginx already loads, such as `sites-enabled/default`. Add `cloudflare_real_ip: false` when that file already has the `set_real_ip_from` lines.
 - root clones the repository, so root on the server needs access to it.
@@ -130,7 +138,8 @@ Every release after that, on the server:
 cd /var/www/<app> && make deploy
 ```
 
-It pulls, builds the API and the CLI, applies new migrations, builds the panel and restarts `<app>-api`.
+It pulls, builds the API and the CLI, applies new migrations, builds the panel, restarts `<app>-api` and waits
+until it answers `/health`. It does not update the image tools; `ansible-playbook install.yml` again does.
 
 The same steps as commands to run yourself, without Ansible, are in [MANUAL_INSTALL.md](MANUAL_INSTALL.md).
 
