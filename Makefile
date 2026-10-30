@@ -62,12 +62,17 @@ deploy-remote: ## Release the current code to the server with Ansible, from your
 # in /etc/supervisor/conf.d: make deploy SUPERVISOR_PROGRAM=other-api. Empty skips the restart.
 SUPERVISOR_PROGRAM ?= goptimizer-api
 
-deploy: ## Run on the server: pull, build, migrate, restart
+deploy: ## Run on the server: pull, build, migrate, restart, wait for /health
 	git pull --ff-only
 	cd backend && go build -o bin/api ./cmd/api && go build -o bin/goptimizer-cli ./cmd/cli
 	cd backend && ./bin/goptimizer-cli migrate up
 	cd frontend && npm ci --no-audit --no-fund && npm run build
-	@if [ -n "$(SUPERVISOR_PROGRAM)" ]; then sudo supervisorctl restart $(SUPERVISOR_PROGRAM); fi
+	@if [ -n "$(SUPERVISOR_PROGRAM)" ]; then \
+		sudo supervisorctl restart $(SUPERVISOR_PROGRAM) || exit 1; \
+		url=http://127.0.0.1:$$(sed -n 's/^PORT=//p' backend/.env)/health; \
+		for i in $$(seq 30); do curl -fsS -o /dev/null $$url && echo "$(SUPERVISOR_PROGRAM) is healthy" && exit 0; sleep 2; done; \
+		echo "$(SUPERVISOR_PROGRAM) did not answer $$url within a minute" >&2; exit 1; \
+	fi
 
 .DEFAULT_GOAL := help
 
