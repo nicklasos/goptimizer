@@ -608,7 +608,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Every folder, ordered by name, with its latest scan, its image counts by status, the bytes its optimizations saved and the programs its profile needs that are not installed. Not paginated.",
+                "description": "Every folder, ordered by name, with its latest scan, its image counts by status, what its images weighed before optimizing and weigh now, and the programs its profile needs that are not installed. Not paginated.",
                 "produces": [
                     "application/json"
                 ],
@@ -2515,7 +2515,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "bytes_before",
-                "bytes_saved",
+                "bytes_now",
                 "created_at",
                 "enabled",
                 "full_scan_interval_hours",
@@ -2534,7 +2534,7 @@ const docTemplate = `{
                 "bytes_before": {
                     "type": "integer"
                 },
-                "bytes_saved": {
+                "bytes_now": {
                     "type": "integer"
                 },
                 "created_at": {
@@ -2712,15 +2712,11 @@ const docTemplate = `{
         "internal_images.DaySavingsResponse": {
             "type": "object",
             "required": [
-                "bytes_before",
                 "bytes_saved",
                 "day",
                 "optimized"
             ],
             "properties": {
-                "bytes_before": {
-                    "type": "integer"
-                },
                 "bytes_saved": {
                     "type": "integer"
                 },

@@ -1,25 +1,35 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { folderTotals, pollInterval, POLL_WAITING, POLL_WORKING } from './overview'
+import { folderTotals, pollInterval, POLL_WAITING, POLL_WORKING, saving } from './overview'
 import type { Folder, Scan } from './types'
 
 const folder = (overrides: Partial<Folder> = {}): Folder =>
-  ({ enabled: true, missing_tools: [], image_counts: {}, bytes_saved: 0, bytes_before: 0, last_scan: null, ...overrides }) as Folder
+  ({ enabled: true, missing_tools: [], image_counts: {}, bytes_before: 0, bytes_now: 0, last_scan: null, ...overrides }) as Folder
 
 const scan = (status: Scan['status']) => ({ status }) as Scan
 
 describe('folderTotals', () => {
   it('adds up every folder', () => {
     const totals = folderTotals([
-      folder({ bytes_saved: 1000, bytes_before: 4000, image_counts: { optimized: 3, pending: 2, failed: 1 }, last_scan: scan('running') }),
-      folder({ bytes_saved: 500, bytes_before: 1000, image_counts: { optimized: 1, optimizing: 2 }, last_scan: scan('succeeded') }),
+      folder({ bytes_before: 4000, bytes_now: 3000, image_counts: { optimized: 3, pending: 2, failed: 1 }, last_scan: scan('running') }),
+      folder({ bytes_before: 1000, bytes_now: 500, image_counts: { optimized: 1, optimizing: 2 }, last_scan: scan('succeeded') }),
       folder({ last_scan: scan('queued') }),
     ])
-    assert.deepEqual(totals, { bytesSaved: 1500, bytesBefore: 5000, optimized: 4, pending: 2, failed: 1, optimizing: 2, scans: 2 })
+    assert.deepEqual(totals, { bytesBefore: 5000, bytesNow: 3500, optimized: 4, pending: 2, failed: 1, optimizing: 2, scans: 2 })
   })
 
   it('is all zero without folders', () => {
-    assert.deepEqual(folderTotals([]), { bytesSaved: 0, bytesBefore: 0, optimized: 0, pending: 0, failed: 0, optimizing: 0, scans: 0 })
+    assert.deepEqual(folderTotals([]), { bytesBefore: 0, bytesNow: 0, optimized: 0, pending: 0, failed: 0, optimizing: 0, scans: 0 })
+  })
+})
+
+describe('saving', () => {
+  it('is the bytes saved and their share of the size before', () => {
+    assert.deepEqual(saving({ before: 214, now: 148 }), { bytes: 66, percent: (66 / 214) * 100 })
+  })
+
+  it('has no share without images', () => {
+    assert.deepEqual(saving({ before: 0, now: 0 }), { bytes: 0, percent: null })
   })
 })
 

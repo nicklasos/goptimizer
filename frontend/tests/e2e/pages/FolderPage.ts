@@ -27,11 +27,7 @@ export class FolderPage extends BasePage {
     return this.page.getByTestId(`folder-stats-${tile}-caption`)
   }
 
-  get savingsCard(): Locator {
-    return this.page.getByTestId('folder-savings-chart')
-  }
-
-  /** One day's column of the chart: `data-bytes`, `data-before` and `data-count`. */
+  /** One day's column of the chart: `data-bytes` and `data-count`. */
   savingsDay(day: string): Locator {
     return this.page.getByTestId('folder-savings-chart').getByTestId(`savings-day-${day}`)
   }

@@ -3,9 +3,9 @@ import { Card, Typography, theme } from 'antd'
 import { useTranslation } from 'react-i18next'
 import type { ID } from '@/api/types'
 import { useElementWidth } from '@/shared/hooks/useElementWidth'
-import { formatBytes, formatDay, formatNumber, formatPercent } from '@/shared/utils/format'
+import { formatBytes, formatDay, formatNumber } from '@/shared/utils/format'
 import { useDailySavings } from '../hooks'
-import { byteTicks, savedPercent, totalSavings } from '../savings'
+import { byteTicks, totalSaved } from '../savings'
 import type { DaySavings } from '../types'
 
 const PLOT_TOP = 8
@@ -30,23 +30,19 @@ interface Props {
 export function SavingsCard({ folderId, refetchInterval, testId }: Props) {
   const { t } = useTranslation()
   const savings = useDailySavings(folderId, refetchInterval)
-  const { token } = theme.useToken()
-  const total = savings.data ? totalSavings(savings.data) : undefined
+  const total = savings.data ? totalSaved(savings.data) : undefined
 
   return (
     <Card
       data-testid={testId}
-      data-total={total?.saved}
-      data-before={total?.before}
+      data-total={total}
       title={t('savings.title')}
+      extra={
+        total !== undefined && (
+          <Typography.Text type="secondary">{total > 0 ? t('savings.total', { saved: formatBytes(total) }) : t('savings.none')}</Typography.Text>
+        )
+      }
     >
-      {total !== undefined && (
-        <Typography.Paragraph type="secondary" style={{ marginBottom: token.marginSM }}>
-          {total.saved > 0
-            ? t('savings.total', { saved: formatBytes(total.saved), before: formatBytes(total.before), percent: formatPercent(savedPercent(total)) })
-            : t('savings.none')}
-        </Typography.Paragraph>
-      )}
       <SavingsChart days={savings.data ?? []} />
     </Card>
   )
@@ -71,9 +67,7 @@ function SavingsChart({ days }: { days: DaySavings[] }) {
   const barLeft = (index: number) => slotLeft(index) + (slot - barWidth) / 2
   const focusable = tabStop ?? days.length - 1
 
-  const saved = (day: DaySavings) =>
-    t('savings.saved', { saved: formatBytes(day.bytes_saved), percent: formatPercent(savedPercent({ saved: day.bytes_saved, before: day.bytes_before })) })
-  const sizes = (day: DaySavings) => t('savings.sizes', { before: formatBytes(day.bytes_before), after: formatBytes(day.bytes_before - day.bytes_saved) })
+  const saved = (day: DaySavings) => t('savings.saved', { saved: formatBytes(day.bytes_saved) })
   const optimized = (day: DaySavings) => t('savings.images', { count: day.optimized, images: formatNumber(day.optimized, 0) })
 
   const onKeyDown = (event: KeyboardEvent, index: number) => {
@@ -141,10 +135,9 @@ function SavingsChart({ days }: { days: DaySavings[] }) {
               }}
               data-testid={`savings-day-${entry.day}`}
               data-bytes={entry.bytes_saved}
-              data-before={entry.bytes_before}
               data-count={entry.optimized}
               role="img"
-              aria-label={`${formatDay(entry.day, 'long')}: ${saved(entry)}, ${sizes(entry)}, ${optimized(entry)}`}
+              aria-label={`${formatDay(entry.day, 'long')}: ${saved(entry)}, ${optimized(entry)}`}
               tabIndex={index === focusable ? 0 : -1}
               x={slotLeft(index)}
               y={PLOT_TOP}
@@ -184,7 +177,6 @@ function SavingsChart({ days }: { days: DaySavings[] }) {
           }}
         >
           <div style={{ fontSize: token.fontSize, fontWeight: token.fontWeightStrong, color: token.colorText }}>{saved(day)}</div>
-          {day.optimized > 0 && <div style={{ color: token.colorText }}>{sizes(day)}</div>}
           <div style={{ color: token.colorText }}>{optimized(day)}</div>
           <div style={{ color: token.colorTextSecondary }}>{formatDay(day.day, 'long')}</div>
         </div>

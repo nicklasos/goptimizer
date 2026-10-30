@@ -11,8 +11,7 @@ import { FolderStats } from '../components/FolderStats'
 import { SavingsCard } from '../components/SavingsCard'
 import { useFolderControls } from '../components/useFolderControls'
 import { useFolders } from '../hooks'
-import { pollInterval } from '../overview'
-import { savedPercent } from '../savings'
+import { pollInterval, saving } from '../overview'
 import { imagesIn, indexedImages, scanLine } from '../scans'
 import type { Folder } from '../types'
 
@@ -77,6 +76,7 @@ function FolderCard({ folder }: { folder: Folder }) {
   const images = indexedImages(folder)
   const optimized = imagesIn(folder, 'optimized')
   const failed = imagesIn(folder, 'failed')
+  const saved = saving({ before: folder.bytes_before, now: folder.bytes_now })
 
   return (
     <Card
@@ -111,14 +111,15 @@ function FolderCard({ folder }: { folder: Folder }) {
           {scanLine(t, scan)}
         </Typography.Text>
         <Space size={token.marginXS} wrap>
-          <Typography.Text data-testid={`folder-optimized-${folder.id}`} data-count={optimized} data-bytes={folder.bytes_saved}>
-            {optimized > 0 || folder.bytes_saved > 0
+          <Typography.Text data-testid={`folder-optimized-${folder.id}`} data-count={optimized} data-bytes={saved.bytes}>
+            {optimized > 0 || saved.bytes > 0
               ? t('folders.optimize.summary', {
                   count: optimized,
                   images: formatNumber(optimized, 0),
-                  saved: formatBytes(folder.bytes_saved),
                   before: formatBytes(folder.bytes_before),
-                  percent: formatPercent(savedPercent({ saved: folder.bytes_saved, before: folder.bytes_before })),
+                  now: formatBytes(folder.bytes_now),
+                  saved: formatBytes(saved.bytes),
+                  percent: formatPercent(saved.percent),
                 })
               : t('folders.optimize.none')}
           </Typography.Text>

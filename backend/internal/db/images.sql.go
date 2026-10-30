@@ -343,8 +343,7 @@ func (q *Queries) LeaveImage(ctx context.Context, arg LeaveImageParams) (int64, 
 }
 
 const listDailySavings = `-- name: ListDailySavings :many
-SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved,
-    CAST(SUM(bytes_before) AS INTEGER) AS original
+SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved
 FROM daily_stats
 WHERE day >= ?1
 GROUP BY day
@@ -355,7 +354,6 @@ type ListDailySavingsRow struct {
 	Day       string `db:"day" json:"day"`
 	Optimized int64  `db:"optimized" json:"optimized"`
 	Saved     int64  `db:"saved" json:"saved"`
-	Original  int64  `db:"original" json:"original"`
 }
 
 func (q *Queries) ListDailySavings(ctx context.Context, since string) ([]ListDailySavingsRow, error) {
@@ -367,12 +365,7 @@ func (q *Queries) ListDailySavings(ctx context.Context, since string) ([]ListDai
 	var items []ListDailySavingsRow
 	for rows.Next() {
 		var i ListDailySavingsRow
-		if err := rows.Scan(
-			&i.Day,
-			&i.Optimized,
-			&i.Saved,
-			&i.Original,
-		); err != nil {
+		if err := rows.Scan(&i.Day, &i.Optimized, &i.Saved); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -387,7 +380,7 @@ func (q *Queries) ListDailySavings(ctx context.Context, since string) ([]ListDai
 }
 
 const listDailySavingsOfFolder = `-- name: ListDailySavingsOfFolder :many
-SELECT day, optimized, CAST(bytes_before - bytes_after AS INTEGER) AS saved, bytes_before AS original
+SELECT day, optimized, CAST(bytes_before - bytes_after AS INTEGER) AS saved
 FROM daily_stats
 WHERE folder_id = ?1 AND day >= ?2
 ORDER BY day
@@ -402,7 +395,6 @@ type ListDailySavingsOfFolderRow struct {
 	Day       string `db:"day" json:"day"`
 	Optimized int64  `db:"optimized" json:"optimized"`
 	Saved     int64  `db:"saved" json:"saved"`
-	Original  int64  `db:"original" json:"original"`
 }
 
 func (q *Queries) ListDailySavingsOfFolder(ctx context.Context, arg ListDailySavingsOfFolderParams) ([]ListDailySavingsOfFolderRow, error) {
@@ -414,12 +406,7 @@ func (q *Queries) ListDailySavingsOfFolder(ctx context.Context, arg ListDailySav
 	var items []ListDailySavingsOfFolderRow
 	for rows.Next() {
 		var i ListDailySavingsOfFolderRow
-		if err := rows.Scan(
-			&i.Day,
-			&i.Optimized,
-			&i.Saved,
-			&i.Original,
-		); err != nil {
+		if err := rows.Scan(&i.Day, &i.Optimized, &i.Saved); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1141,29 +1128,33 @@ func (q *Queries) SetImageOutputHash(ctx context.Context, arg SetImageOutputHash
 	return result.RowsAffected()
 }
 
-const sumBytesSavedByFolder = `-- name: SumBytesSavedByFolder :many
-SELECT folder_id, CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved,
-    CAST(COALESCE(SUM(bytes_before), 0) AS INTEGER) AS original
-FROM daily_stats
+const sumImageSizesByFolder = `-- name: SumImageSizesByFolder :many
+SELECT folder_id,
+    CAST(SUM(size) AS INTEGER) AS now,
+    CAST(SUM(CASE WHEN status = 'optimized' THEN COALESCE(original_size, size) ELSE size END) AS INTEGER) AS before_optimizing
+FROM images
+WHERE status <> 'gone'
 GROUP BY folder_id
 `
 
-type SumBytesSavedByFolderRow struct {
-	FolderID int64 `db:"folder_id" json:"folder_id"`
-	Saved    int64 `db:"saved" json:"saved"`
-	Original int64 `db:"original" json:"original"`
+type SumImageSizesByFolderRow struct {
+	FolderID         int64 `db:"folder_id" json:"folder_id"`
+	Now              int64 `db:"now" json:"now"`
+	BeforeOptimizing int64 `db:"before_optimizing" json:"before_optimizing"`
 }
 
-func (q *Queries) SumBytesSavedByFolder(ctx context.Context) ([]SumBytesSavedByFolderRow, error) {
-	rows, err := q.db.QueryContext(ctx, sumBytesSavedByFolder)
+// What a folder's images weigh now, and weighed before they were optimized: an optimized image
+// counts with its original size, every other one as it is. A gone image is not in the folder.
+func (q *Queries) SumImageSizesByFolder(ctx context.Context) ([]SumImageSizesByFolderRow, error) {
+	rows, err := q.db.QueryContext(ctx, sumImageSizesByFolder)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SumBytesSavedByFolderRow
+	var items []SumImageSizesByFolderRow
 	for rows.Next() {
-		var i SumBytesSavedByFolderRow
-		if err := rows.Scan(&i.FolderID, &i.Saved, &i.Original); err != nil {
+		var i SumImageSizesByFolderRow
+		if err := rows.Scan(&i.FolderID, &i.Now, &i.BeforeOptimizing); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1177,22 +1168,22 @@ func (q *Queries) SumBytesSavedByFolder(ctx context.Context) ([]SumBytesSavedByF
 	return items, nil
 }
 
-const sumBytesSavedOfFolder = `-- name: SumBytesSavedOfFolder :one
-SELECT CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved,
-    CAST(COALESCE(SUM(bytes_before), 0) AS INTEGER) AS original
-FROM daily_stats
-WHERE folder_id = ?
+const sumImageSizesOfFolder = `-- name: SumImageSizesOfFolder :one
+SELECT CAST(COALESCE(SUM(size), 0) AS INTEGER) AS now,
+    CAST(COALESCE(SUM(CASE WHEN status = 'optimized' THEN COALESCE(original_size, size) ELSE size END), 0) AS INTEGER) AS before_optimizing
+FROM images
+WHERE folder_id = ? AND status <> 'gone'
 `
 
-type SumBytesSavedOfFolderRow struct {
-	Saved    int64 `db:"saved" json:"saved"`
-	Original int64 `db:"original" json:"original"`
+type SumImageSizesOfFolderRow struct {
+	Now              int64 `db:"now" json:"now"`
+	BeforeOptimizing int64 `db:"before_optimizing" json:"before_optimizing"`
 }
 
-func (q *Queries) SumBytesSavedOfFolder(ctx context.Context, folderID int64) (SumBytesSavedOfFolderRow, error) {
-	row := q.db.QueryRowContext(ctx, sumBytesSavedOfFolder, folderID)
-	var i SumBytesSavedOfFolderRow
-	err := row.Scan(&i.Saved, &i.Original)
+func (q *Queries) SumImageSizesOfFolder(ctx context.Context, folderID int64) (SumImageSizesOfFolderRow, error) {
+	row := q.db.QueryRowContext(ctx, sumImageSizesOfFolder, folderID)
+	var i SumImageSizesOfFolderRow
+	err := row.Scan(&i.Now, &i.BeforeOptimizing)
 	return i, err
 }
 

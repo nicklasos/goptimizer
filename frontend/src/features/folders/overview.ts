@@ -3,9 +3,9 @@ import type { Folder } from './types'
 
 /** What the folders add up to: the figures of the overview tiles. */
 export interface Totals {
-  bytesSaved: number
-  /** What the optimized images weighed before. */
+  /** What the images weighed before they were optimized. */
   bytesBefore: number
+  bytesNow: number
   optimized: number
   pending: number
   failed: number
@@ -17,14 +17,24 @@ export interface Totals {
 export function folderTotals(folders: readonly Folder[]): Totals {
   const sum = (count: (folder: Folder) => number) => folders.reduce((total, folder) => total + count(folder), 0)
   return {
-    bytesSaved: sum((folder) => folder.bytes_saved),
     bytesBefore: sum((folder) => folder.bytes_before),
+    bytesNow: sum((folder) => folder.bytes_now),
     optimized: sum((folder) => imagesIn(folder, 'optimized')),
     pending: sum((folder) => imagesIn(folder, 'pending')),
     failed: sum((folder) => imagesIn(folder, 'failed')),
     optimizing: sum((folder) => imagesIn(folder, 'optimizing')),
     scans: sum((folder) => (isScanActive(folder.last_scan) ? 1 : 0)),
   }
+}
+
+export interface Sizes {
+  before: number
+  now: number
+}
+
+/** What optimizing saved, in bytes and as a share of the size before; the share is null for no images. */
+export function saving({ before, now }: Sizes): { bytes: number; percent: number | null } {
+  return { bytes: before - now, percent: before > 0 ? ((before - now) / before) * 100 : null }
 }
 
 export const POLL_WORKING = 2_000

@@ -9,6 +9,7 @@ import (
 	"app/internal/errs"
 	"app/internal/factory"
 	"app/internal/folders"
+	"app/internal/images"
 	"app/tests/testkit"
 
 	"github.com/stretchr/testify/assert"
@@ -219,28 +220,31 @@ func TestFoldersAPI_EverySignedInUser(t *testing.T) {
 	app.AssertDatabaseCount("folders", 1)
 }
 
+// The sizes are the folder's images, before optimizing and now, whatever their status; the daily
+// stats, which keep the history of deleted and replaced files, do not count.
 func TestFoldersAPI_ShowWhatOptimizingSaved(t *testing.T) {
 	app := testkit.New(t)
 	user := app.Create.User()
 	shop := app.Create.Folder(factory.WithFolderName("A shop"))
 	app.Create.Image(shop, factory.Optimized(5000), factory.AsOnDisk(3000, 1))
-	app.Create.Image(shop, factory.Failed(3, time.Time{}))
-	app.Create.DailyStat(shop, time.Now().AddDate(0, 0, -1), 3, 9000, 5000)
-	app.Create.DailyStat(shop, time.Now(), 1, 5000, 3000)
+	app.Create.Image(shop, factory.Failed(3, time.Time{}), factory.AsOnDisk(1000, 1))
+	app.Create.Image(shop, factory.WithImageStatus(images.StatusSkipped), factory.AsOnDisk(2000, 1))
+	app.Create.Image(shop, factory.WithImageStatus(images.StatusGone), factory.AsOnDisk(9000, 1))
+	app.Create.DailyStat(shop, time.Now(), 9, 90000, 10000)
 	app.Create.Folder(factory.WithFolderName("B blog"))
 
 	app.As(user).GET("/api/v1/folders").
 		AssertOK().
-		AssertJSONPath("data.0.bytes_saved", 6000).
-		AssertJSONPath("data.0.bytes_before", 14000).
-		AssertJSONPath("data.0.image_counts", map[string]int{"optimized": 1, "failed": 1}).
+		AssertJSONPath("data.0.bytes_before", 8000).
+		AssertJSONPath("data.0.bytes_now", 6000).
+		AssertJSONPath("data.0.image_counts", map[string]int{"optimized": 1, "failed": 1, "skipped": 1, "gone": 1}).
 		AssertJSONPath("data.0.missing_tools", []string{}).
-		AssertJSONPath("data.1.bytes_saved", 0).
-		AssertJSONPath("data.1.bytes_before", 0)
+		AssertJSONPath("data.1.bytes_before", 0).
+		AssertJSONPath("data.1.bytes_now", 0)
 	app.As(user).GET("/api/v1/folders/%d", shop.ID).
 		AssertOK().
-		AssertJSONPath("data.bytes_saved", 6000).
-		AssertJSONPath("data.bytes_before", 14000)
+		AssertJSONPath("data.bytes_before", 8000).
+		AssertJSONPath("data.bytes_now", 6000)
 }
 
 func TestFoldersAPI_NameTheToolsAFolderWaitsFor(t *testing.T) {

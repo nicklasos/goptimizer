@@ -153,17 +153,21 @@ ON CONFLICT (folder_id, day) DO UPDATE SET
     bytes_before = bytes_before + excluded.bytes_before,
     bytes_after = bytes_after + excluded.bytes_after;
 
--- name: SumBytesSavedByFolder :many
-SELECT folder_id, CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved,
-    CAST(COALESCE(SUM(bytes_before), 0) AS INTEGER) AS original
-FROM daily_stats
+-- name: SumImageSizesByFolder :many
+-- What a folder's images weigh now, and weighed before they were optimized: an optimized image
+-- counts with its original size, every other one as it is. A gone image is not in the folder.
+SELECT folder_id,
+    CAST(SUM(size) AS INTEGER) AS now,
+    CAST(SUM(CASE WHEN status = 'optimized' THEN COALESCE(original_size, size) ELSE size END) AS INTEGER) AS before_optimizing
+FROM images
+WHERE status <> 'gone'
 GROUP BY folder_id;
 
--- name: SumBytesSavedOfFolder :one
-SELECT CAST(COALESCE(SUM(bytes_before - bytes_after), 0) AS INTEGER) AS saved,
-    CAST(COALESCE(SUM(bytes_before), 0) AS INTEGER) AS original
-FROM daily_stats
-WHERE folder_id = ?;
+-- name: SumImageSizesOfFolder :one
+SELECT CAST(COALESCE(SUM(size), 0) AS INTEGER) AS now,
+    CAST(COALESCE(SUM(CASE WHEN status = 'optimized' THEN COALESCE(original_size, size) ELSE size END), 0) AS INTEGER) AS before_optimizing
+FROM images
+WHERE folder_id = ? AND status <> 'gone';
 
 -- name: GetImage :one
 SELECT * FROM images WHERE id = ?;
@@ -218,15 +222,14 @@ SET status = 'pending', attempts = 0, next_attempt_at = NULL, updated_at = sqlc.
 WHERE folder_id = sqlc.arg(folder_id) AND status = 'failed';
 
 -- name: ListDailySavings :many
-SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved,
-    CAST(SUM(bytes_before) AS INTEGER) AS original
+SELECT day, CAST(SUM(optimized) AS INTEGER) AS optimized, CAST(SUM(bytes_before - bytes_after) AS INTEGER) AS saved
 FROM daily_stats
 WHERE day >= sqlc.arg(since)
 GROUP BY day
 ORDER BY day;
 
 -- name: ListDailySavingsOfFolder :many
-SELECT day, optimized, CAST(bytes_before - bytes_after AS INTEGER) AS saved, bytes_before AS original
+SELECT day, optimized, CAST(bytes_before - bytes_after AS INTEGER) AS saved
 FROM daily_stats
 WHERE folder_id = sqlc.arg(folder_id) AND day >= sqlc.arg(since)
 ORDER BY day;

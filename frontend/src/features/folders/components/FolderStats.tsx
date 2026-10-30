@@ -3,8 +3,7 @@ import { Card, Col, Row, Typography, theme } from 'antd'
 import { ExclamationCircleOutlined, SyncOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { formatBytes, formatCount, formatPercent } from '@/shared/utils/format'
-import { folderTotals } from '../overview'
-import { savedPercent } from '../savings'
+import { folderTotals, saving } from '../overview'
 import type { Folder } from '../types'
 
 interface Tile {
@@ -22,15 +21,18 @@ export function FolderStats({ folders, testId }: { folders: readonly Folder[]; t
   const { t } = useTranslation()
   const { token } = theme.useToken()
   const totals = folderTotals(folders)
-  const percent = savedPercent({ saved: totals.bytesSaved, before: totals.bytesBefore })
+  const saved = saving({ before: totals.bytesBefore, now: totals.bytesNow })
   const working = (count: number) => (count > 0 ? <SyncOutlined spin /> : undefined)
 
   const tiles: Tile[] = [
     {
       id: 'saved',
-      total: totals.bytesSaved,
-      value: formatBytes(totals.bytesSaved),
-      caption: percent === null ? undefined : t('overview.savedOf', { percent: formatPercent(percent), before: formatBytes(totals.bytesBefore) }),
+      total: saved.bytes,
+      value: formatBytes(saved.bytes),
+      caption:
+        saved.percent === null
+          ? undefined
+          : t('overview.sizes', { percent: formatPercent(saved.percent), before: formatBytes(totals.bytesBefore), now: formatBytes(totals.bytesNow) }),
     },
     { id: 'optimized', total: totals.optimized, value: formatCount(totals.optimized) },
     { id: 'pending', total: totals.pending, value: formatCount(totals.pending) },

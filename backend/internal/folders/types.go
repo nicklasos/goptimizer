@@ -44,8 +44,8 @@ type SetEnabledRequest struct {
 
 // FolderResponse is a folder with its parsed profile and the state of its image index:
 // last_scan is its latest scan of any status, image_counts the number of images per status,
-// bytes_saved what its optimizations saved, by the daily stats, bytes_before the size of those
-// images before they were optimized, and missing_tools the programs
+// bytes_before what its images weighed before they were optimized and bytes_now what they weigh
+// now (their difference is what optimizing saved), and missing_tools the programs
 // its profile needs that are not installed, whose images wait as pending.
 type FolderResponse struct {
 	ID                    int64               `json:"id"`
@@ -58,8 +58,8 @@ type FolderResponse struct {
 	Profile               Profile             `json:"profile"`
 	LastScan              *scans.ScanResponse `json:"last_scan" extensions:"x-nullable"`
 	ImageCounts           map[string]int64    `json:"image_counts"`
-	BytesSaved            int64               `json:"bytes_saved"`
 	BytesBefore           int64               `json:"bytes_before"`
+	BytesNow              int64               `json:"bytes_now"`
 	MissingTools          []string            `json:"missing_tools"`
 	CreatedAt             string              `json:"created_at"`
 	UpdatedAt             string              `json:"updated_at"`

@@ -36,8 +36,8 @@ func folderResponse(folder Folder) FolderResponse {
 		Profile:               folder.Profile,
 		LastScan:              lastScan,
 		ImageCounts:           folder.ImageCounts,
-		BytesSaved:            folder.BytesSaved,
 		BytesBefore:           folder.BytesBefore,
+		BytesNow:              folder.BytesNow,
 		MissingTools:          folder.MissingTools,
 		CreatedAt:             internal.FormatTime(folder.CreatedAt),
 		UpdatedAt:             internal.FormatTime(folder.UpdatedAt),
@@ -47,7 +47,7 @@ func folderResponse(folder Folder) FolderResponse {
 // ListFolders lists every folder
 //
 //	@Summary		List folders
-//	@Description	Every folder, ordered by name, with its latest scan, its image counts by status, the bytes its optimizations saved and the programs its profile needs that are not installed. Not paginated.
+//	@Description	Every folder, ordered by name, with its latest scan, its image counts by status, what its images weighed before optimizing and weigh now, and the programs its profile needs that are not installed. Not paginated.
 //	@Tags			folders
 //	@Produce		json
 //	@Security		BearerAuth

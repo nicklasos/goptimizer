@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { formatBytes } from '@/shared/utils/format'
-import { byteTicks, savedPercent, totalSavings } from './savings'
+import { byteTicks, totalSaved } from './savings'
 import type { DaySavings } from './types'
 
 const KB = 1024
@@ -31,23 +31,13 @@ describe('byteTicks', () => {
   })
 })
 
-describe('totalSavings', () => {
+describe('totalSaved', () => {
   it('adds up the days', () => {
     const days = [
-      { day: '2026-10-28', optimized: 2, bytes_saved: 300, bytes_before: 1000 },
-      { day: '2026-10-29', optimized: 0, bytes_saved: 0, bytes_before: 0 },
-      { day: '2026-10-30', optimized: 1, bytes_saved: 200, bytes_before: 1000 },
+      { day: '2026-10-28', optimized: 2, bytes_saved: 300 },
+      { day: '2026-10-29', optimized: 0, bytes_saved: 0 },
+      { day: '2026-10-30', optimized: 1, bytes_saved: 200 },
     ] satisfies DaySavings[]
-    assert.deepEqual(totalSavings(days), { saved: 500, before: 2000 })
-  })
-})
-
-describe('savedPercent', () => {
-  it('is the share of the original size saved', () => {
-    assert.equal(savedPercent({ saved: 500, before: 2000 }), 25)
-  })
-
-  it('is null before anything was optimized', () => {
-    assert.equal(savedPercent({ saved: 0, before: 0 }), null)
+    assert.equal(totalSaved(days), 500)
   })
 })

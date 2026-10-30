@@ -71,13 +71,10 @@ type RetriedData struct {
 	Retried int64 `json:"retried"`
 }
 
-// DaySavingsResponse is one day's optimizations: bytes_before is what those images weighed
-// before, bytes_saved how much less they weigh now.
 type DaySavingsResponse struct {
-	Day         string `json:"day"`
-	Optimized   int64  `json:"optimized"`
-	BytesSaved  int64  `json:"bytes_saved"`
-	BytesBefore int64  `json:"bytes_before"`
+	Day        string `json:"day"`
+	Optimized  int64  `json:"optimized"`
+	BytesSaved int64  `json:"bytes_saved"`
 }
 
 type DailySavingsResponse struct {

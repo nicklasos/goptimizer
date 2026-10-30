@@ -56,17 +56,14 @@ test.describe('Folder page', () => {
 
     await expect(page).toHaveURL(new RegExp(`/folders/${id}$`))
     await expect(folderPage.root).toBeVisible()
-    await expect(folderPage.stat('saved')).toHaveAttribute('data-value', '220000')
+    await expect(folderPage.stat('saved')).toHaveAttribute('data-value', '160000')
     await expect(folderPage.statCaption('saved')).toBeVisible()
-    await expect(folderPage.savingsCard).toHaveAttribute('data-total', '220000')
-    await expect(folderPage.savingsCard).toHaveAttribute('data-before', '350000')
     await expect(folderPage.stat('optimized')).toHaveAttribute('data-value', '2')
     await expect(folderPage.stat('pending')).toHaveAttribute('data-value', '1')
     await expect(folderPage.stat('failed')).toHaveAttribute('data-value', '1')
 
     const today = folderPage.savingsDay(utcDay(0))
     await expect(today).toHaveAttribute('data-bytes', '200000')
-    await expect(today).toHaveAttribute('data-before', '300000')
     await expect(today).toHaveAttribute('data-count', '2')
     await expect(folderPage.savingsDay(utcDay(1))).toHaveAttribute('data-bytes', '0')
     await today.hover()

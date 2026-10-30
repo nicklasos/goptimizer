@@ -149,8 +149,8 @@
       "images_other": "{{images}} images"
     },
     "optimize": {
-      "summary_one": "{{images}} optimized, {{saved}} of {{before}} saved ({{percent}})",
-      "summary_other": "{{images}} optimized, {{saved}} of {{before}} saved ({{percent}})",
+      "summary_one": "{{images}} optimized · {{before}} → {{now}} · saved {{saved}} ({{percent}})",
+      "summary_other": "{{images}} optimized · {{before}} → {{now}} · saved {{saved}} ({{percent}})",
       "none": "Nothing optimized yet",
       "failed_one": "{{images}} failed",
       "failed_other": "{{images}} failed",
@@ -291,17 +291,16 @@
     "failed": "Failed",
     "optimizing": "Optimizing now",
     "scans": "Scans running",
-    "savedOf": "{{percent}} of {{before}}"
+    "sizes": "{{percent}} · {{before}} → {{now}}"
   },
   "savings": {
     "title": "Saved per day",
-    "total": "{{saved}} of {{before}} ({{percent}}) in the last 30 days",
+    "total": "{{saved}} in the last 30 days",
     "none": "Nothing saved in the last 30 days",
-    "saved": "{{saved}} saved ({{percent}})",
+    "saved": "{{saved}} saved",
     "images_one": "{{images}} image optimized",
     "images_other": "{{images}} images optimized",
-    "chartLabel": "Bytes saved on each of the last 30 days. Use the arrow keys to move between days.",
-    "sizes": "{{before}} → {{after}}"
+    "chartLabel": "Bytes saved on each of the last 30 days. Use the arrow keys to move between days."
   },
   "scans": {
     "title": "Scans",
